@@ -27,29 +27,35 @@ A MetaMask popup will appear. Select your account and click **Connect**.
 
 ![Approve MetaMask connection](/images/user-guide/02-metamask-connect.png)
 
-### Step 3: Review Payment Details
+### Step 3: Approve Token Usage
 
-Review the amount, network, and gas fee. The gas fee shows **Free (Covered by Solo Pay)**. Click **Pay Now**.
+To approve the transaction of tokens to be used for payment, click **Approve Token** in the widget.
 
-![Review payment details](/images/user-guide/03-payment-confirm.png)
+![Approve token usage](/images/user-guide/03-token-approve.png)
 
-### Step 4: Sign the Spending Cap Request
+### Step 4: Approval Transaction
 
-A **Spending cap request** popup will appear. This is a signature that allows SoloPay to process the token — it is not a transaction, so **no gas fee is charged**. Click **Confirm**.
+A **Spending cap request** popup will appear. This is the process of authorizing SoloPay to process your tokens. Follow the on-screen instructions and click **Confirm**.
 
-![Sign spending cap request](/images/user-guide/04-metamask-approve.png)
+![Approve MetaMask token usage](/images/user-guide/04-metamask-approve.png)
 
-### Step 5: Sign the Payment Request
+### Step 5: Review Payment Details & Proceed
 
-A **Signature request** popup will appear. This is the final payment authorization. No gas fee is charged. Click **Confirm**.
+Once token approval is complete, you will proceed to the payment screen. Review the amount, network, and gas fee. The gas fee shows **Free (Covered by Solo Pay)**. Click **Pay Now**.
 
-![Sign payment request](/images/user-guide/05-sign-request.png)
+![Review payment details](/images/user-guide/05-payment-confirm.png)
 
-### Step 6: Payment Complete
+### Step 6: Sign the Payment Request
 
-When the **Payment Complete** screen appears, your payment has been processed and the funds are held securely. Click **Confirm** to return to the merchant page. The merchant will then complete the order (release the payment) or cancel (refund you); you don't need to do anything else.
+A **Signature request** popup will appear. This is the final payment authorization signature. No gas fee is charged. Click **Confirm**.
 
-![Payment complete](/images/user-guide/06-payment-complete.png)
+![Sign payment request](/images/user-guide/06-metamask-sign-request.png)
+
+### Step 7: Payment Complete
+
+When the **Payment Complete** screen appears, your payment is processed, and the funds are held securely. Click **Confirm** to return to the merchant page.
+
+![Payment complete](/images/user-guide/07-payment-complete.png)
 
 ## Paying with Trust Wallet
 
@@ -59,44 +65,36 @@ A Trust Wallet popup will appear. Confirm your account and click **Connect**.
 
 ![Approve Trust Wallet connection](/images/user-guide/02-trustwallet-connect.png)
 
-### Step 3: Review Payment Details
+### Step 3: Approve Token Usage
 
-Review the amount, network, and gas fee. The gas fee shows **Free (Covered by Solo Pay)**. Click **Pay Now**.
+To approve the transaction of tokens to be used for payment, click **Approve Token** in the widget.
 
-![Review payment details](/images/user-guide/03-payment-confirm.png)
+![Approve token usage](/images/user-guide/03-token-approve.png)
 
-### Step 4: Sign the Spending Cap Request
+### Step 4: Approval Transaction
 
-A **High risk message payload** banner appears at the top. This is Trust Wallet's default security notice and is part of the normal payment process. Click **Confirm**.
+A token approval transaction popup will appear. This is the process of authorizing SoloPay to process your tokens. Follow the on-screen instructions and click **Confirm**.
 
-![Signature request screen](/images/user-guide/04-trustwallet-approve.png)
+![Approve Trust Wallet token usage](/images/user-guide/04-trustwallet-approve.png)
 
-### Step 5: Sign the Payment Request
+(If a security risk warning message appears, review the content and click **Continue** to proceed.)
+<br>
+![Approve Trust Wallet additional usage](/images/user-guide/04-trustwallet-approve2.png)
 
-A **Signature request** popup will appear. This is the final payment authorization. No gas fee is charged. Click **Confirm**.
+### Step 5: Review Payment Details & Proceed
 
-![Sign payment request](/images/user-guide/05-trustwallet-sign-request.png)
+Once token approval is complete, you will proceed to the payment screen. Review the amount, network, and gas fee. The gas fee shows **Free (Covered by Solo Pay)**. Click **Pay Now**.
 
-### Step 6: Payment Complete
+![Review payment details](/images/user-guide/05-payment-confirm.png)
 
-When the **Payment Complete** screen appears, your payment has been processed and the funds are held securely. Click **Confirm** to return to the merchant page. The merchant will then complete the order (release the payment) or cancel (refund you); you don't need to do anything else.
+### Step 6: Sign the Payment Request
 
-![Payment complete](/images/user-guide/06-payment-complete.png)
+A **Signature request** popup will appear. This is the final payment authorization signature. No gas fee is charged. Click **Confirm**.
 
-## FAQ
+![Sign payment request](/images/user-guide/06-trustwallet-sign-request.png)
 
-1. **Why are there no gas fees?**
+### Step 7: Payment Complete
 
-   SoloPay uses a gasless payment method. SoloPay covers the blockchain transaction fees, so you can pay without any additional cost.
+When the **Payment Complete** screen appears, your payment is processed, and the funds are held securely. Click **Confirm** to return to the merchant page.
 
-2. **Why am I asked to sign twice?**
-
-   For your first payment, you will be asked for a spending cap signature (Step 4) followed by a payment signature (Step 5). Both are signatures, not transactions, so no gas fee is charged for either.
-
-3. **Trust Wallet shows "Warning! You could lose all your tokens!"**
-
-   This is Trust Wallet's built-in security warning for Permit-type signature requests. SoloPay is a verified service — click **Continue anyway** to proceed safely.
-
-4. **The merchant says my payment is still processing. Why?**
-
-   As soon as you see **Payment Complete**, your payment is secured (funds are held). The merchant will finalize it after confirming your order, or cancel and refund you if needed. This usually takes a short time — no action is required from you.
+![Payment complete](/images/user-guide/07-payment-complete.png)
