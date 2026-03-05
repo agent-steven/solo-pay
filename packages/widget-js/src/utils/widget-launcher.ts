@@ -162,12 +162,13 @@ export class WidgetLauncher {
     if (!paymentId) return url;
     try {
       const u = new URL(url);
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') {
+        return url;
+      }
       u.searchParams.set('paymentId', paymentId);
       return u.toString();
     } catch {
-      // Fallback for malformed URLs
-      const sep = url.includes('?') ? '&' : '?';
-      return `${url}${sep}paymentId=${encodeURIComponent(paymentId)}`;
+      return url;
     }
   }
 
