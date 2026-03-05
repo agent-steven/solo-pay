@@ -4,7 +4,7 @@ import { arbitrum, base, mainnet, optimism, sepolia } from 'wagmi/chains';
 import { defineChain } from 'viem';
 import { getTrustWalletProvider } from './lib/wallet-providers';
 
-// Polygon Mainnet - custom definition with publicnode RPC
+// Polygon Mainnet - publicnode RPC with full chain config
 const polygon = defineChain({
   id: 137,
   name: 'Polygon',
@@ -15,11 +15,21 @@ const polygon = defineChain({
     },
   },
   blockExplorers: {
-    default: { name: 'PolygonScan', url: 'https://polygonscan.com' },
+    default: {
+      name: 'PolygonScan',
+      url: 'https://polygonscan.com',
+      apiUrl: 'https://api.polygonscan.com/api',
+    },
+  },
+  contracts: {
+    multicall3: {
+      address: '0xca11bde05977b3631167028862be2a173976ca11',
+      blockCreated: 25770160,
+    },
   },
 });
 
-// Polygon Amoy Testnet - custom definition with publicnode RPC
+// Polygon Amoy Testnet - publicnode RPC with full chain config
 const polygonAmoy = defineChain({
   id: 80002,
   name: 'Polygon Amoy',
@@ -30,7 +40,17 @@ const polygonAmoy = defineChain({
     },
   },
   blockExplorers: {
-    default: { name: 'PolygonScan', url: 'https://amoy.polygonscan.com' },
+    default: {
+      name: 'PolygonScan',
+      url: 'https://amoy.polygonscan.com',
+      apiUrl: 'https://api-amoy.polygonscan.com/api',
+    },
+  },
+  contracts: {
+    multicall3: {
+      address: '0xca11bde05977b3631167028862be2a173976ca11',
+      blockCreated: 3127388,
+    },
   },
   testnet: true,
 });
