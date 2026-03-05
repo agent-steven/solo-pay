@@ -1,6 +1,6 @@
 import { createPublicClient, http, defineChain, PublicClient, Address, parseAbiItem } from 'viem';
 import { PaymentStatus } from '../schemas/payment.schema';
-import { ChainService } from './chain.service';
+import { ChainWithTokens } from './chain.service';
 import { createLogger } from '../lib/logger';
 
 /**
@@ -134,52 +134,24 @@ export interface TransactionStatus {
   confirmations?: number;
 }
 
-/** Cache TTL in milliseconds */
-const CACHE_TTL_MS = 60_000;
-
 /**
  * 블록체인 서비스 - viem을 통한 스마트 컨트랙트 상호작용
  * 멀티체인 + 멀티토큰 아키텍처: DB 기반 동적 체인 관리
- * Lazy TTL cache — DB changes are picked up within 60 seconds without restart.
  */
 export class BlockchainService {
-  /** PublicClient cache keyed by `${chainId}:${rpcUrl}` */
-  private clients: Map<string, PublicClient> = new Map();
-  /** Cached chain configs (rebuilt on refresh) */
+  private clients: Map<number, PublicClient> = new Map();
   private chainConfigs: Map<number, InternalChainConfig> = new Map();
-  /** Reverse map: chainId -> (lowercaseAddress -> tokenInfo) */
+  // Reverse map for O(1) address lookup: chainId -> (lowercaseAddress -> tokenInfo)
   private addressToTokenMap: Map<number, Map<string, TokenConfig & { symbol: string }>> = new Map();
-  /** Last time the cache was refreshed */
-  private lastRefreshTime = 0;
-  /** Mutex to prevent concurrent refreshes */
-  private refreshPromise: Promise<void> | null = null;
-
   private readonly logger = createLogger('BlockchainService');
 
-  constructor(private readonly chainService: ChainService) {}
-
   /**
-   * Ensure cached data is fresh (within TTL). If stale, reload from DB.
+   * DB에서 로드한 체인 데이터로 BlockchainService 초기화
+   * @param chainsWithTokens ChainService.findAllWithTokens()의 결과
    */
-  private async ensureFresh(): Promise<void> {
-    if (Date.now() - this.lastRefreshTime < CACHE_TTL_MS) {
-      return;
-    }
-    // Deduplicate concurrent refresh calls
-    if (!this.refreshPromise) {
-      this.refreshPromise = this.refresh().finally(() => {
-        this.refreshPromise = null;
-      });
-    }
-    return this.refreshPromise;
-  }
-
-  private async refresh(): Promise<void> {
-    const chainsWithTokens = await this.chainService.findAllWithTokens();
-    const newConfigs = new Map<number, InternalChainConfig>();
-    const newAddressMap = new Map<number, Map<string, TokenConfig & { symbol: string }>>();
-
+  constructor(chainsWithTokens: ChainWithTokens[]) {
     for (const chainData of chainsWithTokens) {
+      // gateway_address, forwarder_address가 없는 체인은 건너뜀
       if (!chainData.gateway_address || !chainData.forwarder_address) {
         this.logger.warn(
           `⚠️ Chain ${chainData.name} (${chainData.network_id}) skipped: missing contract addresses`
@@ -187,7 +159,9 @@ export class BlockchainService {
         continue;
       }
 
+      // 토큰을 symbol -> { address, decimals } 맵으로 변환
       const tokensMap: Record<string, { address: string; decimals: number }> = {};
+      // Reverse map: address -> tokenInfo for O(1) lookup
       const addressMap = new Map<string, TokenConfig & { symbol: string }>();
 
       for (const token of chainData.tokens) {
@@ -195,6 +169,7 @@ export class BlockchainService {
           address: token.address,
           decimals: token.decimals,
         };
+        // Populate reverse map (lowercase for case-insensitive lookup)
         addressMap.set(token.address.toLowerCase(), {
           address: token.address,
           decimals: token.decimals,
@@ -202,9 +177,9 @@ export class BlockchainService {
         });
       }
 
-      newAddressMap.set(chainData.network_id, addressMap);
+      this.addressToTokenMap.set(chainData.network_id, addressMap);
 
-      newConfigs.set(chainData.network_id, {
+      const internalConfig: InternalChainConfig = {
         chainId: chainData.network_id,
         name: chainData.name,
         rpcUrl: chainData.rpc_url,
@@ -213,65 +188,54 @@ export class BlockchainService {
           forwarder: chainData.forwarder_address,
         },
         tokens: tokensMap,
+      };
+
+      // viem defineChain으로 동적 체인 정의
+      const chain = defineChain({
+        id: chainData.network_id,
+        name: chainData.name,
+        nativeCurrency: {
+          name: 'Native',
+          symbol: 'ETH',
+          decimals: 18,
+        },
+        rpcUrls: {
+          default: { http: [chainData.rpc_url] },
+        },
       });
 
-      // Create/reuse PublicClient — keyed by chainId + rpcUrl so rpcUrl changes get new clients
-      const clientKey = `${chainData.network_id}:${chainData.rpc_url}`;
-      if (!this.clients.has(clientKey)) {
-        const chain = defineChain({
-          id: chainData.network_id,
-          name: chainData.name,
-          nativeCurrency: { name: 'Native', symbol: 'ETH', decimals: 18 },
-          rpcUrls: { default: { http: [chainData.rpc_url] } },
-        });
-        const client = createPublicClient({ chain, transport: http(chainData.rpc_url) });
-        this.clients.set(clientKey, client);
-      }
-    }
+      const client = createPublicClient({
+        chain,
+        transport: http(chainData.rpc_url),
+      });
 
-    this.chainConfigs = newConfigs;
-    this.addressToTokenMap = newAddressMap;
-    this.lastRefreshTime = Date.now();
-  }
+      this.clients.set(chainData.network_id, client);
+      this.chainConfigs.set(chainData.network_id, internalConfig);
 
-  /**
-   * Get a PublicClient for the given chainId using the current rpcUrl from config.
-   */
-  private async getClient(chainId: number): Promise<PublicClient> {
-    await this.ensureFresh();
-    const config = this.chainConfigs.get(chainId);
-    if (!config) {
-      throw new Error(`Unsupported chain: ${chainId}`);
+      this.logger.info(
+        `🔗 Chain ${chainData.name} (${chainData.network_id}) initialized: ${chainData.rpc_url}`
+      );
     }
-    const clientKey = `${chainId}:${config.rpcUrl}`;
-    const client = this.clients.get(clientKey);
-    if (!client) {
-      throw new Error(`Unsupported chain: ${chainId}`);
-    }
-    return client;
   }
 
   /**
    * 체인 지원 여부 확인
    */
-  async isChainSupported(chainId: number): Promise<boolean> {
-    await this.ensureFresh();
-    return this.chainConfigs.has(chainId);
+  isChainSupported(chainId: number): boolean {
+    return this.clients.has(chainId);
   }
 
   /**
    * 지원하는 체인 ID 목록 반환
    */
-  async getSupportedChainIds(): Promise<number[]> {
-    await this.ensureFresh();
-    return Array.from(this.chainConfigs.keys());
+  getSupportedChainIds(): number[] {
+    return Array.from(this.clients.keys());
   }
 
   /**
    * 체인 설정 조회
    */
-  async getChainConfig(chainId: number): Promise<InternalChainConfig> {
-    await this.ensureFresh();
+  getChainConfig(chainId: number): InternalChainConfig {
     const config = this.chainConfigs.get(chainId);
     if (!config) {
       throw new Error(`Unsupported chain: ${chainId}`);
@@ -280,10 +244,21 @@ export class BlockchainService {
   }
 
   /**
+   * 체인별 PublicClient 조회
+   */
+  private getClient(chainId: number): PublicClient {
+    const client = this.clients.get(chainId);
+    if (!client) {
+      throw new Error(`Unsupported chain: ${chainId}`);
+    }
+    return client;
+  }
+
+  /**
    * Check current gas prices (wei)
    */
   async getGasPrice(chainId: number): Promise<bigint> {
-    const client = await this.getClient(chainId);
+    const client = this.getClient(chainId);
     return client.getGasPrice();
   }
 
@@ -291,40 +266,61 @@ export class BlockchainService {
    * Native token balance (wei) for an address.
    */
   async getNativeBalance(chainId: number, address: string): Promise<bigint> {
-    const client = await this.getClient(chainId);
+    const client = this.getClient(chainId);
     return client.getBalance({ address: address as Address });
   }
 
   /**
    * 토큰 검증: 심볼 존재 + 주소 일치 확인
+   * @param chainId 체인 ID
+   * @param tokenSymbol 토큰 심볼
+   * @param tokenAddress 토큰 주소
+   * @returns 유효한 토큰이면 true
    */
-  async validateToken(chainId: number, tokenSymbol: string, tokenAddress: string): Promise<boolean> {
-    await this.ensureFresh();
+  validateToken(chainId: number, tokenSymbol: string, tokenAddress: string): boolean {
     const config = this.chainConfigs.get(chainId);
-    if (!config) return false;
+    if (!config) {
+      return false;
+    }
+
     const token = config.tokens[tokenSymbol];
-    if (!token) return false;
-    return token.address.toLowerCase() === tokenAddress.toLowerCase();
+    if (!token) {
+      return false; // 심볼 미존재
+    }
+
+    if (token.address.toLowerCase() !== tokenAddress.toLowerCase()) {
+      return false; // 주소 불일치
+    }
+
+    return true;
   }
 
   /**
-   * 토큰 검증: 주소만으로 확인
+   * 토큰 검증: 주소만으로 확인 (symbol/decimals는 on-chain에서 조회)
+   * O(1) lookup using reverse address map
+   * @param chainId 체인 ID
+   * @param tokenAddress 토큰 주소
+   * @returns 유효한 토큰이면 true
    */
-  async validateTokenByAddress(chainId: number, tokenAddress: string): Promise<boolean> {
-    await this.ensureFresh();
+  validateTokenByAddress(chainId: number, tokenAddress: string): boolean {
     const addressMap = this.addressToTokenMap.get(chainId);
-    if (!addressMap) return false;
+    if (!addressMap) {
+      return false;
+    }
     return addressMap.has(tokenAddress.toLowerCase());
   }
 
   /**
    * 토큰 주소로 토큰 설정 조회
+   * O(1) lookup using reverse address map
+   * @param chainId 체인 ID
+   * @param tokenAddress 토큰 주소
+   * @returns 토큰 설정 또는 null
    */
-  async getTokenConfigByAddress(
+  getTokenConfigByAddress(
     chainId: number,
     tokenAddress: string
-  ): Promise<(TokenConfig & { symbol: string }) | null> {
-    await this.ensureFresh();
+  ): (TokenConfig & { symbol: string }) | null {
     const addressMap = this.addressToTokenMap.get(chainId);
     if (!addressMap) return null;
     return addressMap.get(tokenAddress.toLowerCase()) || null;
@@ -332,9 +328,11 @@ export class BlockchainService {
 
   /**
    * 토큰 설정 조회
+   * @param chainId 체인 ID
+   * @param tokenSymbol 토큰 심볼
+   * @returns 토큰 설정 또는 null
    */
-  async getTokenConfig(chainId: number, tokenSymbol: string): Promise<TokenConfig | null> {
-    await this.ensureFresh();
+  getTokenConfig(chainId: number, tokenSymbol: string): TokenConfig | null {
     const config = this.chainConfigs.get(chainId);
     if (!config) return null;
     return config.tokens[tokenSymbol] || null;
@@ -343,8 +341,7 @@ export class BlockchainService {
   /**
    * 특정 체인과 토큰 심볼로 토큰 주소 조회
    */
-  async getTokenAddress(chainId: number, symbol: string): Promise<string | undefined> {
-    await this.ensureFresh();
+  getTokenAddress(chainId: number, symbol: string): string | undefined {
     const config = this.chainConfigs.get(chainId);
     return config?.tokens[symbol]?.address;
   }
@@ -352,19 +349,20 @@ export class BlockchainService {
   /**
    * 특정 체인의 컨트랙트 주소 조회
    */
-  async getChainContracts(chainId: number): Promise<{ gateway: string; forwarder: string } | undefined> {
-    await this.ensureFresh();
+  getChainContracts(chainId: number): { gateway: string; forwarder: string } | undefined {
     const config = this.chainConfigs.get(chainId);
     return config?.contracts;
   }
 
   /**
    * 결제 상태를 스마트 컨트랙트에서 조회
+   * @param chainId 체인 ID
+   * @param paymentId 결제 ID
    */
   async getPaymentStatus(chainId: number, paymentId: string): Promise<PaymentStatus | null> {
     try {
-      const client = await this.getClient(chainId);
-      const config = await this.getChainConfig(chainId);
+      const client = this.getClient(chainId);
+      const config = this.getChainConfig(chainId);
       const contractAddress = config.contracts.gateway as Address;
 
       const statusValue = await client.readContract({
@@ -379,8 +377,10 @@ export class BlockchainService {
       const now = new Date().toISOString();
 
       if (onChainStatus !== 'pending') {
+        // Always get escrow details (base info: payer, token, amount, escrow txHash)
         const paymentDetails = await this.getPaymentDetailsByPaymentId(chainId, paymentId);
         if (paymentDetails) {
+          // For finalized/cancelled, also query the release event for release txHash
           let releaseTxHash: string | undefined;
           if (onChainStatus === 'finalized' || onChainStatus === 'cancelled') {
             releaseTxHash = await this.getReleaseTxHash(chainId, paymentId, onChainStatus);
@@ -446,8 +446,8 @@ export class BlockchainService {
     transactionHash: string;
   } | null> {
     try {
-      const client = await this.getClient(chainId);
-      const config = await this.getChainConfig(chainId);
+      const client = this.getClient(chainId);
+      const config = this.getChainConfig(chainId);
       const contractAddress = config.contracts.gateway as Address;
 
       const currentBlock = await client.getBlockNumber();
@@ -503,8 +503,8 @@ export class BlockchainService {
     status: 'finalized' | 'cancelled'
   ): Promise<string | undefined> {
     try {
-      const client = await this.getClient(chainId);
-      const config = await this.getChainConfig(chainId);
+      const client = this.getClient(chainId);
+      const config = this.getChainConfig(chainId);
       const contractAddress = config.contracts.gateway as Address;
 
       const currentBlock = await client.getBlockNumber();
@@ -532,6 +532,7 @@ export class BlockchainService {
 
   /**
    * 결제를 스마트 컨트랙트에 기록
+   * Note: recipientAddress 제거됨 - 컨트랙트가 treasury로 고정 결제
    */
   async recordPaymentOnChain(paymentData: {
     payerAddress: string;
@@ -541,12 +542,17 @@ export class BlockchainService {
     description?: string;
   }): Promise<string> {
     try {
+      // 실제 구현에서는 트랜잭션 서명 및 전송
+      // 여기서는 데이터 검증만 수행
       if (!paymentData.payerAddress || !paymentData.amount || !paymentData.tokenAddress) {
         throw new Error('필수 결제 정보가 누락되었습니다');
       }
+
+      // 트랜잭션 해시 반환 (실제로는 sendTransaction 결과)
       return '0x' + 'a'.repeat(64);
     } catch (error) {
       this.logger.error({ err: error }, '스마트 컨트랙트에 결제 기록 실패');
+      // 원본 에러 메시지를 그대로 전파하지 않고, 구체적인 메시지는 보존
       if (error instanceof Error && error.message === '필수 결제 정보가 누락되었습니다') {
         throw error;
       }
@@ -563,7 +569,7 @@ export class BlockchainService {
     _confirmations: number = 1
   ): Promise<{ status: string; blockNumber: bigint; transactionHash: string } | null> {
     try {
-      const client = await this.getClient(chainId);
+      const client = this.getClient(chainId);
       const receipt = await client.waitForTransactionReceipt({
         hash: transactionHash as `0x${string}`,
         confirmations: _confirmations,
@@ -581,6 +587,7 @@ export class BlockchainService {
 
   /**
    * 가스 비용 추정
+   * Note: recipientAddress 제거됨 - 컨트랙트가 treasury로 고정 결제
    */
   /* eslint-disable @typescript-eslint/no-unused-vars */
   async estimateGasCost(
@@ -589,6 +596,8 @@ export class BlockchainService {
     _amount: bigint
   ): Promise<bigint> {
     /* eslint-enable @typescript-eslint/no-unused-vars */
+    // 실제 구현에서는 eth_estimateGas 호출
+    // 여기서는 고정 값 반환 (파라미터는 향후 실제 추정에 사용)
     return BigInt('200000');
   }
 
@@ -601,7 +610,7 @@ export class BlockchainService {
     walletAddress: string
   ): Promise<string> {
     try {
-      const client = await this.getClient(chainId);
+      const client = this.getClient(chainId);
       const balance = await client.readContract({
         address: tokenAddress as Address,
         abi: ERC20_ABI,
@@ -626,7 +635,7 @@ export class BlockchainService {
     spender: string
   ): Promise<string> {
     try {
-      const client = await this.getClient(chainId);
+      const client = this.getClient(chainId);
       const allowance = await client.readContract({
         address: tokenAddress as Address,
         abi: ERC20_ABI,
@@ -646,7 +655,7 @@ export class BlockchainService {
    */
   async getTokenSymbolOnChain(chainId: number, tokenAddress: string): Promise<string> {
     try {
-      const client = await this.getClient(chainId);
+      const client = this.getClient(chainId);
       const symbol = await client.readContract({
         address: tokenAddress as Address,
         abi: ERC20_ABI,
@@ -656,6 +665,7 @@ export class BlockchainService {
       return symbol;
     } catch (error) {
       this.logger.error({ err: error }, '토큰 심볼 조회 실패');
+      // 조회 실패 시 기본값 반환 (알 수 없는 토큰)
       return 'UNKNOWN';
     }
   }
@@ -665,7 +675,7 @@ export class BlockchainService {
    */
   async getTransactionStatus(chainId: number, txHash: string): Promise<TransactionStatus> {
     try {
-      const client = await this.getClient(chainId);
+      const client = this.getClient(chainId);
       const receipt = await client.getTransactionReceipt({
         hash: txHash as `0x${string}`,
       });
@@ -679,6 +689,7 @@ export class BlockchainService {
         confirmations,
       };
     } catch {
+      // 트랜잭션이 아직 채굴되지 않았거나 존재하지 않음
       return {
         status: 'pending',
       };
@@ -694,8 +705,8 @@ export class BlockchainService {
     blockRange: number = 1000
   ): Promise<PaymentHistoryItem[]> {
     try {
-      const client = await this.getClient(chainId);
-      const config = await this.getChainConfig(chainId);
+      const client = this.getClient(chainId);
+      const config = this.getChainConfig(chainId);
       const contractAddress = config.contracts.gateway as Address;
 
       const currentBlock = await client.getBlockNumber();
@@ -741,6 +752,7 @@ export class BlockchainService {
         })
       );
 
+      // 타임스탬프 기준 내림차순 정렬
       payments.sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp));
 
       return payments;
@@ -755,7 +767,7 @@ export class BlockchainService {
    */
   async getDecimals(chainId: number, tokenAddress: string): Promise<number> {
     try {
-      const client = await this.getClient(chainId);
+      const client = this.getClient(chainId);
       const decimals = await client.readContract({
         address: tokenAddress as Address,
         abi: ERC20_ABI,

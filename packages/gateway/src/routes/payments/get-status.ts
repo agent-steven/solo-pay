@@ -115,7 +115,7 @@ For non-terminal statuses, a fresh server signature with a new deadline is gener
 
         const chainIdNum = paymentData.network_id;
 
-        if (!await blockchainService.isChainSupported(chainIdNum)) {
+        if (!blockchainService.isChainSupported(chainIdNum)) {
           return reply.code(400).send({
             code: 'UNSUPPORTED_CHAIN',
             message: 'Unsupported chain',

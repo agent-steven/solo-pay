@@ -212,7 +212,7 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
         }
 
         const chainId = chain.network_id;
-        if (!await blockchainService.isChainSupported(chainId)) {
+        if (!blockchainService.isChainSupported(chainId)) {
           return reply.code(400).send({
             code: 'UNSUPPORTED_CHAIN',
             message: 'Unsupported chain',
@@ -246,7 +246,7 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
         }
 
         const tokenAddress = token.address;
-        if (!await blockchainService.validateTokenByAddress(chainId, tokenAddress)) {
+        if (!blockchainService.validateTokenByAddress(chainId, tokenAddress)) {
           return reply.code(400).send({
             code: 'UNSUPPORTED_TOKEN',
             message: 'Unsupported token',
@@ -287,7 +287,7 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
         }
 
         const amountInWei = parseUnits(tokenAmount.toString(), tokenDecimals);
-        const contracts = await blockchainService.getChainContracts(chainId);
+        const contracts = blockchainService.getChainContracts(chainId);
         const random = randomBytes(32);
         const paymentHash = keccak256(
           toHex(`${merchant.merchant_key}:${Date.now()}:${random.toString('hex')}`)

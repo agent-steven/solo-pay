@@ -148,7 +148,7 @@ Finalizes an escrowed payment, releasing funds to the merchant.
         }
 
         // 6. Get chain contracts
-        const chainContracts = await blockchainService.getChainContracts(payment.network_id);
+        const chainContracts = blockchainService.getChainContracts(payment.network_id);
         if (!chainContracts || !chainContracts.gateway) {
           return reply.code(500).send({
             code: 'CHAIN_CONFIG_ERROR',

@@ -53,8 +53,8 @@ getRedisClient();
 // Initialize database services (ChainService needed for BlockchainService initialization)
 const chainService = new ChainService(prisma);
 
-// BlockchainService with lazy TTL cache (no startup loading needed)
-const blockchainService = new BlockchainService(chainService);
+// BlockchainService will be initialized after loading chains from DB
+let blockchainService: BlockchainService;
 
 // Server signing services (one per chain)
 let signingServices: Map<number, ServerSigningService>;
@@ -130,7 +130,7 @@ const registerRoutes = async () => {
         service: 'Solo Pay Gateway',
         version: '0.1.0',
         status: 'running',
-        supportedChains: await blockchainService.getSupportedChainIds(),
+        supportedChains: blockchainService.getSupportedChainIds(),
       };
     }
   );
@@ -256,7 +256,7 @@ const start = async () => {
     await server.register(swagger, swaggerConfig);
     await server.register(swaggerUi, swaggerUiConfig);
 
-    // Load chain configuration from database (for signing/relayer init)
+    // Load chain configuration from database
     logger.info('📋 Loading chain configuration from database...');
     const chainsWithTokens = await chainService.findAllWithTokens();
 
@@ -266,9 +266,9 @@ const start = async () => {
       process.exit(1);
     }
 
-    // BlockchainService uses lazy TTL cache — no explicit init needed
-    const supportedChains = await blockchainService.getSupportedChainIds();
-    logger.info(`🔗 Supported chains: ${supportedChains.join(', ')}`);
+    // Initialize BlockchainService with DB data
+    blockchainService = new BlockchainService(chainsWithTokens);
+    logger.info(`🔗 Supported chains: ${blockchainService.getSupportedChainIds().join(', ')}`);
 
     // Initialize server signing services for each chain
     const signerPrivateKey = process.env.SIGNER_PRIVATE_KEY;
