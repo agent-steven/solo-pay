@@ -40,8 +40,6 @@ jobs:
           pnpm --filter @solo-pay/widget-react run build
 
       - name: Publish packages
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -e
           for pkg in @solo-pay/widget-js @solo-pay/widget-react; do
