@@ -87,10 +87,11 @@ solopay.requestPayment(
 
 ## 결제 완료 처리
 
-결제 완료 후 `successUrl`로 리다이렉트 시 URL에 `paymentId`가 포함됩니다.
+결제 완료 또는 실패 시 `successUrl` 또는 `failUrl`로 리다이렉트할 때 `paymentId`와 `orderId`가 쿼리 파라미터로 자동 추가됩니다.
 
 ```
-https://myshop.com/payment/success?paymentId=0xabc123...
+https://myshop.com/payment/success?paymentId=0xabc123...&orderId=order-001
+https://myshop.com/payment/fail?paymentId=0xabc123...&orderId=order-001
 ```
 
 ::: warning URL 파라미터 신뢰 금지

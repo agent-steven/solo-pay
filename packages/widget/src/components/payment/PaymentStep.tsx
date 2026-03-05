@@ -57,6 +57,22 @@ function formatAddress(addr: string): string {
 /**
  * Parse blockchain error message to user-friendly text (locale-aware via t)
  */
+/**
+ * Safely append paymentId and orderId query parameters to a redirect URL.
+ * Returns empty string for non-http(s) protocols or malformed URLs to prevent XSS.
+ */
+function appendPaymentParams(url: string, paymentId?: string, orderId?: string): string {
+  try {
+    const u = new URL(url);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
+    if (paymentId) u.searchParams.set('paymentId', paymentId);
+    if (orderId) u.searchParams.set('orderId', orderId);
+    return u.toString();
+  } catch {
+    return '';
+  }
+}
+
 function parseErrorMessage(
   error: string | undefined,
   t: (key: TranslationKeys, params?: Record<string, string | number>) => string
@@ -396,40 +412,52 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
   // Confirm/redirect handler (success)
   const handleConfirm = useCallback(() => {
     if (paymentDetails?.successUrl) {
+      const redirectUrl = appendPaymentParams(
+        paymentDetails.successUrl,
+        paymentDetails.paymentId,
+        paymentDetails.orderId
+      );
+      if (!redirectUrl) return;
       allowUnloadRef.current = true;
       const targetOrigin = new URL(paymentDetails.successUrl).origin;
       if (isPopup && window.opener) {
         window.opener.postMessage(
-          { type: 'payment_complete', status: 'success', successUrl: paymentDetails.successUrl },
+          { type: 'payment_complete', status: 'success', successUrl: redirectUrl },
           targetOrigin
         );
         window.close();
       } else {
-        window.location.href = paymentDetails.successUrl;
+        window.location.href = redirectUrl;
       }
       return;
     }
     goToWalletConnect();
-  }, [paymentDetails?.successUrl, isPopup]);
+  }, [paymentDetails?.successUrl, paymentDetails?.paymentId, paymentDetails?.orderId, isPopup]);
 
   // Cancel/fail redirect handler
   // In resume mode, failUrl comes from paymentDetails (server) instead of URL params
   const effectiveFailUrl = urlParams?.failUrl || paymentDetails?.failUrl;
   const handleCancel = useCallback(() => {
     if (effectiveFailUrl) {
+      const redirectUrl = appendPaymentParams(
+        effectiveFailUrl,
+        paymentDetails?.paymentId,
+        paymentDetails?.orderId
+      );
+      if (!redirectUrl) return;
       allowUnloadRef.current = true;
       const targetOrigin = new URL(effectiveFailUrl).origin;
       if (isPopup && window.opener) {
         window.opener.postMessage(
-          { type: 'payment_complete', status: 'fail', failUrl: effectiveFailUrl },
+          { type: 'payment_complete', status: 'fail', failUrl: redirectUrl },
           targetOrigin
         );
         window.close();
       } else {
-        window.location.href = effectiveFailUrl;
+        window.location.href = redirectUrl;
       }
     }
-  }, [effectiveFailUrl, isPopup]);
+  }, [effectiveFailUrl, paymentDetails?.paymentId, paymentDetails?.orderId, isPopup]);
 
   // Loading state (skip when walletOnly — no API call)
   if (!urlParams?.walletOnly && isLoading) {
