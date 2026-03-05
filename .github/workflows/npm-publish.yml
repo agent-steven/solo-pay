@@ -25,9 +25,11 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "22.14"
           cache: "pnpm"
-          registry-url: "https://registry.npmjs.org"
+
+      - name: Upgrade npm for OIDC trusted publishing
+        run: npm install -g npm@latest
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -45,6 +47,6 @@ jobs:
             if npm view "$pkg@$version" version 2>/dev/null; then
               echo "::notice::$pkg@$version already published, skipping"
             else
-              pnpm --filter "$pkg" exec -- npm publish --no-git-checks --access public
+              pnpm --filter "$pkg" exec -- npm publish --no-git-checks --access public --provenance
             fi
           done
