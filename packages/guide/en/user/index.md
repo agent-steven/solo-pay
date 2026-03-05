@@ -98,5 +98,3 @@ A **Signature request** popup will appear. This is the final payment authorizati
 When the **Payment Complete** screen appears, your payment is processed, and the funds are held securely. Click **Confirm** to return to the merchant page.
 
 ![Payment complete](/images/user-guide/07-payment-complete.png)
-
-
