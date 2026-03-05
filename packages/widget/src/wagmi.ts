@@ -1,8 +1,39 @@
 import { http, fallback, createConfig } from 'wagmi';
 import { injected, metaMask } from 'wagmi/connectors';
-import { arbitrum, base, mainnet, optimism, polygon, polygonAmoy, sepolia } from 'wagmi/chains';
+import { arbitrum, base, mainnet, optimism, sepolia } from 'wagmi/chains';
 import { defineChain } from 'viem';
 import { getTrustWalletProvider } from './lib/wallet-providers';
+
+// Polygon Mainnet - custom definition with publicnode RPC
+const polygon = defineChain({
+  id: 137,
+  name: 'Polygon',
+  nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
+  rpcUrls: {
+    default: {
+      http: ['https://polygon-bor-rpc.publicnode.com'],
+    },
+  },
+  blockExplorers: {
+    default: { name: 'PolygonScan', url: 'https://polygonscan.com' },
+  },
+});
+
+// Polygon Amoy Testnet - custom definition with publicnode RPC
+const polygonAmoy = defineChain({
+  id: 80002,
+  name: 'Polygon Amoy',
+  nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
+  rpcUrls: {
+    default: {
+      http: ['https://polygon-amoy-bor-rpc.publicnode.com'],
+    },
+  },
+  blockExplorers: {
+    default: { name: 'PolygonScan', url: 'https://amoy.polygonscan.com' },
+  },
+  testnet: true,
+});
 
 // Localhost (Hardhat/Anvil) for local dev - so widget can read balance on same chain as payment
 const localhost = defineChain({
