@@ -130,11 +130,12 @@ export class WidgetLauncher {
       this.handleClose();
 
       // Redirect opener to success/fail URL so merchant page shows result
+      // Append paymentId as query parameter when available
       if (data.type === 'payment_complete') {
         if (data.status === 'success' && typeof data.successUrl === 'string') {
-          window.location.href = data.successUrl;
+          window.location.href = this.appendPaymentId(data.successUrl, data.paymentId);
         } else if (data.status === 'fail' && typeof data.failUrl === 'string') {
-          window.location.href = data.failUrl;
+          window.location.href = this.appendPaymentId(data.failUrl, data.paymentId);
         }
       } else if (data.type === 'wallet_connected' && typeof data.successUrl === 'string') {
         window.location.href = data.successUrl;
@@ -154,6 +155,21 @@ export class WidgetLauncher {
         }
       }
     }, POPUP_POLL_MS);
+  }
+
+  /** Append paymentId as a query parameter to a URL */
+  private appendPaymentId(url: string, paymentId?: string): string {
+    if (!paymentId) return url;
+    try {
+      const u = new URL(url);
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') {
+        return url;
+      }
+      u.searchParams.set('paymentId', paymentId);
+      return u.toString();
+    } catch {
+      return url;
+    }
   }
 
   private clearPopupCheck(): void {
