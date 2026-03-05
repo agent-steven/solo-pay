@@ -167,7 +167,7 @@ Creates a refund request for a finalized payment.
         }
 
         // 6. Get chain contracts
-        const chainContracts = blockchainService.getChainContracts(payment.network_id);
+        const chainContracts = await blockchainService.getChainContracts(payment.network_id);
         if (!chainContracts || !chainContracts.gateway) {
           return reply.code(500).send({
             code: 'CHAIN_CONFIG_ERROR',
@@ -185,7 +185,7 @@ Creates a refund request for a finalized payment.
         }
 
         // 8. Get token config
-        const tokenConfig = blockchainService.getTokenConfig(
+        const tokenConfig = await blockchainService.getTokenConfig(
           payment.network_id,
           payment.token_symbol
         );

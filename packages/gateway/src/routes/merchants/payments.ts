@@ -18,7 +18,7 @@ async function syncPaymentStatusFromChain(
   payment: Payment
 ): Promise<boolean> {
   const chainId = payment.network_id;
-  if (!blockchainService.isChainSupported(chainId)) {
+  if (!await blockchainService.isChainSupported(chainId)) {
     return false;
   }
   const chainStatus = await blockchainService.getPaymentStatus(chainId, payment.payment_hash);

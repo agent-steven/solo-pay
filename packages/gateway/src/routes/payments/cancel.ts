@@ -141,7 +141,7 @@ Note: After escrow deadline, anyone can cancel permissionlessly on-chain without
         }
 
         // 5. Get chain contracts
-        const chainContracts = blockchainService.getChainContracts(payment.network_id);
+        const chainContracts = await blockchainService.getChainContracts(payment.network_id);
         if (!chainContracts || !chainContracts.gateway) {
           return reply.code(500).send({
             code: 'CHAIN_CONFIG_ERROR',

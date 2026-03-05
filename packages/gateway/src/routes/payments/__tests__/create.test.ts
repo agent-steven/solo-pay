@@ -87,6 +87,7 @@ const mockMerchantService = {
 
 const mockChainService = {
   findByNetworkId: vi.fn().mockResolvedValue({ id: 1, network_id: 80002 }),
+  findAllWithTokens: vi.fn().mockResolvedValue(mockChainTokens),
 } as Partial<ChainService> as ChainService;
 
 const mockTokenService = {
@@ -111,7 +112,7 @@ describe('POST /payments', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    blockchainService = new BlockchainService(mockChainTokens);
+    blockchainService = new BlockchainService(mockChainService);
   });
 
   describe('Valid requests', () => {
@@ -168,7 +169,7 @@ describe('POST /payments', () => {
     });
 
     it('should include blockchain contract addresses in response', () => {
-      const contracts = blockchainService.getChainContracts(80002);
+      const contracts = await blockchainService.getChainContracts(80002);
       expect(contracts).toBeDefined();
       expect(contracts).toHaveProperty('gateway');
       expect(contracts).toHaveProperty('forwarder');
@@ -179,7 +180,7 @@ describe('POST /payments', () => {
     it('should return HTTP 400 for unsupported chainId', () => {
       // When chainId is not in SUPPORTED_CHAINS
       const unsupportedChainId = 1; // Ethereum Mainnet
-      const contracts = blockchainService.getChainContracts(unsupportedChainId);
+      const contracts = await blockchainService.getChainContracts(unsupportedChainId);
       expect(contracts).toBeUndefined();
     });
 
@@ -192,7 +193,7 @@ describe('POST /payments', () => {
 
     it('should return HTTP 400 for unsupported token on chain', () => {
       // When currency is not in chain.tokens
-      const tokenAddress = blockchainService.getTokenAddress(80002, 'UNKNOWN');
+      const tokenAddress = await blockchainService.getTokenAddress(80002, 'UNKNOWN');
       expect(tokenAddress).toBeUndefined();
     });
 
@@ -215,12 +216,12 @@ describe('POST /payments', () => {
 
   describe('Integration with BlockchainService', () => {
     it('should use getTokenAddress to fetch token address', () => {
-      const tokenAddress = blockchainService.getTokenAddress(80002, 'SUT');
+      const tokenAddress = await blockchainService.getTokenAddress(80002, 'SUT');
       expect(tokenAddress).toBe('0xE4C687167705Abf55d709395f92e254bdF5825a2');
     });
 
     it('should use getChainContracts to fetch gateway and forwarder', () => {
-      const contracts = blockchainService.getChainContracts(80002);
+      const contracts = await blockchainService.getChainContracts(80002);
       expect(contracts).toBeDefined();
       expect(contracts?.gateway).toBeDefined();
       expect(contracts?.forwarder).toBeDefined();
