@@ -241,7 +241,7 @@ Creates a refund request for a finalized payment.
             status: refund.status,
             serverSignature,
             merchantId,
-            createdAt: refund.created_at.toISOString(),
+            createdAt: new Date(refund.created_at).toISOString(),
           },
         });
       } catch (error) {

@@ -265,8 +265,8 @@ export async function paymentMethodsRoute(
           payment_method: {
             id: paymentMethod.id,
             is_enabled: paymentMethod.is_enabled,
-            created_at: paymentMethod.created_at.toISOString(),
-            updated_at: paymentMethod.updated_at.toISOString(),
+            created_at: new Date(paymentMethod.created_at).toISOString(),
+            updated_at: new Date(paymentMethod.updated_at).toISOString(),
             token: {
               id: token.id,
               address: token.address,
@@ -432,8 +432,8 @@ export async function paymentMethodsRoute(
           payment_method: {
             id: updated.id,
             is_enabled: updated.is_enabled,
-            created_at: updated.created_at.toISOString(),
-            updated_at: updated.updated_at.toISOString(),
+            created_at: new Date(updated.created_at).toISOString(),
+            updated_at: new Date(updated.updated_at).toISOString(),
             token: token
               ? {
                   id: token.id,

@@ -91,10 +91,12 @@ export function buildPaymentWebhookBody(payment: Payment): PaymentWebhookBody {
     txHash: payment.tx_hash ?? null,
     amount: payment.amount.toString(),
     tokenSymbol: payment.token_symbol,
-    confirmedAt: payment.confirmed_at?.toISOString(),
-    escrowedAt: payment.escrow_deadline?.toISOString(),
-    finalizedAt: payment.finalized_at?.toISOString(),
-    cancelledAt: payment.cancelled_at?.toISOString(),
+    confirmedAt: payment.confirmed_at ? new Date(payment.confirmed_at).toISOString() : undefined,
+    escrowedAt: payment.escrow_deadline
+      ? new Date(payment.escrow_deadline).toISOString()
+      : undefined,
+    finalizedAt: payment.finalized_at ? new Date(payment.finalized_at).toISOString() : undefined,
+    cancelledAt: payment.cancelled_at ? new Date(payment.cancelled_at).toISOString() : undefined,
   };
 }
 

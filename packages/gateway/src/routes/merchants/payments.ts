@@ -98,9 +98,9 @@ function buildPaymentDetailResponse(
     payerAddress: payment.payer_address ?? undefined,
     currencyCode: payment.currency_code ?? undefined,
     fiatAmount: payment.fiat_amount?.toString() ?? undefined,
-    createdAt: payment.created_at.toISOString(),
-    confirmedAt: payment.confirmed_at?.toISOString() ?? undefined,
-    expiresAt: payment.expires_at.toISOString(),
+    createdAt: new Date(payment.created_at).toISOString(),
+    confirmedAt: payment.confirmed_at ? new Date(payment.confirmed_at).toISOString() : undefined,
+    expiresAt: new Date(payment.expires_at).toISOString(),
     tokenPermitSupported,
   };
 }

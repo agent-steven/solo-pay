@@ -127,7 +127,7 @@ export default async function PaymentSuccessPage({
               <div className="flex items-center justify-between">
                 <span className="text-text-muted text-sm">Date</span>
                 <span className="text-text-primary text-sm">
-                  {payment.created_at.toLocaleDateString('en-US', {
+                  {new Date(payment.created_at).toLocaleDateString('en-US', {
                     year: 'numeric',
                     month: 'short',
                     day: 'numeric',
