@@ -32,7 +32,6 @@ const polygonAmoy = defineChain({
   blockExplorers: {
     default: { name: 'PolygonScan', url: 'https://amoy.polygonscan.com' },
   },
-  testnet: true,
 });
 
 // Localhost (Hardhat/Anvil) for local dev - so widget can read balance on same chain as payment
