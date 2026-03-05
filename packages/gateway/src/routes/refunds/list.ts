@@ -128,8 +128,8 @@ export async function getRefundListRoute(
           status: refund.status,
           reason: refund.reason,
           txHash: refund.tx_hash,
-          createdAt: refund.created_at.toISOString(),
-          confirmedAt: refund.confirmed_at?.toISOString() || null,
+          createdAt: new Date(refund.created_at).toISOString(),
+          confirmedAt: refund.confirmed_at ? new Date(refund.confirmed_at).toISOString() : null,
         }));
 
         return reply.code(200).send({
