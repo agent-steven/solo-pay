@@ -59,17 +59,17 @@ function formatAddress(addr: string): string {
  */
 /**
  * Safely append paymentId and orderId query parameters to a redirect URL.
- * Only modifies http/https URLs; returns the original URL for other protocols.
+ * Returns empty string for non-http(s) protocols or malformed URLs to prevent XSS.
  */
 function appendPaymentParams(url: string, paymentId?: string, orderId?: string): string {
   try {
     const u = new URL(url);
-    if (u.protocol !== 'http:' && u.protocol !== 'https:') return url;
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
     if (paymentId) u.searchParams.set('paymentId', paymentId);
     if (orderId) u.searchParams.set('orderId', orderId);
     return u.toString();
   } catch {
-    return url;
+    return '';
   }
 }
 
@@ -412,12 +412,13 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
   // Confirm/redirect handler (success)
   const handleConfirm = useCallback(() => {
     if (paymentDetails?.successUrl) {
-      allowUnloadRef.current = true;
       const redirectUrl = appendPaymentParams(
         paymentDetails.successUrl,
         paymentDetails.paymentId,
         paymentDetails.orderId
       );
+      if (!redirectUrl) return;
+      allowUnloadRef.current = true;
       const targetOrigin = new URL(paymentDetails.successUrl).origin;
       if (isPopup && window.opener) {
         window.opener.postMessage(
@@ -438,12 +439,13 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
   const effectiveFailUrl = urlParams?.failUrl || paymentDetails?.failUrl;
   const handleCancel = useCallback(() => {
     if (effectiveFailUrl) {
-      allowUnloadRef.current = true;
       const redirectUrl = appendPaymentParams(
         effectiveFailUrl,
         paymentDetails?.paymentId,
         paymentDetails?.orderId
       );
+      if (!redirectUrl) return;
+      allowUnloadRef.current = true;
       const targetOrigin = new URL(effectiveFailUrl).origin;
       if (isPopup && window.opener) {
         window.opener.postMessage(
