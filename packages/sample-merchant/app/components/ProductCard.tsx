@@ -63,7 +63,7 @@ export default function ProductCard({
         amount: String(product.price),
         tokenAddress: data.tokenAddress,
         currency: 'USD',
-        successUrl: `${origin}/payments/success?paymentId=${data.paymentId}`,
+        successUrl: `${origin}/payments/success`,
         failUrl: `${origin}/`,
       });
     } catch (err) {

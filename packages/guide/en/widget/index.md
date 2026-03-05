@@ -87,10 +87,11 @@ solopay.requestPayment(
 
 ## Handling Payment Completion
 
-When the widget redirects to `successUrl`, it includes a `paymentId` in the URL.
+When the widget redirects to `successUrl` or `failUrl`, it automatically appends `paymentId` and `orderId` as query parameters.
 
 ```
-https://myshop.com/payment/success?paymentId=0xabc123...
+https://myshop.com/payment/success?paymentId=0xabc123...&orderId=order-001
+https://myshop.com/payment/fail?paymentId=0xabc123...&orderId=order-001
 ```
 
 ::: warning Do Not Trust URL Parameters

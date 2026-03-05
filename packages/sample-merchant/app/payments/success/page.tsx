@@ -7,14 +7,14 @@ export const dynamic = 'force-dynamic';
 export default async function PaymentSuccessPage({
   searchParams,
 }: {
-  searchParams: Promise<{ paymentId?: string }>;
+  searchParams: Promise<{ orderId?: string; paymentId?: string }>;
 }) {
-  const { paymentId } = await searchParams;
+  const { orderId } = await searchParams;
 
-  if (!paymentId) return notFound();
+  if (!orderId) return notFound();
 
   const payment = await prisma.payment.findUnique({
-    where: { id: Number(paymentId) },
+    where: { id: Number(orderId) },
   });
 
   if (!payment) return notFound();

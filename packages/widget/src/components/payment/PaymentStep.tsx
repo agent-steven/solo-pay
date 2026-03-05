@@ -57,6 +57,22 @@ function formatAddress(addr: string): string {
 /**
  * Parse blockchain error message to user-friendly text (locale-aware via t)
  */
+/**
+ * Safely append paymentId and orderId query parameters to a redirect URL.
+ * Only modifies http/https URLs; returns the original URL for other protocols.
+ */
+function appendPaymentParams(url: string, paymentId?: string, orderId?: string): string {
+  try {
+    const u = new URL(url);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return url;
+    if (paymentId) u.searchParams.set('paymentId', paymentId);
+    if (orderId) u.searchParams.set('orderId', orderId);
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
 function parseErrorMessage(
   error: string | undefined,
   t: (key: TranslationKeys, params?: Record<string, string | number>) => string
@@ -397,20 +413,25 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
   const handleConfirm = useCallback(() => {
     if (paymentDetails?.successUrl) {
       allowUnloadRef.current = true;
+      const redirectUrl = appendPaymentParams(
+        paymentDetails.successUrl,
+        paymentDetails.paymentId,
+        paymentDetails.orderId
+      );
       const targetOrigin = new URL(paymentDetails.successUrl).origin;
       if (isPopup && window.opener) {
         window.opener.postMessage(
-          { type: 'payment_complete', status: 'success', successUrl: paymentDetails.successUrl },
+          { type: 'payment_complete', status: 'success', successUrl: redirectUrl },
           targetOrigin
         );
         window.close();
       } else {
-        window.location.href = paymentDetails.successUrl;
+        window.location.href = redirectUrl;
       }
       return;
     }
     goToWalletConnect();
-  }, [paymentDetails?.successUrl, isPopup]);
+  }, [paymentDetails?.successUrl, paymentDetails?.paymentId, paymentDetails?.orderId, isPopup]);
 
   // Cancel/fail redirect handler
   // In resume mode, failUrl comes from paymentDetails (server) instead of URL params
@@ -418,18 +439,23 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
   const handleCancel = useCallback(() => {
     if (effectiveFailUrl) {
       allowUnloadRef.current = true;
+      const redirectUrl = appendPaymentParams(
+        effectiveFailUrl,
+        paymentDetails?.paymentId,
+        paymentDetails?.orderId
+      );
       const targetOrigin = new URL(effectiveFailUrl).origin;
       if (isPopup && window.opener) {
         window.opener.postMessage(
-          { type: 'payment_complete', status: 'fail', failUrl: effectiveFailUrl },
+          { type: 'payment_complete', status: 'fail', failUrl: redirectUrl },
           targetOrigin
         );
         window.close();
       } else {
-        window.location.href = effectiveFailUrl;
+        window.location.href = redirectUrl;
       }
     }
-  }, [effectiveFailUrl, isPopup]);
+  }, [effectiveFailUrl, paymentDetails?.paymentId, paymentDetails?.orderId, isPopup]);
 
   // Loading state (skip when walletOnly — no API call)
   if (!urlParams?.walletOnly && isLoading) {
