@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
       failUrl: `${baseUrl}/payment/fail?orderId=${orderId}`,
     });
 
-    // 클라이언트에 결제 정보 반환
+    // Return full create response so gasless pay() uses same deadline/escrowDuration as server signature (required for signature verification on-chain)
     const pd = payment.data;
     return NextResponse.json(
       {
@@ -130,6 +130,8 @@ export async function POST(request: NextRequest) {
         recipientAddress: pd.recipientAddress,
         merchantId: pd.merchantId,
         serverSignature: pd.serverSignature,
+        deadline: pd.deadline,
+        escrowDuration: pd.escrowDuration,
       },
       { status: 201 }
     );

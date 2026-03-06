@@ -458,11 +458,13 @@ describe('Relay API Flow', () => {
       const newSig = await signForwardRequest(newRequest, payerPrivateKey);
 
       const res = await submitRelay(createResponse.data.paymentId, newRequest, newSig);
-      // 400 if DB status already updated to ESCROWED (INVALID_PAYMENT_STATUS)
-      // 500 if DB still CREATED but relayer rejects duplicate on-chain tx
+      // 400: RELAY_ALREADY_SUBMITTED (relay already in flight), or INVALID_PAYMENT_STATUS (DB already ESCROWED)
+      // 500: INTERNAL_ERROR if relayer rejects duplicate on-chain tx before we check
       expect(res.status).toBeGreaterThanOrEqual(400);
       const body = (await res.json()) as { code: string };
-      expect(['INVALID_PAYMENT_STATUS', 'INTERNAL_ERROR']).toContain(body.code);
+      expect(['RELAY_ALREADY_SUBMITTED', 'INVALID_PAYMENT_STATUS', 'INTERNAL_ERROR']).toContain(
+        body.code
+      );
     });
   });
 });

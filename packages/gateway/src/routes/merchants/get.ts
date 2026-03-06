@@ -135,9 +135,9 @@ export async function getMerchantRoute(
         // Merchant is guaranteed to exist after auth middleware
         const merchant = request.merchant;
         if (!merchant) {
-          return reply.code(500).send({
-            code: 'INTERNAL_ERROR',
-            message: 'Authentication context is missing',
+          return reply.code(401).send({
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required',
           });
         }
 

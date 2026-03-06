@@ -28,9 +28,12 @@ export const EthereumAddressSchema = {
   description: 'Ethereum address (0x + 40 hex characters)',
 } as const;
 
+/** Regex pattern for bytes32 (payment/refund hash). Use for params and body validation. */
+export const BYTES32_PATTERN = '^0x[a-fA-F0-9]{64}$';
+
 export const PaymentHashSchema = {
   type: 'string',
-  pattern: '^0x[a-fA-F0-9]{64}$',
+  pattern: BYTES32_PATTERN,
   example: '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890',
   description: 'Payment hash (bytes32)',
 } as const;
