@@ -108,27 +108,3 @@ export interface PaymentDetails {
   /** Transaction hash */
   txHash?: string;
 }
-
-/** Gas payment mode */
-export type GasMode = 'direct' | 'gasless';
-
-/**
- * @deprecated Use WidgetUrlParams and PaymentDetails instead
- */
-export interface PaymentInfo {
-  product: string;
-  amount: string;
-  token: string;
-  network: string;
-  merchantId?: string;
-}
-
-export interface WalletInfo {
-  address: string;
-  balance: string;
-}
-
-export interface TransactionResult {
-  txHash: string;
-  date: string;
-}

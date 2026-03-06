@@ -1,5 +1,5 @@
 /**
- * AppKit (Reown / WalletConnect) config. projectId comes from env NEXT_PUBLIC_WC_PROJECT_ID (WidgetConfigProvider).
+ * AppKit (Reown / WalletConnect) config. projectId comes from env NEXT_PUBLIC_WC_PROJECT_ID.
  */
 
 /** WalletGuide wallet IDs for featuredWalletIds / includeWalletIds (MetaMask + Trust only). */

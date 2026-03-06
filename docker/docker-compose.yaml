@@ -266,6 +266,8 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.packages
       target: widget
+      args:
+        NEXT_PUBLIC_WC_PROJECT_ID: ${NEXT_PUBLIC_WC_PROJECT_ID:-}
     image: 347765734000.dkr.ecr.ap-northeast-2.amazonaws.com/solo-pay/widget:nightly
     container_name: solo-pay-widget
     restart: always

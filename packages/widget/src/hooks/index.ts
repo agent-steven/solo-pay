@@ -1,10 +1,4 @@
-export {
-  useWallet,
-  getTrustWalletDeeplink,
-  type WalletState,
-  type WalletActions,
-  type UseWalletReturn,
-} from './useWallet';
+export { useWallet, type WalletState, type WalletActions, type UseWalletReturn } from './useWallet';
 
 export {
   usePaymentApi,

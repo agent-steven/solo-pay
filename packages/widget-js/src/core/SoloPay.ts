@@ -46,7 +46,7 @@ export class SoloPay {
   }
 
   /**
-   * Open the payment widget. On PC opens a popup; on mobile redirects.
+   * Open the payment widget. On desktop opens a popup; on mobile redirects.
    * @param request Payment request parameters
    * @param options onClose callback when the widget/popup is closed
    */
