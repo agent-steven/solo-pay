@@ -1,6 +1,6 @@
 /**
  * Browser wallet provider detection (window.ethereum / window.trustwallet / EIP-6963).
- * Trust Wallet can inject via window.trustwallet, ethereum.providers[], or EIP-6963.
+ * Used by appkit-wagmi.ts to register the Trust Wallet connector in WagmiAdapter.
  */
 
 export interface EthereumProvider {
@@ -16,7 +16,6 @@ export interface EthereumProvider {
 }
 
 const EIP6963_TRUST_RDNS = 'com.trustwallet.app';
-const EIP6963_METAMASK_RDNS = 'io.metamask';
 
 interface EIP6963Entry {
   info: { rdns: string; name?: string };
@@ -45,13 +44,6 @@ function initEIP6963(): void {
 
 // Run only in browser (module may load on server)
 if (typeof window !== 'undefined') initEIP6963();
-
-/** Re-request EIP-6963 providers so late-injecting wallets (e.g. Trust) can announce. Call before connecting. */
-export function requestEIP6963Providers(): void {
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new Event('eip6963:requestProvider'));
-  }
-}
 
 function getWindowEthereum(): EthereumProvider | undefined {
   if (typeof window === 'undefined') return undefined;
@@ -93,23 +85,3 @@ export function getTrustWalletProvider(): EthereumProvider | null {
   return fromList?.provider ?? null;
 }
 
-/** MetaMask only (excludes Trust and others). Used for isMetaMaskBrowser. EIP-6963 fallback: io.metamask. */
-export function getMetaMaskProvider(): EthereumProvider | null {
-  const ethereum = getWindowEthereum();
-  if (ethereum) {
-    const providers = ethereum.providers || [];
-    for (const p of providers) {
-      if (p.isMetaMask && !p.isTrust && !p.isTrustWallet && !p.isRainbow && !p.isCoinbaseWallet)
-        return p;
-    }
-    if (
-      providers.length === 0 &&
-      ethereum.isMetaMask &&
-      !ethereum.isTrust &&
-      !ethereum.isTrustWallet
-    )
-      return ethereum;
-  }
-  const eip = eip6963ByRdns[EIP6963_METAMASK_RDNS];
-  return eip?.provider ?? null;
-}

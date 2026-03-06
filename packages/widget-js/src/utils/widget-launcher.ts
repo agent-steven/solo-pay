@@ -33,15 +33,8 @@ export class WidgetLauncher {
     }
   }
 
-  /** Base URL for device: mobile → index (/), PC → /pc */
-  private getBaseUrlForDevice(forMobile: boolean): string {
-    return forMobile ? this.widgetUrl : `${this.widgetUrl}/pc`;
-  }
-
-  /** Build widget URL with payment parameters. Uses current device (mobile → /, PC → /pc) when forMobile is omitted. */
-  buildWidgetUrl(request: PaymentRequest, forMobile?: boolean): string {
-    const mobile = forMobile ?? isMobile();
-    const baseUrl = this.getBaseUrlForDevice(mobile);
+  /** Build widget URL with payment parameters. */
+  buildWidgetUrl(request: PaymentRequest): string {
     const params = new URLSearchParams({
       pk: this.publicKey,
       orderId: request.orderId,
@@ -57,8 +50,8 @@ export class WidgetLauncher {
       params.set('lang', request.locale);
     }
 
-    const url = `${baseUrl}?${params.toString()}`;
-    this.log('Built widget URL:', url, `(${mobile ? 'mobile' : 'pc'})`);
+    const url = `${this.widgetUrl}?${params.toString()}`;
+    this.log('Built widget URL:', url);
     return url;
   }
 
@@ -67,8 +60,8 @@ export class WidgetLauncher {
    * Call directly from a user gesture (e.g. click handler) so the browser allows the popup.
    */
   open(request: PaymentRequest, options?: { onClose?: () => void }): void {
+    const url = this.buildWidgetUrl(request);
     const mobile = isMobile();
-    const url = this.buildWidgetUrl(request, mobile);
 
     this.log('Opening widget:', mobile ? 'redirect' : 'popup');
     this.onClose = options?.onClose;
