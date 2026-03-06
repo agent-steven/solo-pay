@@ -219,10 +219,10 @@ export default function PaymentProcessing({
           {/* 1. Large Central Amount Display */}
           <div className="mb-6 sm:mb-8">
             <div className="flex items-baseline justify-center gap-2">
-              <span className="text-4xl sm:text-5xl font-bold text-gray-900 tracking-tight">
+              <span className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
                 {amount}
               </span>
-              <span className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
+              <span className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight">
                 {token}
               </span>
             </div>
