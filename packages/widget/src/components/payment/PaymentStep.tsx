@@ -673,7 +673,7 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
             fiatAmount={paymentDetails.fiatAmount}
             error={
               configError ??
-              (!hasSufficientBalance
+              (!hasSufficientBalance && !isTokenLoading
                 ? t('error.insufficientBalance', {
                     amount: displayAmount,
                     token: paymentDetails.tokenSymbol,
