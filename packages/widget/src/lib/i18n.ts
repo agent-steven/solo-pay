@@ -32,6 +32,7 @@ const translations = {
     'error.paymentError': 'Payment Error',
     'error.loadingPayment': 'Loading payment...',
     'error.checkingTokenSupport': 'Checking token support...',
+    'error.checkingBalanceApproval': 'Checking balance & approval...',
     'error.configMissingSignature':
       'Payment configuration error: Missing server signature. Please contact support.',
     'error.configMissingRecipient':
@@ -123,6 +124,7 @@ const translations = {
     'error.paymentError': '결제 오류',
     'error.loadingPayment': '결제 정보 불러오는 중...',
     'error.checkingTokenSupport': '토큰 지원 확인 중...',
+    'error.checkingBalanceApproval': '잔액 및 승인 확인 중...',
     'error.configMissingSignature': '결제 설정 오류: 서버 서명이 없습니다. 고객센터에 문의하세요.',
     'error.configMissingRecipient':
       '결제 설정 오류: 수신자 정보가 없습니다. 고객센터에 문의하세요.',

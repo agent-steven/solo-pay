@@ -631,7 +631,11 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
           return (
             <LoadingSpinner
               message={
-                isCheckingPermit ? t('error.checkingTokenSupport') : t('error.loadingPayment')
+                isCheckingPermit
+                  ? t('error.checkingTokenSupport')
+                  : isTokenLoading
+                    ? t('error.checkingBalanceApproval')
+                    : t('error.loadingPayment')
               }
             />
           );

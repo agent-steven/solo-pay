@@ -198,7 +198,7 @@ export default function TokenApproval({
           {isLoading || isApproving ? (
             <span className="flex items-center justify-center gap-2">
               <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              {isLoading ? t('error.checkingTokenSupport') : t('approval.approving')}
+              {isLoading ? t('error.checkingBalanceApproval') : t('approval.approving')}
             </span>
           ) : error ? (
             t('common.tryAgain')
