@@ -84,4 +84,3 @@ export function getTrustWalletProvider(): EthereumProvider | null {
   const fromList = eip6963List.find(isTrustByEntry);
   return fromList?.provider ?? null;
 }
-

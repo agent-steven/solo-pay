@@ -108,4 +108,3 @@ export interface PaymentDetails {
   /** Transaction hash */
   txHash?: string;
 }
-
