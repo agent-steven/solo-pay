@@ -45,12 +45,8 @@ export default function TokenApproval({
     <div className="w-full p-4 sm:p-8">
       {/* Title */}
       <div className="text-center mb-5 sm:mb-6">
-        <h1 className="text-base sm:text-lg font-bold text-gray-900">
-          {t('approval.title')}
-        </h1>
-        <p className="text-xs sm:text-sm text-gray-500 mt-1">
-          {t('approval.description')}
-        </p>
+        <h1 className="text-base sm:text-lg font-bold text-gray-900">{t('approval.title')}</h1>
+        <p className="text-xs sm:text-sm text-gray-500 mt-1">{t('approval.description')}</p>
       </div>
 
       {/* Wallet Info */}
