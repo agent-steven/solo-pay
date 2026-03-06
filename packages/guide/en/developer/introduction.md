@@ -21,14 +21,35 @@ SoloPay's core feature is **Gasless Payment**. Users simply sign once in a walle
 
 ### Supported Chains
 
-Currently testnet environments are supported.
-
 | Chain        | Network ID | Type    |
 | ------------ | ---------- | ------- |
+| Polygon PoS  | 137        | Mainnet |
 | Polygon Amoy | 80002      | Testnet |
 
-::: info Mainnet Support Coming Soon
-Mainnet support (Ethereum, Polygon PoS, etc.) will be announced in the future. We recommend implementing and validating your integration on testnet first.
+### Service Endpoints
+
+SoloPay provides separate environments for development and production.
+
+**Development (Testnet)**
+
+| Service           | URL                                 |
+| ----------------- | ----------------------------------- |
+| Payment API       | https://gateway.dev.solonetwork.io  |
+| Integration Guide | https://guide.dev.solonetwork.io    |
+| Payment Widget    | https://widget.dev.solonetwork.io   |
+| Sample Merchant   | https://merchant.dev.solonetwork.io |
+
+**Production (Mainnet)**
+
+| Service           | URL                             |
+| ----------------- | ------------------------------- |
+| Payment API       | https://gateway.solonetwork.io  |
+| Integration Guide | https://guide.solonetwork.io    |
+| Payment Widget    | https://widget.solonetwork.io   |
+| Sample Merchant   | https://merchant.solonetwork.io |
+
+::: warning Production Environment
+The production environment is not yet publicly available. Please use the development endpoints for integration and testing.
 :::
 
 ### Supported Tokens
