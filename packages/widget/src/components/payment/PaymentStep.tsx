@@ -242,7 +242,8 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
   useEffect(() => {
     if (currentStep !== 'wallet-connect') return;
     if (!isConnected || !address || !paymentDetails) return;
-    if (lockReconnect) return;
+    // Guard: only advance after explicit user click — prevents AppKit auto-reconnect from skipping connect step
+    if (!buttonConnectClicked || lockReconnect) return;
 
     const targetChainId = paymentDetails.chainId;
     const needsSwitch = chain?.id !== targetChainId;
@@ -278,6 +279,7 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
     isSwitchingChain,
     switchChainAsync,
     currentStep,
+    buttonConnectClicked,
     lockReconnect,
   ]);
 
@@ -288,13 +290,14 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
       !isConnected ||
       !address ||
       currentStep !== 'wallet-connect' ||
+      !buttonConnectClicked ||
       lockReconnect
     ) {
       return;
     }
     const timeout = window.setTimeout(() => setCurrentStep('token-approval'), 4000);
     return () => window.clearTimeout(timeout);
-  }, [paymentDetails, isConnected, address, currentStep, lockReconnect]);
+  }, [paymentDetails, isConnected, address, currentStep, buttonConnectClicked, lockReconnect]);
 
   // Auto-advance after approval confirmation
   useEffect(() => {
@@ -635,7 +638,7 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
     if (!paymentDetails) return null;
     switch (currentStep) {
       case 'wallet-connect':
-        if (isConnected && !lockReconnect) {
+        if (isConnected && buttonConnectClicked && !lockReconnect) {
           return (
             <LoadingSpinner
               message={

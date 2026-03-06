@@ -305,6 +305,11 @@ CMD ["node", "server.js"]
 # === Widget Builder + Deploy ===
 FROM deps AS widget-builder
 
+# NEXT_PUBLIC_* vars are statically inlined at build time by Next.js.
+# Pass via: docker build --build-arg NEXT_PUBLIC_WC_PROJECT_ID=xxx
+ARG NEXT_PUBLIC_WC_PROJECT_ID
+ENV NEXT_PUBLIC_WC_PROJECT_ID=$NEXT_PUBLIC_WC_PROJECT_ID
+
 WORKDIR /app
 COPY eslint.config.ts ./
 COPY packages/widget ./packages/widget
