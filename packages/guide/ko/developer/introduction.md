@@ -21,14 +21,35 @@ SoloPay의 핵심 특징은 **가스리스(Gasless) 결제**입니다. 사용자
 
 ### 지원 체인
 
-현재 테스트넷 환경을 지원합니다.
-
 | 체인         | 네트워크 ID | 구분    |
 | ------------ | ----------- | ------- |
+| Polygon PoS  | 137         | Mainnet |
 | Polygon Amoy | 80002       | Testnet |
 
-::: info 메인넷 지원 예정
-메인넷(Ethereum, Polygon PoS 등) 지원은 추후 안내됩니다. 테스트넷에서 먼저 연동을 구현하고 검증하는 것을 권장합니다.
+### 서비스 엔드포인트
+
+SoloPay는 개발용과 운영용 환경을 별도로 제공합니다.
+
+**개발 환경 (Testnet)**
+
+| 서비스        | URL                                 |
+| ------------- | ----------------------------------- |
+| 결제 API 서버 | https://gateway.dev.solonetwork.io  |
+| 연동 가이드   | https://guide.dev.solonetwork.io    |
+| 결제 위젯     | https://widget.dev.solonetwork.io   |
+| 샘플 가맹점   | https://merchant.dev.solonetwork.io |
+
+**운영 환경 (Mainnet)**
+
+| 서비스        | URL                             |
+| ------------- | ------------------------------- |
+| 결제 API 서버 | https://gateway.solonetwork.io  |
+| 연동 가이드   | https://guide.solonetwork.io    |
+| 결제 위젯     | https://widget.solonetwork.io   |
+| 샘플 가맹점   | https://merchant.solonetwork.io |
+
+::: warning 운영 환경 안내
+운영 환경은 아직 공개되지 않았습니다. 연동 및 테스트에는 개발 환경 엔드포인트를 사용해 주세요.
 :::
 
 ### 지원 토큰
