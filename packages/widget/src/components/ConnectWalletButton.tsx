@@ -10,7 +10,7 @@ export const WALLET_BUTTON_BASE =
   'w-full rounded-xl px-6 py-3 sm:py-4 text-sm sm:text-lg font-semibold text-white shadow-sm disabled:opacity-50 transition-colors';
 
 export const WALLET_STYLES = {
-  metaMask: 'bg-[#F6851B] hover:bg-[#e2761b] active:bg-[#cd6116]',
+  metaMask: 'bg-[#BA5700] hover:bg-[#A34D00] active:bg-[#8C4200]',
   trustWallet: 'bg-[#3375BB] hover:bg-[#2a5f99] active:bg-[#1e4a7a]',
 } as const;
 
@@ -49,11 +49,11 @@ export function ConnectWalletButton({
   const connectWith = useCallback(
     async (connector: NonNullable<typeof metaMaskConnector>) => {
       onConnectorClick?.();
-      if (!isConnected) {
+      if (isConnected) {
         try {
-          await disconnectAsync({ connector });
+          await disconnectAsync();
         } catch {
-          // already disconnected
+          // ignore
         }
       }
       connect({ connector });

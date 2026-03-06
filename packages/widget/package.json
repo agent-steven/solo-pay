@@ -19,6 +19,13 @@
     "viem": "2.38.0",
     "wagmi": "^2.19.3"
   },
+  "browserslist": [
+    "chrome >= 93",
+    "edge >= 93",
+    "firefox >= 90",
+    "safari >= 15.4",
+    "not dead"
+  ],
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",
     "@types/node": "^22.19.1",
