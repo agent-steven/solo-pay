@@ -130,11 +130,20 @@ export class WidgetLauncher {
       this.handleClose();
 
       // Redirect opener to success/fail URL so merchant page shows result
+      // Append paymentId, orderId, and status as query parameters
       if (data.type === 'payment_complete') {
         if (data.status === 'success' && typeof data.successUrl === 'string') {
-          window.location.href = data.successUrl;
+          window.location.href = this.appendRedirectParams(data.successUrl, {
+            paymentId: data.paymentId,
+            orderId: data.orderId,
+            status: 'success',
+          });
         } else if (data.status === 'fail' && typeof data.failUrl === 'string') {
-          window.location.href = data.failUrl;
+          window.location.href = this.appendRedirectParams(data.failUrl, {
+            paymentId: data.paymentId,
+            orderId: data.orderId,
+            status: 'fail',
+          });
         }
       } else if (data.type === 'wallet_connected' && typeof data.successUrl === 'string') {
         window.location.href = data.successUrl;
@@ -150,10 +159,30 @@ export class WidgetLauncher {
         this.pendingFailUrl = null;
         this.handleClose();
         if (failUrl) {
-          window.location.href = failUrl;
+          window.location.href = this.appendRedirectParams(failUrl, { status: 'fail' });
         }
       }
     }, POPUP_POLL_MS);
+  }
+
+  /**
+   * Safely append query parameters to a redirect URL.
+   * Returns the original URL for non-http(s) protocols or malformed URLs to prevent XSS.
+   */
+  private appendRedirectParams(
+    url: string,
+    params: Record<string, string | undefined>,
+  ): string {
+    try {
+      const u = new URL(url);
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') return url;
+      for (const [key, value] of Object.entries(params)) {
+        if (value) u.searchParams.set(key, value);
+      }
+      return u.toString();
+    } catch {
+      return url;
+    }
   }
 
   private clearPopupCheck(): void {
