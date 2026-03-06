@@ -155,6 +155,20 @@ Submits a gasless (meta-transaction) payment using ERC-2771 forwarder.
           });
         }
 
+        // Reject if relay already in flight (duplicate submit would revert on-chain as already processed).
+        // RelayStatus in DB: QUEUED | SUBMITTED | CONFIRMED | FAILED; in-flight = not FAILED.
+        const existingRelays = await relayService.findByPaymentId(payment.id);
+        const inFlight = existingRelays.filter((r) =>
+          ['QUEUED', 'SUBMITTED', 'CONFIRMED'].includes(r.status)
+        );
+        if (inFlight.length > 0) {
+          return reply.code(400).send({
+            code: 'RELAY_ALREADY_SUBMITTED',
+            message:
+              'Gasless already submitted for this payment. Check relay status or use a new checkout.',
+          });
+        }
+
         // Resolve relayer for this payment's chain
         const relayerService = relayerServices.get(payment.network_id);
         if (!relayerService) {
