@@ -214,7 +214,7 @@ export class SoloPayClient {
     body?: Record<string, unknown> | GaslessParams,
     auth: 'api' | 'public' | 'none' = 'api'
   ): Promise<T> {
-    const headers: Record<string, string> = { ...DEFAULT_HEADERS };
+    const headers: Record<string, string> = body ? { ...DEFAULT_HEADERS } : {};
     if (auth === 'public' && this.publicKey) {
       headers['x-public-key'] = this.publicKey;
       if (this.origin) {
