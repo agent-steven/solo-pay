@@ -65,7 +65,7 @@ function appendPaymentParams(
   url: string,
   paymentId?: string,
   orderId?: string,
-  status?: 'success' | 'fail',
+  status?: 'success' | 'fail'
 ): string {
   try {
     const u = new URL(url);
@@ -423,7 +423,7 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
         paymentDetails.successUrl,
         paymentDetails.paymentId,
         paymentDetails.orderId,
-        'success',
+        'success'
       );
       if (!redirectUrl) return;
       allowUnloadRef.current = true;
@@ -451,7 +451,7 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
         effectiveFailUrl,
         paymentDetails?.paymentId,
         paymentDetails?.orderId,
-        'fail',
+        'fail'
       );
       if (!redirectUrl) return;
       allowUnloadRef.current = true;

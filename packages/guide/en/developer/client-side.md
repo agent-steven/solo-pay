@@ -44,11 +44,11 @@ solopay.requestPayment({
 
 After payment, SoloPay redirects the user to the `successUrl` or `failUrl` specified at payment creation. The widget automatically appends `paymentId`, `orderId`, and `status` as query parameters.
 
-| Parameter | Description |
-|-----------|-------------|
-| `paymentId` | The unique payment identifier |
-| `orderId` | The merchant order ID |
-| `status` | Payment result: `success` or `fail` |
+| Parameter   | Description                         |
+| ----------- | ----------------------------------- |
+| `paymentId` | The unique payment identifier       |
+| `orderId`   | The merchant order ID               |
+| `status`    | Payment result: `success` or `fail` |
 
 ```
 https://yourshop.com/payment/success?paymentId=0xabc123...&orderId=order-001&status=success

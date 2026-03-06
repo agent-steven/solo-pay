@@ -44,11 +44,11 @@ solopay.requestPayment({
 
 결제 완료 후 SoloPay는 결제 생성 시 지정한 `successUrl` 또는 `failUrl`로 사용자를 리다이렉트합니다. 위젯이 자동으로 `paymentId`, `orderId`, `status`를 쿼리 파라미터로 추가합니다.
 
-| 파라미터 | 설명 |
-|----------|------|
-| `paymentId` | 고유 결제 식별자 |
-| `orderId` | 가맹점 주문 ID |
-| `status` | 결제 결과: `success` 또는 `fail` |
+| 파라미터    | 설명                             |
+| ----------- | -------------------------------- |
+| `paymentId` | 고유 결제 식별자                 |
+| `orderId`   | 가맹점 주문 ID                   |
+| `status`    | 결제 결과: `success` 또는 `fail` |
 
 ```
 https://yourshop.com/payment/success?paymentId=0xabc123...&orderId=order-001&status=success
