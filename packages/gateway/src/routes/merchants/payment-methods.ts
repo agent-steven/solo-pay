@@ -104,7 +104,9 @@ export async function paymentMethodsRoute(
 
         return reply.code(200).send({
           success: true,
-          payment_methods: validPaymentMethods,
+          data: {
+            payment_methods: validPaymentMethods,
+          },
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to get payment methods';
@@ -429,28 +431,30 @@ export async function paymentMethodsRoute(
 
         return reply.code(200).send({
           success: true,
-          payment_method: {
-            id: updated.id,
-            is_enabled: updated.is_enabled,
-            created_at: new Date(updated.created_at).toISOString(),
-            updated_at: new Date(updated.updated_at).toISOString(),
-            token: token
-              ? {
-                  id: token.id,
-                  address: token.address,
-                  symbol: token.symbol,
-                  decimals: token.decimals,
-                  chain_id: token.chain_id,
-                }
-              : null,
-            chain: chain
-              ? {
-                  id: chain.id,
-                  network_id: chain.network_id,
-                  name: chain.name,
-                  is_testnet: chain.is_testnet,
-                }
-              : null,
+          data: {
+            payment_method: {
+              id: updated.id,
+              is_enabled: updated.is_enabled,
+              created_at: new Date(updated.created_at).toISOString(),
+              updated_at: new Date(updated.updated_at).toISOString(),
+              token: token
+                ? {
+                    id: token.id,
+                    address: token.address,
+                    symbol: token.symbol,
+                    decimals: token.decimals,
+                    chain_id: token.chain_id,
+                  }
+                : null,
+              chain: chain
+                ? {
+                    id: chain.id,
+                    network_id: chain.network_id,
+                    name: chain.name,
+                    is_testnet: chain.is_testnet,
+                  }
+                : null,
+            },
           },
         });
       } catch (error) {
@@ -543,7 +547,9 @@ export async function paymentMethodsRoute(
 
         return reply.code(200).send({
           success: true,
-          message: 'Payment method deleted successfully',
+          data: {
+            message: 'Payment method deleted successfully',
+          },
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to delete payment method';

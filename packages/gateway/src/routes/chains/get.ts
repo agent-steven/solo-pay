@@ -47,12 +47,14 @@ export async function getChainsRoute(
 
         return reply.code(200).send({
           success: true,
-          chains: chains.map((chain) => ({
-            id: chain.id,
-            network_id: chain.network_id,
-            name: chain.name,
-            is_testnet: chain.is_testnet,
-          })),
+          data: {
+            chains: chains.map((chain) => ({
+              id: chain.id,
+              network_id: chain.network_id,
+              name: chain.name,
+              is_testnet: chain.is_testnet,
+            })),
+          },
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to get chains';
@@ -148,7 +150,9 @@ export async function getChainsRoute(
 
         return reply.code(200).send({
           success: true,
-          chains: chainsWithTokens,
+          data: {
+            chains: chainsWithTokens,
+          },
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to get chains and tokens';

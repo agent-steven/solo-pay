@@ -18,17 +18,20 @@ curl "https://pay-api.staging.sut.com/api/v1/merchant/payments/0xabc123..." \
 
 ```json
 {
-  "paymentId": "0xabc123...",
-  "orderId": "order-001",
-  "status": "FINALIZED",
-  "amount": "10500000000000000000",
-  "tokenSymbol": "SUT",
-  "tokenDecimals": 18,
-  "txHash": "0xdef789...",
-  "payerAddress": "0x1234...",
-  "createdAt": "2024-01-26T12:30:00Z",
-  "confirmedAt": "2024-01-26T12:35:42Z",
-  "expiresAt": "2024-01-26T13:00:00Z"
+  "success": true,
+  "data": {
+    "paymentId": "0xabc123...",
+    "orderId": "order-001",
+    "status": "FINALIZED",
+    "amount": "10500000000000000000",
+    "tokenSymbol": "SUT",
+    "tokenDecimals": 18,
+    "txHash": "0xdef789...",
+    "payerAddress": "0x1234...",
+    "createdAt": "2024-01-26T12:30:00Z",
+    "confirmedAt": "2024-01-26T12:35:42Z",
+    "expiresAt": "2024-01-26T13:00:00Z"
+  }
 }
 ```
 

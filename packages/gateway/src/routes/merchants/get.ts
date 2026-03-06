@@ -178,27 +178,29 @@ export async function getMerchantRoute(
         // Return merchant information with payment methods and chainTokens
         return reply.code(200).send({
           success: true,
-          merchant: {
-            id: merchant.id,
-            merchant_key: merchant.merchant_key,
-            name: merchant.name,
-            chain_id: merchant.chain_id,
-            chain: chain
-              ? {
-                  id: chain.id,
-                  network_id: chain.network_id,
-                  name: chain.name,
-                  is_testnet: chain.is_testnet,
-                }
-              : null,
-            webhook_url: merchant.webhook_url,
-            public_key: merchant.public_key ?? null,
-            is_enabled: merchant.is_enabled,
-            created_at: new Date(merchant.created_at).toISOString(),
-            updated_at: new Date(merchant.updated_at).toISOString(),
-            payment_methods: validPaymentMethods,
+          data: {
+            merchant: {
+              id: merchant.id,
+              merchant_key: merchant.merchant_key,
+              name: merchant.name,
+              chain_id: merchant.chain_id,
+              chain: chain
+                ? {
+                    id: chain.id,
+                    network_id: chain.network_id,
+                    name: chain.name,
+                    is_testnet: chain.is_testnet,
+                  }
+                : null,
+              webhook_url: merchant.webhook_url,
+              public_key: merchant.public_key ?? null,
+              is_enabled: merchant.is_enabled,
+              created_at: new Date(merchant.created_at).toISOString(),
+              updated_at: new Date(merchant.updated_at).toISOString(),
+              payment_methods: validPaymentMethods,
+            },
+            chainTokens,
           },
-          chainTokens,
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to get merchant';
