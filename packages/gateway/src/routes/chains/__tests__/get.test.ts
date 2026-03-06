@@ -42,8 +42,8 @@ describe('Chains Routes', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.payload);
       expect(body.success).toBe(true);
-      expect(body.chains).toHaveLength(3);
-      expect(body.chains[0]).toEqual({
+      expect(body.data.chains).toHaveLength(3);
+      expect(body.data.chains[0]).toEqual({
         id: 1,
         network_id: 1,
         name: 'Ethereum Mainnet',
@@ -62,7 +62,7 @@ describe('Chains Routes', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.payload);
       expect(body.success).toBe(true);
-      expect(body.chains).toHaveLength(0);
+      expect(body.data.chains).toHaveLength(0);
     });
 
     it('should return 500 on service error', async () => {
@@ -122,13 +122,13 @@ describe('Chains Routes', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.payload);
       expect(body.success).toBe(true);
-      expect(body.chains).toHaveLength(2);
+      expect(body.data.chains).toHaveLength(2);
 
-      const ethChain = body.chains.find((c: { network_id: number }) => c.network_id === 1);
+      const ethChain = body.data.chains.find((c: { network_id: number }) => c.network_id === 1);
       expect(ethChain.tokens).toHaveLength(2);
       expect(ethChain.tokens[0].symbol).toBe('USDT');
 
-      const polyChain = body.chains.find((c: { network_id: number }) => c.network_id === 137);
+      const polyChain = body.data.chains.find((c: { network_id: number }) => c.network_id === 137);
       expect(polyChain.tokens).toHaveLength(1);
       expect(polyChain.tokens[0].symbol).toBe('USDC');
     });
@@ -147,7 +147,7 @@ describe('Chains Routes', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.payload);
       expect(body.success).toBe(true);
-      expect(body.chains[0].tokens).toHaveLength(0);
+      expect(body.data.chains[0].tokens).toHaveLength(0);
     });
 
     it('should return 500 on chainService error', async () => {

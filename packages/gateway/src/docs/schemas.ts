@@ -134,66 +134,71 @@ export const CreatePaymentResponseSchema = {
   type: 'object',
   properties: {
     success: { type: 'boolean', example: true },
-    paymentId: {
-      type: 'string',
-      description: 'Unique payment hash (bytes32)',
-      example: '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890',
+    data: {
+      type: 'object',
+      properties: {
+        paymentId: {
+          type: 'string',
+          description: 'Unique payment hash (bytes32)',
+          example: '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890',
+        },
+        chainId: { type: 'integer', example: 31337 },
+        tokenAddress: {
+          type: 'string',
+          example: '0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582',
+        },
+        tokenSymbol: { type: 'string', example: 'USDT' },
+        tokenDecimals: { type: 'integer', example: 6 },
+        gatewayAddress: {
+          type: 'string',
+          description: 'PaymentGateway contract address',
+          example: '0x1234567890abcdef1234567890abcdef12345678',
+        },
+        forwarderAddress: {
+          type: 'string',
+          description: 'ERC2771 Forwarder contract address',
+          example: '0x1234567890abcdef1234567890abcdef12345678',
+        },
+        amount: {
+          type: 'string',
+          description: 'Amount in wei (smallest unit)',
+          example: '10500000',
+        },
+        status: {
+          type: 'string',
+          enum: ['created', 'pending', 'confirmed', 'failed'],
+          example: 'created',
+        },
+        expiresAt: {
+          type: 'string',
+          format: 'date-time',
+          description: 'Payment expiration time (ISO 8601)',
+          example: '2024-01-20T12:30:00.000Z',
+        },
+        recipientAddress: {
+          type: 'string',
+          description: 'Recipient address (merchant wallet to receive payment)',
+          example: '0x1234567890abcdef1234567890abcdef12345678',
+        },
+        merchantId: {
+          type: 'string',
+          description: 'Merchant identifier (bytes32, keccak256 of merchant_key)',
+          example: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+        },
+        serverSignature: {
+          type: 'string',
+          description: 'Server EIP-712 signature for payment authorization',
+          example: '0x1234...abcd',
+        },
+        orderId: {
+          type: 'string',
+          description: 'Merchant order identifier',
+          example: 'order_001',
+        },
+        successUrl: { type: 'string', format: 'uri', example: 'https://example.com/success' },
+        failUrl: { type: 'string', format: 'uri', example: 'https://example.com/fail' },
+      },
     },
-    chainId: { type: 'integer', example: 31337 },
-    tokenAddress: {
-      type: 'string',
-      example: '0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582',
-    },
-    tokenSymbol: { type: 'string', example: 'USDT' },
-    tokenDecimals: { type: 'integer', example: 6 },
-    gatewayAddress: {
-      type: 'string',
-      description: 'PaymentGateway contract address',
-      example: '0x1234567890abcdef1234567890abcdef12345678',
-    },
-    forwarderAddress: {
-      type: 'string',
-      description: 'ERC2771 Forwarder contract address',
-      example: '0x1234567890abcdef1234567890abcdef12345678',
-    },
-    amount: {
-      type: 'string',
-      description: 'Amount in wei (smallest unit)',
-      example: '10500000',
-    },
-    status: {
-      type: 'string',
-      enum: ['created', 'pending', 'confirmed', 'failed'],
-      example: 'created',
-    },
-    expiresAt: {
-      type: 'string',
-      format: 'date-time',
-      description: 'Payment expiration time (ISO 8601)',
-      example: '2024-01-20T12:30:00.000Z',
-    },
-    recipientAddress: {
-      type: 'string',
-      description: 'Recipient address (merchant wallet to receive payment)',
-      example: '0x1234567890abcdef1234567890abcdef12345678',
-    },
-    merchantId: {
-      type: 'string',
-      description: 'Merchant identifier (bytes32, keccak256 of merchant_key)',
-      example: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
-    },
-    serverSignature: {
-      type: 'string',
-      description: 'Server EIP-712 signature for payment authorization',
-      example: '0x1234...abcd',
-    },
-    orderId: {
-      type: 'string',
-      description: 'Merchant order identifier',
-      example: 'order_001',
-    },
-    successUrl: { type: 'string', format: 'uri', example: 'https://example.com/success' },
-    failUrl: { type: 'string', format: 'uri', example: 'https://example.com/fail' },
   },
 } as const;
 
@@ -318,14 +323,19 @@ export const GaslessResponseSchema = {
   type: 'object',
   properties: {
     success: { type: 'boolean', example: true },
-    status: {
-      type: 'string',
-      enum: ['submitted', 'pending'],
-      description: 'Relay submission status',
-    },
-    message: {
-      type: 'string',
-      description: 'Status message',
+    data: {
+      type: 'object',
+      properties: {
+        status: {
+          type: 'string',
+          enum: ['submitted', 'pending'],
+          description: 'Relay submission status',
+        },
+        message: {
+          type: 'string',
+          description: 'Status message',
+        },
+      },
     },
   },
 } as const;

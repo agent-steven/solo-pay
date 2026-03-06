@@ -96,30 +96,32 @@ describe('SoloPayClient', () => {
         status: 201,
         json: async () => ({
           success: true,
-          paymentId: 'pay-123',
-          orderId: 'order-001',
-          serverSignature: '0x' + 'a'.repeat(130),
-          chainId: 31337,
-          tokenAddress: '0x1234567890123456789012345678901234567890',
-          tokenSymbol: 'TEST',
-          tokenDecimals: 18,
-          gatewayAddress: '0xGateway',
-          forwarderAddress: '0xForwarder',
-          amount: '1000',
-          successUrl: validParams.successUrl,
-          failUrl: validParams.failUrl,
-          expiresAt: '2025-12-31T00:00:00Z',
-          recipientAddress: '0xRecipient',
-          merchantId: '0xMerchant',
+          data: {
+            paymentId: 'pay-123',
+            orderId: 'order-001',
+            serverSignature: '0x' + 'a'.repeat(130),
+            chainId: 31337,
+            tokenAddress: '0x1234567890123456789012345678901234567890',
+            tokenSymbol: 'TEST',
+            tokenDecimals: 18,
+            gatewayAddress: '0xGateway',
+            forwarderAddress: '0xForwarder',
+            amount: '1000',
+            successUrl: validParams.successUrl,
+            failUrl: validParams.failUrl,
+            expiresAt: '2025-12-31T00:00:00Z',
+            recipientAddress: '0xRecipient',
+            merchantId: '0xMerchant',
+          },
         }),
       });
 
       const result = await clientWithCreate.createPayment(validParams);
 
       expect(result.success).toBe(true);
-      expect(result.paymentId).toBe('pay-123');
-      expect(result.orderId).toBe('order-001');
-      expect(result.serverSignature).toBeDefined();
+      expect(result.data.paymentId).toBe('pay-123');
+      expect(result.data.orderId).toBe('order-001');
+      expect(result.data.serverSignature).toBeDefined();
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:3001/api/v1/payments',
         expect.objectContaining({
@@ -299,15 +301,17 @@ describe('SoloPayClient', () => {
         status: 202,
         json: async () => ({
           success: true,
-          status: 'submitted',
-          message: 'Transaction submitted',
+          data: {
+            status: 'submitted',
+            message: 'Transaction submitted',
+          },
         }),
       });
 
       const result = await client.submitGasless(validParams);
 
       expect(result.success).toBe(true);
-      expect(result.status).toBe('submitted');
+      expect(result.data.status).toBe('submitted');
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:3001/api/v1/payments/pay-123/relay',
         expect.objectContaining({
@@ -325,13 +329,15 @@ describe('SoloPayClient', () => {
           status: 202,
           json: async () => ({
             success: true,
-            status,
-            message: 'Transaction ' + status,
+            data: {
+              status,
+              message: 'Transaction ' + status,
+            },
           }),
         });
 
         const result = await client.submitGasless(validParams);
-        expect(result.status).toBe(status);
+        expect(result.data.status).toBe(status);
       }
     });
 
@@ -348,8 +354,10 @@ describe('SoloPayClient', () => {
         status: 202,
         json: async () => ({
           success: true,
-          status: 'submitted',
-          message: 'Transaction submitted',
+          data: {
+            status: 'submitted',
+            message: 'Transaction submitted',
+          },
         }),
       });
 
@@ -381,8 +389,10 @@ describe('SoloPayClient', () => {
         status: 202,
         json: async () => ({
           success: true,
-          status: 'submitted',
-          message: 'Transaction submitted',
+          data: {
+            status: 'submitted',
+            message: 'Transaction submitted',
+          },
         }),
       });
 
@@ -447,8 +457,10 @@ describe('SoloPayClient', () => {
         status: 200,
         json: async () => ({
           success: true,
-          merchant: { id: 1, name: 'Test', merchant_key: 'mk_test' },
-          chainTokens: [],
+          data: {
+            merchant: { id: 1, name: 'Test', merchant_key: 'mk_test' },
+            chainTokens: [],
+          },
         }),
       });
 
@@ -468,22 +480,24 @@ describe('SoloPayClient', () => {
         status: 200,
         json: async () => ({
           success: true,
-          payment_methods: [
-            {
-              id: 1,
-              is_enabled: true,
-              created_at: '2025-01-01T00:00:00Z',
-              updated_at: '2025-01-01T00:00:00Z',
-              token: { id: 1, address: '0xtoken', symbol: 'USDC', decimals: 6 },
-              chain: { id: 1, network_id: 31337, name: 'Hardhat', is_testnet: true },
-            },
-          ],
+          data: {
+            payment_methods: [
+              {
+                id: 1,
+                is_enabled: true,
+                created_at: '2025-01-01T00:00:00Z',
+                updated_at: '2025-01-01T00:00:00Z',
+                token: { id: 1, address: '0xtoken', symbol: 'USDC', decimals: 6 },
+                chain: { id: 1, network_id: 31337, name: 'Hardhat', is_testnet: true },
+              },
+            ],
+          },
         }),
       });
 
       const result = await client.getPaymentMethods();
       expect(result.success).toBe(true);
-      expect(result.payment_methods).toHaveLength(1);
+      expect(result.data.payment_methods).toHaveLength(1);
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:3001/api/v1/merchant/payment-methods',
         expect.objectContaining({
@@ -507,7 +521,9 @@ describe('SoloPayClient', () => {
         status: 201,
         json: async () => ({
           success: true,
-          payment_method: paymentMethod,
+          data: {
+            payment_method: paymentMethod,
+          },
         }),
       });
 
@@ -516,7 +532,7 @@ describe('SoloPayClient', () => {
         is_enabled: true,
       });
       expect(result.success).toBe(true);
-      expect(result.payment_method.id).toBe(2);
+      expect(result.data.payment_method.id).toBe(2);
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:3001/api/v1/merchant/payment-methods',
         expect.objectContaining({
@@ -540,13 +556,15 @@ describe('SoloPayClient', () => {
         status: 200,
         json: async () => ({
           success: true,
-          payment_method: paymentMethod,
+          data: {
+            payment_method: paymentMethod,
+          },
         }),
       });
 
       const result = await client.updatePaymentMethod(1, { is_enabled: false });
       expect(result.success).toBe(true);
-      expect(result.payment_method.is_enabled).toBe(false);
+      expect(result.data.payment_method.is_enabled).toBe(false);
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:3001/api/v1/merchant/payment-methods/1',
         expect.objectContaining({
@@ -562,13 +580,15 @@ describe('SoloPayClient', () => {
         status: 200,
         json: async () => ({
           success: true,
-          message: 'Payment method deleted',
+          data: {
+            message: 'Payment method deleted',
+          },
         }),
       });
 
       const result = await client.deletePaymentMethod(1);
       expect(result.success).toBe(true);
-      expect(result.message).toBe('Payment method deleted');
+      expect(result.data.message).toBe('Payment method deleted');
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:3001/api/v1/merchant/payment-methods/1',
         expect.objectContaining({
@@ -583,19 +603,22 @@ describe('SoloPayClient', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          paymentId: '0xabc',
-          orderId: 'order-1',
-          status: 'FINALIZED',
-          amount: '1000',
-          tokenSymbol: 'TEST',
-          tokenDecimals: 18,
-          createdAt: '2025-01-01T00:00:00Z',
-          expiresAt: '2025-01-01T00:30:00Z',
+          success: true,
+          data: {
+            paymentId: '0xabc',
+            orderId: 'order-1',
+            status: 'FINALIZED',
+            amount: '1000',
+            tokenSymbol: 'TEST',
+            tokenDecimals: 18,
+            createdAt: '2025-01-01T00:00:00Z',
+            expiresAt: '2025-01-01T00:30:00Z',
+          },
         }),
       });
 
       const result = await client.getMerchantPaymentByOrderId('order-1');
-      expect(result.status).toBe('FINALIZED');
+      expect(result.data.status).toBe('FINALIZED');
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:3001/api/v1/merchant/payments?orderId=order-1',
         expect.objectContaining({ method: 'GET' })
@@ -607,20 +630,23 @@ describe('SoloPayClient', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          paymentId: '0xpay123',
-          orderId: 'order-5',
-          status: 'PENDING',
-          amount: '500',
-          tokenSymbol: 'USDC',
-          tokenDecimals: 6,
-          createdAt: '2025-01-01T00:00:00Z',
-          expiresAt: '2025-01-01T00:30:00Z',
+          success: true,
+          data: {
+            paymentId: '0xpay123',
+            orderId: 'order-5',
+            status: 'PENDING',
+            amount: '500',
+            tokenSymbol: 'USDC',
+            tokenDecimals: 6,
+            createdAt: '2025-01-01T00:00:00Z',
+            expiresAt: '2025-01-01T00:30:00Z',
+          },
         }),
       });
 
       const result = await client.getMerchantPaymentById('0xpay123');
-      expect(result.paymentId).toBe('0xpay123');
-      expect(result.status).toBe('PENDING');
+      expect(result.data.paymentId).toBe('0xpay123');
+      expect(result.data.status).toBe('PENDING');
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:3001/api/v1/merchant/payments/0xpay123',
         expect.objectContaining({
@@ -763,7 +789,9 @@ describe('SoloPayClient', () => {
         status: 200,
         json: async () => ({
           success: true,
-          chains: [{ id: 1, network_id: 31337, name: 'Hardhat', is_testnet: true }],
+          data: {
+            chains: [{ id: 1, network_id: 31337, name: 'Hardhat', is_testnet: true }],
+          },
         }),
       });
 
@@ -781,7 +809,9 @@ describe('SoloPayClient', () => {
         status: 200,
         json: async () => ({
           success: true,
-          chains: [{ id: 1, network_id: 31337, name: 'Hardhat', is_testnet: true, tokens: [] }],
+          data: {
+            chains: [{ id: 1, network_id: 31337, name: 'Hardhat', is_testnet: true, tokens: [] }],
+          },
         }),
       });
 
@@ -868,10 +898,10 @@ describe('SoloPayClient', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => ({ success: true, paymentId: '0x123' }),
+        json: async () => ({ success: true, data: { paymentId: '0x123' } }),
       });
       const result = await clientNoOrigin.createPayment(params);
-      expect(result.paymentId).toBe('0x123');
+      expect(result.data.paymentId).toBe('0x123');
     });
   });
 
@@ -929,21 +959,23 @@ describe('SoloPayClient', () => {
         status: 201,
         json: async () => ({
           success: true,
-          paymentId: 'pay-123',
-          orderId: 'order-1',
-          serverSignature: '0x' + 'a'.repeat(130),
-          chainId: 31337,
-          tokenAddress: '0x1234567890123456789012345678901234567890',
-          tokenSymbol: 'TEST',
-          tokenDecimals: 18,
-          gatewayAddress: '0xGateway',
-          forwarderAddress: '0xForwarder',
-          amount: '1000',
-          successUrl: 'https://example.com/success',
-          failUrl: 'https://example.com/fail',
-          expiresAt: '2025-12-31T00:00:00Z',
-          recipientAddress: '0xRecipient',
-          merchantId: '0xMerchant',
+          data: {
+            paymentId: 'pay-123',
+            orderId: 'order-1',
+            serverSignature: '0x' + 'a'.repeat(130),
+            chainId: 31337,
+            tokenAddress: '0x1234567890123456789012345678901234567890',
+            tokenSymbol: 'TEST',
+            tokenDecimals: 18,
+            gatewayAddress: '0xGateway',
+            forwarderAddress: '0xForwarder',
+            amount: '1000',
+            successUrl: 'https://example.com/success',
+            failUrl: 'https://example.com/fail',
+            expiresAt: '2025-12-31T00:00:00Z',
+            recipientAddress: '0xRecipient',
+            merchantId: '0xMerchant',
+          },
         }),
       });
 
