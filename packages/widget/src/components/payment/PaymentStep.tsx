@@ -58,15 +58,21 @@ function formatAddress(addr: string): string {
  * Parse blockchain error message to user-friendly text (locale-aware via t)
  */
 /**
- * Safely append paymentId and orderId query parameters to a redirect URL.
+ * Safely append paymentId, orderId, and status query parameters to a redirect URL.
  * Returns empty string for non-http(s) protocols or malformed URLs to prevent XSS.
  */
-function appendPaymentParams(url: string, paymentId?: string, orderId?: string): string {
+function appendPaymentParams(
+  url: string,
+  paymentId?: string,
+  orderId?: string,
+  status?: 'success' | 'fail'
+): string {
   try {
     const u = new URL(url);
     if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
     if (paymentId) u.searchParams.set('paymentId', paymentId);
     if (orderId) u.searchParams.set('orderId', orderId);
+    if (status) u.searchParams.set('status', status);
     return u.toString();
   } catch {
     return '';
@@ -416,7 +422,8 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
       const redirectUrl = appendPaymentParams(
         paymentDetails.successUrl,
         paymentDetails.paymentId,
-        paymentDetails.orderId
+        paymentDetails.orderId,
+        'success'
       );
       if (!redirectUrl) return;
       allowUnloadRef.current = true;
@@ -443,7 +450,8 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
       const redirectUrl = appendPaymentParams(
         effectiveFailUrl,
         paymentDetails?.paymentId,
-        paymentDetails?.orderId
+        paymentDetails?.orderId,
+        'fail'
       );
       if (!redirectUrl) return;
       allowUnloadRef.current = true;
