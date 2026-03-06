@@ -44,32 +44,37 @@ export async function paymentMethodsRoute(
             type: 'object',
             properties: {
               success: { type: 'boolean', example: true },
-              payment_methods: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    id: { type: 'integer' },
-                    is_enabled: { type: 'boolean' },
-                    created_at: { type: 'string', format: 'date-time' },
-                    updated_at: { type: 'string', format: 'date-time' },
-                    token: {
+              data: {
+                type: 'object',
+                properties: {
+                  payment_methods: {
+                    type: 'array',
+                    items: {
                       type: 'object',
                       properties: {
                         id: { type: 'integer' },
-                        address: { type: 'string' },
-                        symbol: { type: 'string' },
-                        decimals: { type: 'integer' },
-                        chain_id: { type: 'integer' },
-                      },
-                    },
-                    chain: {
-                      type: 'object',
-                      properties: {
-                        id: { type: 'integer' },
-                        network_id: { type: 'integer' },
-                        name: { type: 'string' },
-                        is_testnet: { type: 'boolean' },
+                        is_enabled: { type: 'boolean' },
+                        created_at: { type: 'string', format: 'date-time' },
+                        updated_at: { type: 'string', format: 'date-time' },
+                        token: {
+                          type: 'object',
+                          properties: {
+                            id: { type: 'integer' },
+                            address: { type: 'string' },
+                            symbol: { type: 'string' },
+                            decimals: { type: 'integer' },
+                            chain_id: { type: 'integer' },
+                          },
+                        },
+                        chain: {
+                          type: 'object',
+                          properties: {
+                            id: { type: 'integer' },
+                            network_id: { type: 'integer' },
+                            name: { type: 'string' },
+                            is_testnet: { type: 'boolean' },
+                          },
+                        },
                       },
                     },
                   },
@@ -146,30 +151,35 @@ export async function paymentMethodsRoute(
             type: 'object',
             properties: {
               success: { type: 'boolean', example: true },
-              payment_method: {
+              data: {
                 type: 'object',
                 properties: {
-                  id: { type: 'integer' },
-                  is_enabled: { type: 'boolean' },
-                  created_at: { type: 'string', format: 'date-time' },
-                  updated_at: { type: 'string', format: 'date-time' },
-                  token: {
+                  payment_method: {
                     type: 'object',
                     properties: {
                       id: { type: 'integer' },
-                      address: { type: 'string' },
-                      symbol: { type: 'string' },
-                      decimals: { type: 'integer' },
-                      chain_id: { type: 'integer' },
-                    },
-                  },
-                  chain: {
-                    type: 'object',
-                    properties: {
-                      id: { type: 'integer' },
-                      network_id: { type: 'integer' },
-                      name: { type: 'string' },
-                      is_testnet: { type: 'boolean' },
+                      is_enabled: { type: 'boolean' },
+                      created_at: { type: 'string', format: 'date-time' },
+                      updated_at: { type: 'string', format: 'date-time' },
+                      token: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'integer' },
+                          address: { type: 'string' },
+                          symbol: { type: 'string' },
+                          decimals: { type: 'integer' },
+                          chain_id: { type: 'integer' },
+                        },
+                      },
+                      chain: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'integer' },
+                          network_id: { type: 'integer' },
+                          name: { type: 'string' },
+                          is_testnet: { type: 'boolean' },
+                        },
+                      },
                     },
                   },
                 },
@@ -264,23 +274,25 @@ export async function paymentMethodsRoute(
         // Return enriched payment method
         return reply.code(201).send({
           success: true,
-          payment_method: {
-            id: paymentMethod.id,
-            is_enabled: paymentMethod.is_enabled,
-            created_at: new Date(paymentMethod.created_at).toISOString(),
-            updated_at: new Date(paymentMethod.updated_at).toISOString(),
-            token: {
-              id: token.id,
-              address: token.address,
-              symbol: token.symbol,
-              decimals: token.decimals,
-              chain_id: token.chain_id,
-            },
-            chain: {
-              id: chain.id,
-              network_id: chain.network_id,
-              name: chain.name,
-              is_testnet: chain.is_testnet,
+          data: {
+            payment_method: {
+              id: paymentMethod.id,
+              is_enabled: paymentMethod.is_enabled,
+              created_at: new Date(paymentMethod.created_at).toISOString(),
+              updated_at: new Date(paymentMethod.updated_at).toISOString(),
+              token: {
+                id: token.id,
+                address: token.address,
+                symbol: token.symbol,
+                decimals: token.decimals,
+                chain_id: token.chain_id,
+              },
+              chain: {
+                id: chain.id,
+                network_id: chain.network_id,
+                name: chain.name,
+                is_testnet: chain.is_testnet,
+              },
             },
           },
         });
@@ -330,32 +342,37 @@ export async function paymentMethodsRoute(
             type: 'object',
             properties: {
               success: { type: 'boolean', example: true },
-              payment_method: {
+              data: {
                 type: 'object',
                 properties: {
-                  id: { type: 'integer' },
-                  is_enabled: { type: 'boolean' },
-                  created_at: { type: 'string', format: 'date-time' },
-                  updated_at: { type: 'string', format: 'date-time' },
-                  token: {
+                  payment_method: {
                     type: 'object',
-                    nullable: true,
                     properties: {
                       id: { type: 'integer' },
-                      address: { type: 'string' },
-                      symbol: { type: 'string' },
-                      decimals: { type: 'integer' },
-                      chain_id: { type: 'integer' },
-                    },
-                  },
-                  chain: {
-                    type: 'object',
-                    nullable: true,
-                    properties: {
-                      id: { type: 'integer' },
-                      network_id: { type: 'integer' },
-                      name: { type: 'string' },
-                      is_testnet: { type: 'boolean' },
+                      is_enabled: { type: 'boolean' },
+                      created_at: { type: 'string', format: 'date-time' },
+                      updated_at: { type: 'string', format: 'date-time' },
+                      token: {
+                        type: 'object',
+                        nullable: true,
+                        properties: {
+                          id: { type: 'integer' },
+                          address: { type: 'string' },
+                          symbol: { type: 'string' },
+                          decimals: { type: 'integer' },
+                          chain_id: { type: 'integer' },
+                        },
+                      },
+                      chain: {
+                        type: 'object',
+                        nullable: true,
+                        properties: {
+                          id: { type: 'integer' },
+                          network_id: { type: 'integer' },
+                          name: { type: 'string' },
+                          is_testnet: { type: 'boolean' },
+                        },
+                      },
                     },
                   },
                 },
@@ -497,7 +514,12 @@ export async function paymentMethodsRoute(
             type: 'object',
             properties: {
               success: { type: 'boolean', example: true },
-              message: { type: 'string' },
+              data: {
+                type: 'object',
+                properties: {
+                  message: { type: 'string' },
+                },
+              },
             },
           },
           400: ErrorResponseSchema,

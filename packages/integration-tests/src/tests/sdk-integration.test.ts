@@ -112,13 +112,13 @@ describe('SDK Integration', () => {
 
       const response = await client.createPayment(params);
 
-      expect(response.paymentId).toBeDefined();
-      expect(response.paymentId.startsWith('0x')).toBe(true);
-      expect(response.chainId).toBe(token.networkId);
-      expect(response.tokenAddress.toLowerCase()).toBe(token.address.toLowerCase());
-      expect(response.serverSignature).toBeDefined();
-      expect(response.recipientAddress).toBeDefined();
-      expect(response.merchantId).toBeDefined();
+      expect(response.data.paymentId).toBeDefined();
+      expect(response.data.paymentId.startsWith('0x')).toBe(true);
+      expect(response.data.chainId).toBe(token.networkId);
+      expect(response.data.tokenAddress.toLowerCase()).toBe(token.address.toLowerCase());
+      expect(response.data.serverSignature).toBeDefined();
+      expect(response.data.recipientAddress).toBeDefined();
+      expect(response.data.merchantId).toBeDefined();
     });
 
     it('should return payment hash and gateway address', async () => {
@@ -133,11 +133,11 @@ describe('SDK Integration', () => {
 
       const response = await client.createPayment(params);
 
-      expect(response.gatewayAddress).toBeDefined();
-      expect(response.gatewayAddress.toLowerCase()).toBe(
+      expect(response.data.gatewayAddress).toBeDefined();
+      expect(response.data.gatewayAddress.toLowerCase()).toBe(
         CONTRACT_ADDRESSES.paymentGateway.toLowerCase()
       );
-      const forwarderAddress = response.forwarderAddress;
+      const forwarderAddress = response.data.forwarderAddress;
       expect(forwarderAddress).toBeDefined();
       if (!forwarderAddress) return;
       expect(forwarderAddress.toLowerCase()).toBe(CONTRACT_ADDRESSES.forwarder.toLowerCase());
@@ -155,7 +155,7 @@ describe('SDK Integration', () => {
 
       const createParams = makeCreatePaymentParams(25);
       const createResponse = await client.createPayment(createParams);
-      const paymentId = createResponse.paymentId;
+      const paymentId = createResponse.data.paymentId;
 
       const statusResponse = await client.getPaymentStatus(paymentId);
 
@@ -176,22 +176,22 @@ describe('SDK Integration', () => {
       const amount = parseUnits('10', token.decimals);
 
       const createResponse = await client.createPayment(makeCreatePaymentParams(10));
-      const paymentId = createResponse.paymentId;
+      const paymentId = createResponse.data.paymentId;
 
-      await approveToken(token.address, createResponse.gatewayAddress, amount, payerPrivateKey);
+      await approveToken(token.address, createResponse.data.gatewayAddress, amount, payerPrivateKey);
 
       const wallet = getWallet(payerPrivateKey);
-      const gateway = getContract(createResponse.gatewayAddress, PaymentGatewayABI, wallet);
+      const gateway = getContract(createResponse.data.gatewayAddress, PaymentGatewayABI, wallet);
 
       const tx = await gateway.pay(
         paymentId,
         token.address,
         amount,
-        createResponse.recipientAddress,
-        createResponse.merchantId,
-        BigInt(createResponse.deadline),
-        BigInt(createResponse.escrowDuration),
-        createResponse.serverSignature,
+        createResponse.data.recipientAddress,
+        createResponse.data.merchantId,
+        BigInt(createResponse.data.deadline),
+        BigInt(createResponse.data.escrowDuration),
+        createResponse.data.serverSignature,
         ZERO_PERMIT
       );
       await tx.wait();
@@ -213,18 +213,18 @@ describe('SDK Integration', () => {
       const amount = parseUnits('5', token.decimals);
 
       const createResponse = await client.createPayment(makeCreatePaymentParams(5));
-      const paymentId = createResponse.paymentId;
+      const paymentId = createResponse.data.paymentId;
 
-      const { recipientAddress, merchantId: respMerchantId, serverSignature } = createResponse;
+      const { recipientAddress, merchantId: respMerchantId, serverSignature } = createResponse.data;
       if (!recipientAddress || !respMerchantId || !serverSignature) {
         throw new Error('Server signature fields missing from response');
       }
-      const forwarderAddress = createResponse.forwarderAddress;
+      const forwarderAddress = createResponse.data.forwarderAddress;
       if (!forwarderAddress) {
         throw new Error('forwarderAddress missing from create response');
       }
 
-      await approveToken(token.address, createResponse.gatewayAddress, amount, payerPrivateKey);
+      await approveToken(token.address, createResponse.data.gatewayAddress, amount, payerPrivateKey);
 
       const forwarder = getContract(forwarderAddress, ERC2771ForwarderABI);
       const nonce = await forwarder.nonces(payerAddress);
@@ -235,14 +235,14 @@ describe('SDK Integration', () => {
         amount,
         recipientAddress,
         respMerchantId,
-        BigInt(createResponse.deadline),
-        BigInt(createResponse.escrowDuration),
+        BigInt(createResponse.data.deadline),
+        BigInt(createResponse.data.escrowDuration),
         serverSignature
       );
 
       const request: ForwardRequest = {
         from: payerAddress,
-        to: createResponse.gatewayAddress,
+        to: createResponse.data.gatewayAddress,
         value: 0n,
         gas: 500000n,
         nonce,
@@ -269,7 +269,7 @@ describe('SDK Integration', () => {
       });
 
       expect(gaslessResponse.success).toBe(true);
-      expect(gaslessResponse.status).toBeDefined();
+      expect(gaslessResponse.data.status).toBeDefined();
     });
 
     it('should track relay status', async () => {
@@ -283,13 +283,13 @@ describe('SDK Integration', () => {
 
       const createResponse = await client.createPayment(makeCreatePaymentParams(3));
 
-      await approveToken(token.address, createResponse.gatewayAddress, amount, payerPrivateKey);
+      await approveToken(token.address, createResponse.data.gatewayAddress, amount, payerPrivateKey);
 
-      const { recipientAddress, merchantId: respMerchantId, serverSignature } = createResponse;
+      const { recipientAddress, merchantId: respMerchantId, serverSignature } = createResponse.data;
       if (!recipientAddress || !respMerchantId || !serverSignature) {
         throw new Error('Server signature fields missing from response');
       }
-      const forwarderAddress = createResponse.forwarderAddress;
+      const forwarderAddress = createResponse.data.forwarderAddress;
       if (!forwarderAddress) {
         throw new Error('forwarderAddress missing from create response');
       }
@@ -298,19 +298,19 @@ describe('SDK Integration', () => {
       const nonce = await forwarder.nonces(payerAddress);
       const forwardDeadline = getDeadline(1);
       const data = encodePayFunctionData(
-        createResponse.paymentId,
+        createResponse.data.paymentId,
         token.address,
         amount,
         recipientAddress,
         respMerchantId,
-        BigInt(createResponse.deadline),
-        BigInt(createResponse.escrowDuration),
+        BigInt(createResponse.data.deadline),
+        BigInt(createResponse.data.escrowDuration),
         serverSignature
       );
 
       const request: ForwardRequest = {
         from: payerAddress,
-        to: createResponse.gatewayAddress,
+        to: createResponse.data.gatewayAddress,
         value: 0n,
         gas: 500000n,
         nonce,
@@ -321,7 +321,7 @@ describe('SDK Integration', () => {
       const signature = await signForwardRequest(request, payerPrivateKey);
 
       await client.submitGasless({
-        paymentId: createResponse.paymentId,
+        paymentId: createResponse.data.paymentId,
         forwarderAddress,
         forwardRequest: {
           from: request.from,
@@ -336,7 +336,7 @@ describe('SDK Integration', () => {
       });
 
       // Gateway no longer exposes GET /payments/relay/:id/status; poll payment status instead
-      const paymentId = createResponse.paymentId;
+      const paymentId = createResponse.data.paymentId;
       const statusResponse = await client.getPaymentStatus(paymentId);
       expect(statusResponse.success).toBe(true);
       expect(statusResponse.data?.paymentId).toBe(paymentId);

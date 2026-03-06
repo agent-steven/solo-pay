@@ -48,7 +48,7 @@ describe('Authentication & Isolation', () => {
     const client = createTestClient(merchantA);
     const params = makeCreatePaymentParams(100, orderId);
     const createRes = await client.createPayment(params);
-    return createRes.paymentId;
+    return createRes.data.paymentId;
   }
 
   beforeAll(async () => {

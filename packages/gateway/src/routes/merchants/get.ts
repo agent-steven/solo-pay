@@ -31,86 +31,91 @@ export async function getMerchantRoute(
             type: 'object',
             properties: {
               success: { type: 'boolean', example: true },
-              merchant: {
+              data: {
                 type: 'object',
                 properties: {
-                  id: { type: 'integer' },
-                  merchant_key: { type: 'string' },
-                  name: { type: 'string' },
-                  chain_id: { type: 'integer', nullable: true },
-                  chain: {
+                  merchant: {
                     type: 'object',
-                    nullable: true,
                     properties: {
                       id: { type: 'integer' },
-                      network_id: { type: 'integer' },
+                      merchant_key: { type: 'string' },
                       name: { type: 'string' },
-                      is_testnet: { type: 'boolean' },
-                    },
-                  },
-                  webhook_url: { type: 'string', nullable: true },
-                  public_key: {
-                    type: 'string',
-                    nullable: true,
-                    description:
-                      'Public key for client-side integration (pk_live_xxx or pk_test_xxx)',
-                  },
-                  is_enabled: { type: 'boolean' },
-                  created_at: { type: 'string', format: 'date-time' },
-                  updated_at: { type: 'string', format: 'date-time' },
-                  payment_methods: {
-                    type: 'array',
-                    items: {
-                      type: 'object',
-                      properties: {
-                        id: { type: 'integer' },
-                        is_enabled: { type: 'boolean' },
-                        created_at: { type: 'string', format: 'date-time' },
-                        updated_at: { type: 'string', format: 'date-time' },
-                        token: {
-                          type: 'object',
-                          properties: {
-                            id: { type: 'integer' },
-                            address: { type: 'string' },
-                            symbol: { type: 'string' },
-                            decimals: { type: 'integer' },
-                            chain_id: { type: 'integer' },
-                          },
+                      chain_id: { type: 'integer', nullable: true },
+                      chain: {
+                        type: 'object',
+                        nullable: true,
+                        properties: {
+                          id: { type: 'integer' },
+                          network_id: { type: 'integer' },
+                          name: { type: 'string' },
+                          is_testnet: { type: 'boolean' },
                         },
-                        chain: {
+                      },
+                      webhook_url: { type: 'string', nullable: true },
+                      public_key: {
+                        type: 'string',
+                        nullable: true,
+                        description:
+                          'Public key for client-side integration (pk_live_xxx or pk_test_xxx)',
+                      },
+                      is_enabled: { type: 'boolean' },
+                      created_at: { type: 'string', format: 'date-time' },
+                      updated_at: { type: 'string', format: 'date-time' },
+                      payment_methods: {
+                        type: 'array',
+                        items: {
                           type: 'object',
                           properties: {
                             id: { type: 'integer' },
-                            network_id: { type: 'integer' },
-                            name: { type: 'string' },
-                            is_testnet: { type: 'boolean' },
+                            is_enabled: { type: 'boolean' },
+                            created_at: { type: 'string', format: 'date-time' },
+                            updated_at: { type: 'string', format: 'date-time' },
+                            token: {
+                              type: 'object',
+                              properties: {
+                                id: { type: 'integer' },
+                                address: { type: 'string' },
+                                symbol: { type: 'string' },
+                                decimals: { type: 'integer' },
+                                chain_id: { type: 'integer' },
+                              },
+                            },
+                            chain: {
+                              type: 'object',
+                              properties: {
+                                id: { type: 'integer' },
+                                network_id: { type: 'integer' },
+                                name: { type: 'string' },
+                                is_testnet: { type: 'boolean' },
+                              },
+                            },
                           },
                         },
                       },
                     },
                   },
-                },
-              },
-              chainTokens: {
-                type: 'array',
-                description:
-                  'All chains with their tokens (for add payment method). Same format as GET /chains/tokens.',
-                items: {
-                  type: 'object',
-                  properties: {
-                    id: { type: 'integer' },
-                    network_id: { type: 'integer' },
-                    name: { type: 'string' },
-                    is_testnet: { type: 'boolean' },
-                    tokens: {
-                      type: 'array',
-                      items: {
-                        type: 'object',
-                        properties: {
-                          id: { type: 'integer' },
-                          address: { type: 'string' },
-                          symbol: { type: 'string' },
-                          decimals: { type: 'integer' },
+                  chainTokens: {
+                    type: 'array',
+                    description:
+                      'All chains with their tokens (for add payment method). Same format as GET /chains/tokens.',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'integer' },
+                        network_id: { type: 'integer' },
+                        name: { type: 'string' },
+                        is_testnet: { type: 'boolean' },
+                        tokens: {
+                          type: 'array',
+                          items: {
+                            type: 'object',
+                            properties: {
+                              id: { type: 'integer' },
+                              address: { type: 'string' },
+                              symbol: { type: 'string' },
+                              decimals: { type: 'integer' },
+                            },
+                          },
                         },
                       },
                     },

@@ -63,15 +63,19 @@ test.describe('Permit Payment (API + Chain)', () => {
 
     expect(checkoutRes.ok(), `Gateway API returned ${checkoutRes.status()}`).toBe(true);
 
-    const paymentData: {
-      paymentId: string;
-      serverSignature: string;
-      recipientAddress: string;
-      merchantId: string;
-      deadline: string;
-      escrowDuration: string;
-      amount: string;
+    const responseBody: {
+      success: boolean;
+      data: {
+        paymentId: string;
+        serverSignature: string;
+        recipientAddress: string;
+        merchantId: string;
+        deadline: string;
+        escrowDuration: string;
+        amount: string;
+      };
     } = await checkoutRes.json();
+    const paymentData = responseBody.data;
 
     const paymentId = paymentData.paymentId as `0x${string}`;
     const amount = BigInt(paymentData.amount);
