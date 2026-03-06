@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useCallback, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useCallback, useEffect, useMemo, type ReactNode } from 'react';
 import { useRouter } from 'next/router';
 import type { Locale } from '../lib/i18n';
 import { t, DEFAULT_LOCALE, SUPPORTED_LOCALES } from '../lib/i18n';
@@ -43,6 +43,10 @@ interface LocaleProviderProps {
  */
 export function LocaleProvider({ children, locale, onLocaleChange }: LocaleProviderProps) {
   const router = useRouter();
+
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
 
   const setLocale = useCallback(
     (next: Locale) => {

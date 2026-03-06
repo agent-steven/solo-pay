@@ -1,13 +1,18 @@
-import type { GetServerSideProps, NextPage } from 'next';
+import type { NextPage } from 'next';
 import Head from 'next/head';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
 import { useState, useEffect, useMemo } from 'react';
 import { validateWidgetUrlParams } from '../lib/validation';
 import type { UrlParamsValidationResult } from '../types';
-import PaymentStep from '../components/payment/PaymentStep';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { LocaleProvider, useLocale } from '../context/LocaleContext';
 import { parseLocale, SUPPORTED_LOCALES } from '../lib/i18n';
+
+const PaymentStep = dynamic(() => import('../components/payment/PaymentStep'), {
+  ssr: false,
+  loading: () => <LoadingSpinner />,
+});
 
 function PaymentContent() {
   const router = useRouter();
@@ -95,7 +100,7 @@ function WidgetLayout() {
       <div className="flex-1 min-h-0 flex flex-col justify-center overflow-y-auto">
         <PaymentContent />
       </div>
-      <p className="shrink-0 text-center text-xs pt-4 sm:pt-6 text-gray-400">
+      <p className="shrink-0 text-center text-xs pt-4 sm:pt-6 text-gray-500">
         <span className="block text-xs">Copyright © 2026 Solo Pay</span>
         <span className="block text-[10px] mt-0.5">All rights reserved</span>
       </p>
@@ -115,7 +120,7 @@ const Home: NextPage = () => {
       <Head>
         <title>Solo Pay</title>
         <meta content="Solo Pay - Mobile Payment" name="description" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link href="/favicon.ico" rel="icon" />
       </Head>
       <main className="sm:flex sm:items-center sm:justify-center sm:min-h-screen bg-transparent">
@@ -134,10 +139,6 @@ const Home: NextPage = () => {
       </main>
     </>
   );
-};
-
-export const getServerSideProps: GetServerSideProps = async () => {
-  return { props: {} };
 };
 
 export default Home;

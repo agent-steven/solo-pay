@@ -3,7 +3,6 @@ import type { AppProps } from 'next/app';
 import { useEffect, useRef, useMemo, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
-import { createAppKit } from '@reown/appkit/react';
 import { mainnet } from '@reown/appkit/networks';
 import {
   createAppKitConfig,
@@ -13,7 +12,8 @@ import {
 } from '../appkit-wagmi';
 import { getMetadata, APPKIT_WALLET_IDS } from '../appkit-config';
 
-type CreateAppKitOptions = Parameters<typeof createAppKit>[0];
+import type { createAppKit as CreateAppKitFn } from '@reown/appkit/react';
+type CreateAppKitOptions = Parameters<typeof CreateAppKitFn>[0];
 
 const projectId = getWcProjectId();
 
@@ -30,35 +30,37 @@ function MyApp({ Component, pageProps }: AppProps) {
   useEffect(() => {
     if (!adapter || !projectId || appKitInitialized.current) return;
     appKitInitialized.current = true;
-    const meta = getMetadata();
-    createAppKit({
-      adapters: [adapter],
-      projectId,
-      networks: appkitNetworks,
-      defaultNetwork: mainnet,
-      metadata: {
-        name: meta.name,
-        description: meta.description,
-        url: meta.url,
-        icons: meta.icons,
-      },
-      featuredWalletIds: [...APPKIT_WALLET_IDS],
-      includeWalletIds: [...APPKIT_WALLET_IDS],
-      allWallets: 'HIDE',
-      enableCoinbase: false,
-      features: {
-        analytics: false,
-        swaps: false,
-        onramp: false,
-        socials: false,
-        connectMethodsOrder: ['wallet'],
-      },
-      themeMode: 'light',
-      themeVariables: {
-        '--apkt-accent': '#2563eb',
-        '--apkt-border-radius-master': '12px',
-      },
-    } as unknown as CreateAppKitOptions);
+    import('@reown/appkit/react').then(({ createAppKit }) => {
+      const meta = getMetadata();
+      createAppKit({
+        adapters: [adapter],
+        projectId,
+        networks: appkitNetworks,
+        defaultNetwork: mainnet,
+        metadata: {
+          name: meta.name,
+          description: meta.description,
+          url: meta.url,
+          icons: meta.icons,
+        },
+        featuredWalletIds: [...APPKIT_WALLET_IDS],
+        includeWalletIds: [...APPKIT_WALLET_IDS],
+        allWallets: 'HIDE',
+        enableCoinbase: false,
+        features: {
+          analytics: false,
+          swaps: false,
+          onramp: false,
+          socials: false,
+          connectMethodsOrder: ['wallet'],
+        },
+        themeMode: 'light',
+        themeVariables: {
+          '--apkt-accent': '#2563eb',
+          '--apkt-border-radius-master': '12px',
+        },
+      } as unknown as CreateAppKitOptions);
+    });
   }, [adapter]);
 
   return (
