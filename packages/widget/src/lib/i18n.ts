@@ -62,14 +62,11 @@ const translations = {
 
     // Token approval
     'approval.title': 'Token Approval',
-    'approval.alreadyApproved': 'Already Approved',
     'approval.description': 'Please approve token spending permission to proceed',
-    'approval.descriptionAlready': 'Token is already approved. Continue to payment.',
     'approval.connectedWallet': 'Connected Wallet',
     'approval.balance': 'Balance',
     'approval.approveToken': 'Approve Token',
     'approval.approving': 'Approving...',
-    'approval.continueToPayment': 'Continue to Payment',
     'approval.cancelPayment': 'Cancel Payment',
     'approval.gasReceived': 'Gas received',
     'approval.gasReceivedDescription':
@@ -161,14 +158,11 @@ const translations = {
     'walletOnly.continue': '계속',
 
     'approval.title': '토큰 승인',
-    'approval.alreadyApproved': '이미 승인됨',
     'approval.description': '결제를 위해 토큰 사용 권한을 승인해 주세요',
-    'approval.descriptionAlready': '토큰이 이미 승인되었습니다. 결제로 계속합니다.',
     'approval.connectedWallet': '연결된 지갑',
     'approval.balance': '잔액',
     'approval.approveToken': '토큰 승인',
     'approval.approving': '승인 중...',
-    'approval.continueToPayment': '결제로 계속',
     'approval.cancelPayment': '결제 취소',
     'approval.gasReceived': '가스 수령 완료',
     'approval.gasReceivedDescription':

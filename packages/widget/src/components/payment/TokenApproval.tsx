@@ -11,8 +11,6 @@ interface TokenApprovalProps {
   onCancel?: () => void;
   /** Whether approval transaction is pending */
   isApproving?: boolean;
-  /** Whether user needs to approve (false if already approved) */
-  needsApproval?: boolean;
   /** Error message from approval */
   error?: string;
   /** Whether gas faucet request is in progress */
@@ -34,7 +32,6 @@ export default function TokenApproval({
   onDisconnect,
   onCancel,
   isApproving = false,
-  needsApproval = true,
   error,
   isRequestingGas = false,
   gasRequestError = null,
@@ -49,10 +46,10 @@ export default function TokenApproval({
       {/* Title */}
       <div className="text-center mb-5 sm:mb-6">
         <h1 className="text-base sm:text-lg font-bold text-gray-900">
-          {needsApproval ? t('approval.title') : t('approval.alreadyApproved')}
+          {t('approval.title')}
         </h1>
         <p className="text-xs sm:text-sm text-gray-500 mt-1">
-          {needsApproval ? t('approval.description') : t('approval.descriptionAlready')}
+          {t('approval.description')}
         </p>
       </div>
 
@@ -180,17 +177,13 @@ export default function TokenApproval({
       )}
 
       {/* Approve Button - hidden when no balance, UNLESS loading */}
-      {(isLoading || hasBalance || !needsApproval) && (
+      {(isLoading || hasBalance) && (
         <button
           type="button"
           className={`w-full py-3 sm:py-3.5 rounded-xl text-white text-sm font-semibold transition-colors ${
             isLoading || isApproving
               ? 'bg-blue-400 cursor-not-allowed'
-              : error
-                ? 'bg-blue-600 hover:bg-blue-500 active:bg-blue-700 cursor-pointer'
-                : needsApproval
-                  ? 'bg-blue-600 hover:bg-blue-500 active:bg-blue-700 cursor-pointer'
-                  : 'bg-green-600 hover:bg-green-500 cursor-pointer'
+              : 'bg-blue-600 hover:bg-blue-500 active:bg-blue-700 cursor-pointer'
           }`}
           onClick={onApprove}
           disabled={isLoading || isApproving}
@@ -202,16 +195,14 @@ export default function TokenApproval({
             </span>
           ) : error ? (
             t('common.tryAgain')
-          ) : needsApproval ? (
-            t('approval.approveToken')
           ) : (
-            t('approval.continueToPayment')
+            t('approval.approveToken')
           )}
         </button>
       )}
 
       {/* Cancel Button - shown when no balance and NOT loading */}
-      {!isLoading && !hasBalance && needsApproval && onCancel && (
+      {!isLoading && !hasBalance && onCancel && (
         <button
           type="button"
           className="w-full mt-3 py-3 sm:py-3.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-500 transition-colors cursor-pointer"
