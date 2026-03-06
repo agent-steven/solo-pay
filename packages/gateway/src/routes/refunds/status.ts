@@ -121,9 +121,9 @@ export async function getRefundStatusRoute(
             reason: refund.reason,
             txHash: refund.tx_hash,
             errorMessage: refund.error_message,
-            createdAt: refund.created_at.toISOString(),
-            submittedAt: refund.submitted_at?.toISOString() || null,
-            confirmedAt: refund.confirmed_at?.toISOString() || null,
+            createdAt: new Date(refund.created_at).toISOString(),
+            submittedAt: refund.submitted_at ? new Date(refund.submitted_at).toISOString() : null,
+            confirmedAt: refund.confirmed_at ? new Date(refund.confirmed_at).toISOString() : null,
           },
         });
       } catch (error) {

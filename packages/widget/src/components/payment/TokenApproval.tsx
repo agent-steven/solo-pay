@@ -21,6 +21,8 @@ interface TokenApprovalProps {
   gasRequestError?: string | null;
   /** Gas was successfully received from faucet */
   gasReceived?: boolean;
+  /** Whether token balance and allowance are loading */
+  isLoading?: boolean;
 }
 
 export default function TokenApproval({
@@ -37,6 +39,7 @@ export default function TokenApproval({
   isRequestingGas = false,
   gasRequestError = null,
   gasReceived = false,
+  isLoading = false,
 }: TokenApprovalProps) {
   const { t } = useLocale();
   const hasBalance = balance !== '' && balance !== '0' && parseFloat(balance) > 0;
@@ -92,7 +95,11 @@ export default function TokenApproval({
         <div className="flex items-center justify-between pt-3 border-t border-gray-200">
           <span className="text-xs sm:text-sm text-gray-500">{t('approval.balance')}</span>
           <span className="text-xs sm:text-sm font-semibold text-gray-900">
-            {balance} {token}
+            {isLoading ? (
+              <span className="inline-block w-16 h-4 bg-gray-200 rounded animate-pulse" />
+            ) : (
+              `${balance} ${token}`
+            )}
           </span>
         </div>
       </div>
@@ -172,12 +179,12 @@ export default function TokenApproval({
         </div>
       )}
 
-      {/* Approve Button - hidden when no balance */}
-      {(hasBalance || !needsApproval) && (
+      {/* Approve Button - hidden when no balance, UNLESS loading */}
+      {(isLoading || hasBalance || !needsApproval) && (
         <button
           type="button"
           className={`w-full py-3 sm:py-3.5 rounded-xl text-white text-sm font-semibold transition-colors ${
-            isApproving
+            isLoading || isApproving
               ? 'bg-blue-400 cursor-not-allowed'
               : error
                 ? 'bg-blue-600 hover:bg-blue-500 active:bg-blue-700 cursor-pointer'
@@ -186,12 +193,12 @@ export default function TokenApproval({
                   : 'bg-green-600 hover:bg-green-500 cursor-pointer'
           }`}
           onClick={onApprove}
-          disabled={isApproving}
+          disabled={isLoading || isApproving}
         >
-          {isApproving ? (
+          {isLoading || isApproving ? (
             <span className="flex items-center justify-center gap-2">
               <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              {t('approval.approving')}
+              {isLoading ? t('error.checkingTokenSupport') : t('approval.approving')}
             </span>
           ) : error ? (
             t('common.tryAgain')
@@ -203,8 +210,8 @@ export default function TokenApproval({
         </button>
       )}
 
-      {/* Cancel Button - shown when no balance */}
-      {!hasBalance && needsApproval && onCancel && (
+      {/* Cancel Button - shown when no balance and NOT loading */}
+      {!isLoading && !hasBalance && needsApproval && onCancel && (
         <button
           type="button"
           className="w-full mt-3 py-3 sm:py-3.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-500 transition-colors cursor-pointer"

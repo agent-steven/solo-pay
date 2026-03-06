@@ -7,14 +7,14 @@ export const dynamic = 'force-dynamic';
 export default async function PaymentSuccessPage({
   searchParams,
 }: {
-  searchParams: Promise<{ paymentId?: string }>;
+  searchParams: Promise<{ orderId?: string; paymentId?: string }>;
 }) {
-  const { paymentId } = await searchParams;
+  const { orderId } = await searchParams;
 
-  if (!paymentId) return notFound();
+  if (!orderId) return notFound();
 
   const payment = await prisma.payment.findUnique({
-    where: { id: Number(paymentId) },
+    where: { id: Number(orderId) },
   });
 
   if (!payment) return notFound();
@@ -127,7 +127,7 @@ export default async function PaymentSuccessPage({
               <div className="flex items-center justify-between">
                 <span className="text-text-muted text-sm">Date</span>
                 <span className="text-text-primary text-sm">
-                  {payment.created_at.toLocaleDateString('en-US', {
+                  {new Date(payment.created_at).toLocaleDateString('en-US', {
                     year: 'numeric',
                     month: 'short',
                     day: 'numeric',

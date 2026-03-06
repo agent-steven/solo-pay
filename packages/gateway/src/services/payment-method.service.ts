@@ -170,8 +170,8 @@ export class PaymentMethodService {
       enriched.push({
         id: pm.id,
         is_enabled: pm.is_enabled,
-        created_at: pm.created_at.toISOString(),
-        updated_at: pm.updated_at.toISOString(),
+        created_at: new Date(pm.created_at).toISOString(),
+        updated_at: new Date(pm.updated_at).toISOString(),
         token: {
           id: token.id,
           address: token.address,

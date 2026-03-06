@@ -170,8 +170,8 @@ Returns the latest relay transaction status for a payment.
             status: latest.status,
             transactionHash: latest.tx_hash ?? null,
             errorMessage: latest.error_message ?? null,
-            createdAt: latest.created_at.toISOString(),
-            updatedAt: latest.updated_at.toISOString(),
+            createdAt: new Date(latest.created_at).toISOString(),
+            updatedAt: new Date(latest.updated_at).toISOString(),
           },
         });
       } catch (error) {
