@@ -6,13 +6,11 @@ import { ServerSigningService } from '../../services/signature-server.service';
 import { BlockchainService } from '../../services/blockchain.service';
 import { RelayerService } from '../../services/relayer.service';
 import { createAuthMiddleware } from '../../middleware/auth.middleware';
-import { ErrorResponseSchema } from '../../docs/schemas';
+import { ErrorResponseSchema, BYTES32_PATTERN } from '../../docs/schemas';
 
 interface CancelPaymentParams {
   id: string;
 }
-
-const BYTES32_PATTERN = '^0x[a-fA-F0-9]{64}$';
 
 const CANCEL_ABI = [
   {
@@ -99,8 +97,13 @@ Note: After escrow deadline, anyone can cancel permissionlessly on-chain without
     async (request, reply) => {
       try {
         const { id: paymentId } = request.params;
-        const merchant = (request as unknown as { merchant: { id: number; merchant_key: string } })
-          .merchant;
+        const merchant = request.merchant;
+        if (!merchant) {
+          return reply.code(401).send({
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required',
+          });
+        }
 
         // 1. Find payment
         const payment = await paymentService.findByHash(paymentId);

@@ -254,16 +254,17 @@ describe('POST /payments', () => {
 
       expect(response.statusCode).toBe(201);
       const body = JSON.parse(response.body);
-      expect(body.paymentId).toBeDefined();
-      expect(body.orderId).toBe('order-001');
-      expect(body.tokenAddress).toBe('0xE4C687167705Abf55d709395f92e254bdF5825a2');
-      expect(body.tokenSymbol).toBe('SUT');
-      expect(body.tokenDecimals).toBe(18);
-      expect(body.gatewayAddress).toBeDefined();
-      expect(body.forwarderAddress).toBeDefined();
-      expect(body.amount).toBe('100000000000000000000');
-      expect(body.expiresAt).toBeDefined();
-      expect(body.serverSignature).toBeDefined();
+      expect(body.success).toBe(true);
+      expect(body.data.paymentId).toBeDefined();
+      expect(body.data.orderId).toBe('order-001');
+      expect(body.data.tokenAddress).toBe('0xE4C687167705Abf55d709395f92e254bdF5825a2');
+      expect(body.data.tokenSymbol).toBe('SUT');
+      expect(body.data.tokenDecimals).toBe(18);
+      expect(body.data.gatewayAddress).toBeDefined();
+      expect(body.data.forwarderAddress).toBeDefined();
+      expect(body.data.amount).toBe('100000000000000000000');
+      expect(body.data.expiresAt).toBeDefined();
+      expect(body.data.serverSignature).toBeDefined();
     });
 
     it('Hardhat 체인 (chainId 31337)으로 최소 필수 정보만으로 결제를 생성할 수 있어야 함', async () => {
@@ -291,7 +292,7 @@ describe('POST /payments', () => {
 
       expect(response.statusCode).toBe(201);
       const body = JSON.parse(response.body);
-      expect(body.tokenAddress).toBe('0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512');
+      expect(body.data.tokenAddress).toBe('0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512');
     });
   });
 
@@ -441,7 +442,7 @@ describe('POST /payments', () => {
 
       expect(response.statusCode).toBe(201);
       const body = JSON.parse(response.body);
-      expect(body.amount).toBe('100000000000000000000');
+      expect(body.data.amount).toBe('100000000000000000000');
     });
 
     it('same orderId twice returns 201 then 409 DUPLICATE_ORDER', async () => {
@@ -468,7 +469,7 @@ describe('POST /payments', () => {
       });
       expect(first.statusCode).toBe(201);
       const firstBody = JSON.parse(first.body);
-      expect(firstBody.orderId).toBe(orderId);
+      expect(firstBody.data.orderId).toBe(orderId);
 
       const second = await app.inject({
         method: 'POST',

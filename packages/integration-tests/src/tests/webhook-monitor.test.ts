@@ -116,7 +116,7 @@ describe('Webhook Monitor Integration', () => {
       orderId
     );
     const createRes = await client.createPayment(params);
-    const paymentHash = createRes.paymentId;
+    const paymentHash = createRes.data.paymentId;
 
     // 2. Approve token and execute on-chain pay() using gateway response data
     await approveToken(token.address, gatewayAddress, tokenAmount, payerPrivateKey);
@@ -127,11 +127,11 @@ describe('Webhook Monitor Integration', () => {
       paymentHash,
       token.address,
       tokenAmount,
-      createRes.recipientAddress,
-      createRes.merchantId,
-      BigInt(createRes.deadline),
-      BigInt(createRes.escrowDuration),
-      createRes.serverSignature,
+      createRes.data.recipientAddress,
+      createRes.data.merchantId,
+      BigInt(createRes.data.deadline),
+      BigInt(createRes.data.escrowDuration),
+      createRes.data.serverSignature,
       ZERO_PERMIT
     );
     await tx.wait();
@@ -158,12 +158,15 @@ describe('Webhook Monitor Integration', () => {
         });
         if (res.ok) {
           const body = (await res.json()) as {
-            status: string;
-            txHash?: string;
-            releaseTxHash?: string;
+            success: boolean;
+            data: {
+              status: string;
+              txHash?: string;
+              releaseTxHash?: string;
+            };
           };
-          if (body.status === expectedStatus) {
-            return body;
+          if (body.data.status === expectedStatus) {
+            return body.data;
           }
         }
       } catch {

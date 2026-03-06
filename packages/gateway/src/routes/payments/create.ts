@@ -107,55 +107,60 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
                 example: true,
                 description: 'Indicates the request succeeded',
               },
-              paymentId: { type: 'string' },
-              orderId: { type: 'string', description: 'Merchant order ID' },
-              serverSignature: {
-                type: 'string',
-                description: 'Server EIP-712 signature for payment authorization',
-              },
-              chainId: { type: 'integer' },
-              tokenAddress: { type: 'string' },
-              gatewayAddress: { type: 'string' },
-              amount: { type: 'string', description: 'Wei' },
-              tokenDecimals: { type: 'integer' },
-              tokenSymbol: { type: 'string' },
-              successUrl: { type: 'string' },
-              failUrl: { type: 'string' },
-              expiresAt: { type: 'string', format: 'date-time' },
-              recipientAddress: {
-                type: 'string',
-                description: 'Merchant recipient wallet address',
-              },
-              merchantId: { type: 'string', description: 'Merchant ID (bytes32)' },
-              deadline: {
-                type: 'string',
-                description: 'Deadline timestamp for server signature expiration',
-              },
-              escrowDuration: {
-                type: 'string',
-                description: 'Escrow duration in seconds (passed to contract pay())',
-              },
-              forwarderAddress: {
-                type: 'string',
-                description: 'ERC2771Forwarder address for gasless payments',
-              },
-              tokenPermitSupported: {
-                type: 'boolean',
-                description: 'Whether the token supports EIP-2612 permit (gasless approval)',
-              },
-              currency: {
-                type: 'string',
-                description:
-                  'Fiat currency code used for conversion (only when currency was provided)',
-              },
-              fiatAmount: {
-                type: 'number',
-                description:
-                  'Original fiat amount before conversion (only when currency was provided)',
-              },
-              tokenPrice: {
-                type: 'number',
-                description: 'Token price at creation time (only when currency was provided)',
+              data: {
+                type: 'object',
+                properties: {
+                  paymentId: { type: 'string' },
+                  orderId: { type: 'string', description: 'Merchant order ID' },
+                  serverSignature: {
+                    type: 'string',
+                    description: 'Server EIP-712 signature for payment authorization',
+                  },
+                  chainId: { type: 'integer' },
+                  tokenAddress: { type: 'string' },
+                  gatewayAddress: { type: 'string' },
+                  amount: { type: 'string', description: 'Wei' },
+                  tokenDecimals: { type: 'integer' },
+                  tokenSymbol: { type: 'string' },
+                  successUrl: { type: 'string' },
+                  failUrl: { type: 'string' },
+                  expiresAt: { type: 'string', format: 'date-time' },
+                  recipientAddress: {
+                    type: 'string',
+                    description: 'Merchant recipient wallet address',
+                  },
+                  merchantId: { type: 'string', description: 'Merchant ID (bytes32)' },
+                  deadline: {
+                    type: 'string',
+                    description: 'Deadline timestamp for server signature expiration',
+                  },
+                  escrowDuration: {
+                    type: 'string',
+                    description: 'Escrow duration in seconds (passed to contract pay())',
+                  },
+                  forwarderAddress: {
+                    type: 'string',
+                    description: 'ERC2771Forwarder address for gasless payments',
+                  },
+                  tokenPermitSupported: {
+                    type: 'boolean',
+                    description: 'Whether the token supports EIP-2612 permit (gasless approval)',
+                  },
+                  currency: {
+                    type: 'string',
+                    description:
+                      'Fiat currency code used for conversion (only when currency was provided)',
+                  },
+                  fiatAmount: {
+                    type: 'number',
+                    description:
+                      'Original fiat amount before conversion (only when currency was provided)',
+                  },
+                  tokenPrice: {
+                    type: 'number',
+                    description: 'Token price at creation time (only when currency was provided)',
+                  },
+                },
               },
             },
           },
@@ -361,27 +366,29 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
 
         return reply.code(201).send({
           success: true,
-          paymentId: paymentHash,
-          orderId: validated.orderId,
-          serverSignature: serverSignature ?? '',
-          chainId,
-          tokenAddress,
-          gatewayAddress: contracts?.gateway ?? '',
-          amount: amountInWei.toString(),
-          tokenDecimals,
-          tokenSymbol,
-          successUrl: validated.successUrl,
-          failUrl: validated.failUrl,
-          expiresAt: expiresAt.toISOString(),
-          recipientAddress,
-          merchantId,
-          deadline: deadline.toString(),
-          escrowDuration: escrowDuration.toString(),
-          forwarderAddress: chain.forwarder_address ?? undefined,
-          tokenPermitSupported: token.permit_enabled ?? false,
-          currency: currencyCode,
-          fiatAmount,
-          tokenPrice,
+          data: {
+            paymentId: paymentHash,
+            orderId: validated.orderId,
+            serverSignature: serverSignature ?? '',
+            chainId,
+            tokenAddress,
+            gatewayAddress: contracts?.gateway ?? '',
+            amount: amountInWei.toString(),
+            tokenDecimals,
+            tokenSymbol,
+            successUrl: validated.successUrl,
+            failUrl: validated.failUrl,
+            expiresAt: expiresAt.toISOString(),
+            recipientAddress,
+            merchantId,
+            deadline: deadline.toString(),
+            escrowDuration: escrowDuration.toString(),
+            forwarderAddress: chain.forwarder_address ?? undefined,
+            tokenPermitSupported: token.permit_enabled ?? false,
+            currency: currencyCode,
+            fiatAmount,
+            tokenPrice,
+          },
         });
       } catch (err) {
         if (err instanceof ZodError) {

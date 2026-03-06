@@ -1,23 +1,23 @@
 'use client';
 
-import { useAppKitConnect } from '../context/AppKitConnectContext';
+import { useCallback, useMemo } from 'react';
+import { useAccount, useConnect, useDisconnect } from 'wagmi';
+import { useAppKit } from '@reown/appkit/react';
 import { useLocale } from '../context/LocaleContext';
-import { PcConnectButton } from './PcConnectButton';
-import { MobileConnectButton } from './MobileConnectButton';
 
-/** Shared base styles for wallet connect buttons (PC and AppKit). */
+/** Shared base styles for wallet connect buttons. */
 export const WALLET_BUTTON_BASE =
   'w-full rounded-xl px-6 py-3 sm:py-4 text-sm sm:text-lg font-semibold text-white shadow-sm disabled:opacity-50 transition-colors';
 
 export const WALLET_STYLES = {
   metaMask: 'bg-[#F6851B] hover:bg-[#e2761b] active:bg-[#cd6116]',
   trustWallet: 'bg-[#3375BB] hover:bg-[#2a5f99] active:bg-[#1e4a7a]',
-  appKit: 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800',
 } as const;
 
 /**
- * Connect step: icon, title, description, then MobileConnectButton (AppKit) or PcConnectButton (injected + MetaMask SDK).
- * onConnectorClick: called when user clicks a wallet option (e.g. to clear "change wallet" intent).
+ * Connect step: MetaMask + Trust Wallet buttons.
+ * Both use wagmi connectors (backed by AppKit WagmiAdapter / WalletConnect).
+ * onConnectorClick: called when user clicks a button (e.g. to clear "change wallet" intent).
  */
 export function ConnectWalletButton({
   className,
@@ -26,8 +26,58 @@ export function ConnectWalletButton({
   className?: string;
   onConnectorClick?: () => void;
 }) {
-  const isAppKit = useAppKitConnect();
   const { t } = useLocale();
+  const { open } = useAppKit();
+  const { isConnected } = useAccount();
+  const { connect, connectors, isPending, variables: connectVars } = useConnect();
+  const { disconnectAsync } = useDisconnect();
+
+  const metaMaskConnector = useMemo(
+    () => connectors.find((c) => c.id === 'metaMaskSDK' || c.id === 'metaMask'),
+    [connectors]
+  );
+  const trustWalletConnector = useMemo(
+    () => connectors.find((c) => c.id === 'trustWallet'),
+    [connectors]
+  );
+
+  const pendingConnectorId = (connectVars?.connector as { id?: string } | undefined)?.id;
+  const isMetaMaskPending =
+    isPending && (pendingConnectorId === 'metaMask' || pendingConnectorId === 'metaMaskSDK');
+  const isTrustPending = isPending && pendingConnectorId === 'trustWallet';
+
+  const connectWith = useCallback(
+    async (connector: NonNullable<typeof metaMaskConnector>) => {
+      onConnectorClick?.();
+      if (!isConnected) {
+        try {
+          await disconnectAsync({ connector });
+        } catch {
+          // already disconnected
+        }
+      }
+      connect({ connector });
+    },
+    [onConnectorClick, isConnected, disconnectAsync, connect]
+  );
+
+  const handleMetaMask = useCallback(() => {
+    if (metaMaskConnector) {
+      connectWith(metaMaskConnector);
+    } else {
+      onConnectorClick?.();
+      open({ view: 'Connect' });
+    }
+  }, [metaMaskConnector, connectWith, onConnectorClick, open]);
+
+  const handleTrustWallet = useCallback(() => {
+    if (trustWalletConnector) {
+      connectWith(trustWalletConnector);
+    } else {
+      onConnectorClick?.();
+      open({ view: 'Connect' });
+    }
+  }, [trustWalletConnector, connectWith, onConnectorClick, open]);
 
   return (
     <div className={['w-full', className].filter(Boolean).join(' ')}>
@@ -69,12 +119,24 @@ export function ConnectWalletButton({
         </p>
       </div>
 
-      <div className="flex justify-center w-full">
-        {isAppKit ? (
-          <MobileConnectButton onConnectorClick={onConnectorClick} />
-        ) : (
-          <PcConnectButton className={className} onConnectorClick={onConnectorClick} />
-        )}
+      <div className="flex flex-col gap-2 w-full">
+        <button
+          type="button"
+          onClick={handleMetaMask}
+          disabled={isPending}
+          className={`${WALLET_BUTTON_BASE} ${WALLET_STYLES.metaMask}`}
+        >
+          {isMetaMaskPending ? t('connect.connecting') : t('connect.metaMask')}
+        </button>
+
+        <button
+          type="button"
+          onClick={handleTrustWallet}
+          disabled={isPending}
+          className={`${WALLET_BUTTON_BASE} ${WALLET_STYLES.trustWallet}`}
+        >
+          {isTrustPending ? t('connect.connecting') : t('connect.trustWallet')}
+        </button>
       </div>
     </div>
   );

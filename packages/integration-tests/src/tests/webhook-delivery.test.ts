@@ -241,7 +241,8 @@ describe('Webhook Delivery to Sample Merchant', () => {
         return;
       }
 
-      const body = (await res.json()) as WebhookJsonBody;
+      const json = (await res.json()) as { success: boolean; data: WebhookJsonBody };
+      const body = json.data;
       expect(body.orderId).toBe(testOrderId);
       expect(body.paymentId).toBeDefined();
       expect(body.paymentId).toMatch(/^0x/);

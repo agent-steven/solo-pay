@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
       failUrl: String(failUrl),
     });
 
-    return NextResponse.json(payment, { status: 201 });
+    return NextResponse.json(payment.data, { status: 201 });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to create payment';
     const code = (err as { code?: string })?.code ?? 'INTERNAL_ERROR';

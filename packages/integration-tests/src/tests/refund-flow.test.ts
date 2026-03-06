@@ -27,6 +27,12 @@ import {
   type PaymentParams,
   type ForwardRequest,
 } from '../helpers/signature';
+import {
+  createTestClient,
+  waitForPaymentStatus,
+  TEST_MERCHANT,
+  makeCreatePaymentParams,
+} from '../helpers/sdk';
 
 describe('Refund Flow Integration', () => {
   const token = getToken('mockUSDT');
@@ -42,7 +48,27 @@ describe('Refund Flow Integration', () => {
   const merchantKey = 'merchant_demo_001';
   const merchantId = merchantKeyToId(merchantKey);
 
+  const GATEWAY_BASE = (process.env.GATEWAY_URL || 'http://localhost:3001').replace(/\/$/, '');
+  const RELAYER_BASE = (
+    process.env.RELAY_API_URL ||
+    process.env.RELAYER_URL ||
+    'http://localhost:3002'
+  ).replace(/\/$/, '');
+
   let blockchainRunning = false;
+  let gatewayAndRelayerReady = false;
+
+  async function checkGatewayAndRelayer(): Promise<boolean> {
+    try {
+      const [gw, rly] = await Promise.all([
+        fetch(`${GATEWAY_BASE}/health`, { signal: AbortSignal.timeout(3000) }),
+        fetch(`${RELAYER_BASE}/health`, { signal: AbortSignal.timeout(3000) }),
+      ]);
+      return gw.ok && rly.ok;
+    } catch {
+      return false;
+    }
+  }
 
   async function checkBlockchain(): Promise<boolean> {
     try {
@@ -121,6 +147,7 @@ describe('Refund Flow Integration', () => {
 
   beforeAll(async () => {
     blockchainRunning = await checkBlockchain();
+    gatewayAndRelayerReady = await checkGatewayAndRelayer();
     if (!blockchainRunning) {
       console.warn(
         '\n⚠️  Hardhat node is not running. Refund flow tests will be skipped.\n' +
@@ -315,6 +342,118 @@ describe('Refund Flow Integration', () => {
       // Verify payer got tokens back
       const finalPayerBalance = await getTokenBalance(token.address, payerAddress);
       expect(finalPayerBalance).toBe(initialPayerBalance + amount);
+    });
+  });
+
+  /**
+   * Scenario: create refund (Gateway API) → merchant signs ForwardRequest → call relay API.
+   * Covers the flow Steven described: "call create refund, return server signature, merchant sign with data, call relay!"
+   */
+  describe('Refund via Relay API', () => {
+    it('should complete refund via Gateway create refund + merchant sign + relayer submit', async () => {
+      if (!blockchainRunning || !gatewayAndRelayerReady) return;
+
+      const orderId = `ORDER_REFUND_RELAY_API_${Date.now()}`;
+      const client = createTestClient(TEST_MERCHANT);
+      const params = makeCreatePaymentParams(25, orderId, token.address);
+
+      // 1. Create payment via Gateway API
+      const createResponse = await client.createPayment(params);
+      const paymentData = createResponse.data;
+      const paymentId = paymentData.paymentId;
+      const amountWei = BigInt(paymentData.amount);
+
+      await approveToken(token.address, gatewayAddress, amountWei, payerPrivateKey);
+
+      // 2. Pay direct on-chain (payer)
+      const payerWallet = getWallet(payerPrivateKey);
+      const gateway = getContract(gatewayAddress, PaymentGatewayABI, payerWallet);
+      const payTx = await gateway.pay(
+        paymentId,
+        paymentData.tokenAddress,
+        amountWei,
+        paymentData.recipientAddress,
+        paymentData.merchantId,
+        BigInt(paymentData.deadline),
+        BigInt(paymentData.escrowDuration),
+        paymentData.serverSignature,
+        ZERO_PERMIT
+      );
+      await payTx.wait();
+
+      // 3. Sync gateway DB from chain, then finalize via Gateway API
+      await client.getPaymentStatus(paymentId);
+      await client.finalizePayment(paymentId);
+      // Wait for relayer to confirm finalize tx and DB to reach FINALIZED
+      await waitForPaymentStatus(client, paymentId, 'FINALIZED', 30000);
+
+      const initialPayerBalance = await getTokenBalance(token.address, payerAddress);
+
+      // 4. Create refund via Gateway API → get server signature
+      const createRefundResponse = await client.createRefund({ paymentId });
+      const serverSignature = createRefundResponse.data.serverSignature;
+
+      // 5. Merchant (recipient) approves gateway for refund amount
+      await approveToken(token.address, gatewayAddress, amountWei, recipientPrivateKey);
+
+      // 6. Encode refund calldata and build ForwardRequest (from = recipient)
+      const refundCalldata = encodeRefundFunctionData(paymentId, serverSignature);
+      const forwarder = getContract(forwarderAddress, ERC2771ForwarderABI);
+      const recipientNonce = await forwarder.nonces(recipientAddress);
+      const forwardDeadline = getDeadline(1);
+
+      const forwardRequest: ForwardRequest = {
+        from: recipientAddress,
+        to: gatewayAddress,
+        value: 0n,
+        gas: 500000n,
+        nonce: recipientNonce,
+        deadline: forwardDeadline,
+        data: refundCalldata,
+      };
+
+      // 7. Merchant signs ForwardRequest
+      const forwardSignature = await signForwardRequest(
+        forwardRequest,
+        recipientPrivateKey,
+        forwarderAddress,
+        TEST_CHAIN_ID
+      );
+
+      // 8. Call relay API (simple-relayer gasless endpoint)
+      const relayBody = {
+        request: {
+          from: forwardRequest.from,
+          to: forwardRequest.to,
+          value: '0',
+          gas: forwardRequest.gas.toString(),
+          nonce: forwardRequest.nonce.toString(),
+          deadline: forwardRequest.deadline.toString(),
+          data: forwardRequest.data,
+        },
+        signature: forwardSignature,
+      };
+      const relayRes = await fetch(`${RELAYER_BASE}/api/v1/relay/gasless`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(relayBody),
+        signal: AbortSignal.timeout(15000),
+      });
+      expect(relayRes.ok).toBe(true);
+
+      const relayJson = (await relayRes.json()) as { transactionId?: string; status?: string };
+      expect(relayJson.transactionId).toBeDefined();
+
+      // 9. Wait for confirmation (poll relayer status or short sleep)
+      await new Promise((r) => setTimeout(r, 5000));
+
+      // 10. Verify refund completed on-chain and payer balance
+      const gatewayContract = getContract(gatewayAddress, PaymentGatewayABI);
+      const isRefunded = await gatewayContract.isPaymentRefunded(paymentId);
+      expect(isRefunded).toBe(true);
+
+      const finalPayerBalance = await getTokenBalance(token.address, payerAddress);
+      expect(finalPayerBalance).toBe(initialPayerBalance + amountWei);
     });
   });
 

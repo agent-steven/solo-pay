@@ -127,6 +127,7 @@ describe('POST /payments/:id/relay', () => {
 
     relayService = {
       create: vi.fn().mockResolvedValue({ id: 'relay-db-id' }),
+      findByPaymentId: vi.fn().mockResolvedValue([]),
     };
 
     paymentService = {
@@ -169,7 +170,7 @@ describe('POST /payments/:id/relay', () => {
       expect(response.statusCode).toBe(202);
       const body = JSON.parse(response.body);
       expect(body.success).toBe(true);
-      expect(body.status).toBe('submitted');
+      expect(body.data.status).toBe('submitted');
     });
 
     it('Gasless 거래 응답에 필요한 모든 필드가 포함되어야 함', async () => {
@@ -185,12 +186,39 @@ describe('POST /payments/:id/relay', () => {
       expect(response.statusCode).toBe(202);
       const body = JSON.parse(response.body);
       expect(body).toHaveProperty('success');
-      expect(body).toHaveProperty('status');
-      expect(body).toHaveProperty('message');
+      expect(body.data).toHaveProperty('status');
+      expect(body.data).toHaveProperty('message');
     });
   });
 
   describe('경계 케이스', () => {
+    it('should return 400 RELAY_ALREADY_SUBMITTED when relay already in flight for this payment', async () => {
+      relayService.findByPaymentId = vi.fn().mockResolvedValue([
+        {
+          id: 1,
+          payment_id: 1,
+          relay_ref: 'tx-1',
+          status: 'SUBMITTED',
+          created_at: new Date(),
+        },
+      ]);
+
+      const validRequest = createValidGaslessRequest('payment-123');
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `${API_V1_BASE_PATH}/payments/payment-123/relay`,
+        headers: { 'x-public-key': TEST_PUBLIC_KEY, origin: TEST_ORIGIN },
+        payload: validRequest,
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.body);
+      expect(body.code).toBe('RELAY_ALREADY_SUBMITTED');
+      expect(body.message).toContain('Gasless already submitted');
+      expect(relayerService.submitForwardTransaction).not.toHaveBeenCalled();
+    });
+
     it('유효하지 않은 서명 형식일 때 400 상태 코드를 반환해야 함', async () => {
       relayerService.validateTransactionData = vi.fn().mockReturnValueOnce(false);
 

@@ -74,6 +74,8 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.target }}-${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=${{ matrix.target }}-${{ matrix.arch }}
           provenance: false
+          build-args: |
+            NEXT_PUBLIC_WC_PROJECT_ID=${{ secrets.NEXT_PUBLIC_WC_PROJECT_ID }}
 
   manifest:
     name: Create manifest ${{ matrix.target }}

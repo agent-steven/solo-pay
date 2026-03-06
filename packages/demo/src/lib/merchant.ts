@@ -88,8 +88,8 @@ export function getMerchantConfig(): MerchantConfig {
 
   const publicKey =
     process.env.SOLO_PAY_PUBLIC_KEY || process.env.NEXT_PUBLIC_SOLO_PAY_PUBLIC_KEY || '';
-  // Origin for POST /payments. Server-side requests do not send Origin automatically;
-  // this value is sent by the SDK. Only browser requests send Origin automatically.
+  // Origin sent to gateway on POST /payments (create) and checkout. When gateway has ALLOWED_WIDGET_ORIGIN set,
+  // this must match it exactly (e.g. SOLO_PAY_ORIGIN=http://localhost:3005 when gateway allows widget at 3005).
   const origin =
     process.env.SOLO_PAY_ORIGIN ||
     process.env.NEXT_PUBLIC_APP_URL ||

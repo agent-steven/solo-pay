@@ -3,6 +3,7 @@ import { MerchantService } from '../../services/merchant.service';
 import { PaymentService } from '../../services/payment.service';
 import { RefundService } from '../../services/refund.service';
 import { createAuthMiddleware } from '../../middleware/auth.middleware';
+import { ErrorResponseSchema } from '../../docs/schemas';
 
 interface RefundStatusParams {
   refundId: string;
@@ -62,20 +63,9 @@ export async function getRefundStatusRoute(
               },
             },
           },
-          403: {
-            type: 'object',
-            properties: {
-              code: { type: 'string' },
-              message: { type: 'string' },
-            },
-          },
-          404: {
-            type: 'object',
-            properties: {
-              code: { type: 'string' },
-              message: { type: 'string' },
-            },
-          },
+          403: ErrorResponseSchema,
+          404: ErrorResponseSchema,
+          500: ErrorResponseSchema,
         },
       },
       preHandler: authMiddleware,
@@ -83,7 +73,13 @@ export async function getRefundStatusRoute(
     async (request, reply) => {
       try {
         const { refundId } = request.params;
-        const merchant = (request as unknown as { merchant: { id: number } }).merchant;
+        const merchant = request.merchant;
+        if (!merchant) {
+          return reply.code(401).send({
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required',
+          });
+        }
 
         // Find refund
         const refund = await refundService.findByHash(refundId);

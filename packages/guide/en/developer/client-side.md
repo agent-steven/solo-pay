@@ -42,11 +42,17 @@ solopay.requestPayment({
 
 ## Step 2: Handle Callback URL
 
-After payment, SoloPay redirects the user to the `successUrl` or `failUrl` specified at payment creation. The widget automatically appends `paymentId` and `orderId` as query parameters.
+After payment, SoloPay redirects the user to the `successUrl` or `failUrl` specified at payment creation. The widget automatically appends `paymentId`, `orderId`, and `status` as query parameters.
+
+| Parameter   | Description                         |
+| ----------- | ----------------------------------- |
+| `paymentId` | The unique payment identifier       |
+| `orderId`   | The merchant order ID               |
+| `status`    | Payment result: `success` or `fail` |
 
 ```
-https://yourshop.com/payment/success?paymentId=0xabc123...&orderId=order-001
-https://yourshop.com/payment/fail?paymentId=0xabc123...&orderId=order-001
+https://yourshop.com/payment/success?paymentId=0xabc123...&orderId=order-001&status=success
+https://yourshop.com/payment/fail?paymentId=0xabc123...&orderId=order-001&status=fail
 ```
 
 ::: warning Do Not Trust URL Parameters
