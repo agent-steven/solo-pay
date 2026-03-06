@@ -359,8 +359,9 @@ describe('Refund Flow Integration', () => {
 
       // 1. Create payment via Gateway API
       const createResponse = await client.createPayment(params);
-      const paymentId = createResponse.paymentId;
-      const amountWei = BigInt(createResponse.amount);
+      const paymentData = createResponse.data;
+      const paymentId = paymentData.paymentId;
+      const amountWei = BigInt(paymentData.amount);
 
       await approveToken(token.address, gatewayAddress, amountWei, payerPrivateKey);
 
@@ -369,13 +370,13 @@ describe('Refund Flow Integration', () => {
       const gateway = getContract(gatewayAddress, PaymentGatewayABI, payerWallet);
       const payTx = await gateway.pay(
         paymentId,
-        createResponse.tokenAddress,
+        paymentData.tokenAddress,
         amountWei,
-        createResponse.recipientAddress,
-        createResponse.merchantId,
-        BigInt(createResponse.deadline),
-        BigInt(createResponse.escrowDuration),
-        createResponse.serverSignature,
+        paymentData.recipientAddress,
+        paymentData.merchantId,
+        BigInt(paymentData.deadline),
+        BigInt(paymentData.escrowDuration),
+        paymentData.serverSignature,
         ZERO_PERMIT
       );
       await payTx.wait();
