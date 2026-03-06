@@ -32,6 +32,7 @@ const translations = {
     'error.paymentError': 'Payment Error',
     'error.loadingPayment': 'Loading payment...',
     'error.checkingTokenSupport': 'Checking token support...',
+    'error.checkingBalanceApproval': 'Checking balance & approval...',
     'error.configMissingSignature':
       'Payment configuration error: Missing server signature. Please contact support.',
     'error.configMissingRecipient':
@@ -61,14 +62,11 @@ const translations = {
 
     // Token approval
     'approval.title': 'Token Approval',
-    'approval.alreadyApproved': 'Already Approved',
     'approval.description': 'Please approve token spending permission to proceed',
-    'approval.descriptionAlready': 'Token is already approved. Continue to payment.',
     'approval.connectedWallet': 'Connected Wallet',
     'approval.balance': 'Balance',
     'approval.approveToken': 'Approve Token',
     'approval.approving': 'Approving...',
-    'approval.continueToPayment': 'Continue to Payment',
     'approval.cancelPayment': 'Cancel Payment',
     'approval.gasReceived': 'Gas received',
     'approval.gasReceivedDescription':
@@ -95,13 +93,25 @@ const translations = {
     'processing.pleaseWait': 'Please wait a moment',
     'processing.paymentAmount': 'Payment Amount',
     'processing.paymentStatus': 'Payment Status',
-    'processing.requestingPayment': 'Requesting Payment',
-    'processing.signingTransaction': 'Signing Transaction',
-    'processing.confirmingPayment': 'Confirming Payment',
+
+    // Progress States
+    'progress.SIGNING_PERMIT': 'Please sign token approval in wallet',
+    'progress.SIGNING_FORWARD': 'Please sign payment transaction in wallet',
+    'progress.RELAYING': 'Sending to payment network...',
+    'progress.CONFIRMING': 'Verifying on blockchain... please wait',
+    'progress.ESCROWED': 'Payment Secured!',
+    'progress.ERROR': 'Transaction failed',
+
+    // Processing Steps List
+    'step.signing': 'Sign Transaction',
+    'step.relaying': 'Send to Network',
+    'step.confirming': 'Verify on Blockchain',
+    'step.escrowed': 'Payment Secured',
 
     // Complete
-    'complete.title': 'Payment Complete',
-    'complete.description': 'Your payment has been successfully processed',
+    'complete.title': 'Payment Secured',
+    'complete.description': 'Please return to the merchant to finalize your order.',
+    'complete.returnToMerchant': 'Return to Merchant',
     'complete.date': 'Date',
     'complete.amount': 'Amount',
     'complete.transactionHash': 'Transaction Hash',
@@ -123,6 +133,7 @@ const translations = {
     'error.paymentError': '결제 오류',
     'error.loadingPayment': '결제 정보 불러오는 중...',
     'error.checkingTokenSupport': '토큰 지원 확인 중...',
+    'error.checkingBalanceApproval': '잔액 및 승인 확인 중...',
     'error.configMissingSignature': '결제 설정 오류: 서버 서명이 없습니다. 고객센터에 문의하세요.',
     'error.configMissingRecipient':
       '결제 설정 오류: 수신자 정보가 없습니다. 고객센터에 문의하세요.',
@@ -147,14 +158,11 @@ const translations = {
     'walletOnly.continue': '계속',
 
     'approval.title': '토큰 승인',
-    'approval.alreadyApproved': '이미 승인됨',
     'approval.description': '결제를 위해 토큰 사용 권한을 승인해 주세요',
-    'approval.descriptionAlready': '토큰이 이미 승인되었습니다. 결제로 계속합니다.',
     'approval.connectedWallet': '연결된 지갑',
     'approval.balance': '잔액',
     'approval.approveToken': '토큰 승인',
     'approval.approving': '승인 중...',
-    'approval.continueToPayment': '결제로 계속',
     'approval.cancelPayment': '결제 취소',
     'approval.gasReceived': '가스 수령 완료',
     'approval.gasReceivedDescription':
@@ -179,12 +187,22 @@ const translations = {
     'processing.pleaseWait': '잠시만 기다려 주세요',
     'processing.paymentAmount': '결제 금액',
     'processing.paymentStatus': '결제 상태',
-    'processing.requestingPayment': '결제 요청',
-    'processing.signingTransaction': '트랜잭션 서명',
-    'processing.confirmingPayment': '결제 확인',
 
-    'complete.title': '결제 완료',
-    'complete.description': '결제가 완료되었습니다',
+    'progress.SIGNING_PERMIT': '지갑에서 토큰 사용을 수락해 주세요',
+    'progress.SIGNING_FORWARD': '지갑에서 결제 트랜잭션을 승인해 주세요',
+    'progress.RELAYING': '결제 네트워크로 전송 중...',
+    'progress.CONFIRMING': '블록체인 검증 중... 잠시만 대기해 주세요',
+    'progress.ESCROWED': '안전 결제 예치 완료!',
+    'progress.ERROR': '결제 실패',
+
+    'step.signing': '결제 트랜잭션 서명',
+    'step.relaying': '결제 네트워크 전송',
+    'step.confirming': '블록체인 검증',
+    'step.escrowed': '안전 결제 예치',
+
+    'complete.title': '안전 결제 예치 완료',
+    'complete.description': '상점으로 돌아가 결제를 최종 완료해 주세요.',
+    'complete.returnToMerchant': '상점으로 돌아가기',
     'complete.date': '일시',
     'complete.amount': '금액',
     'complete.transactionHash': '트랜잭션 해시',

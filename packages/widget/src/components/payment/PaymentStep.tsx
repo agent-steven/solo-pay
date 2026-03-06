@@ -158,13 +158,13 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
   // Gasless payment (meta-transaction)
   const {
     payGasless,
-    isPayingGasless,
     isRelayConfirming,
     relayTxHash,
     error: gaslessError,
     isGaslessSupported,
     isPermitSupported,
     isCheckingPermit,
+    progressState,
   } = useGaslessPayment({ paymentDetails, publicKey: urlParams?.pk });
 
   /** Prevents duplicate switchChainAsync (wallet errors on "request already pending") */
@@ -266,15 +266,17 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
     }
 
     if (!isSwitchingChain) {
-      // Wait for permit check so we can go straight to payment-confirm when token supports permit (already approved flow)
-      if (isPermitSupported === undefined) return;
-      setCurrentStep(isPermitSupported ? 'payment-confirm' : 'token-approval');
+      // when token supports permit or is already approved
+      if (isPermitSupported === undefined || isTokenLoading) return;
+      setCurrentStep(isPermitSupported || !needsApproval ? 'payment-confirm' : 'token-approval');
     }
   }, [
     isConnected,
     address,
     paymentDetails,
     isPermitSupported,
+    isTokenLoading,
+    needsApproval,
     chain?.id,
     isSwitchingChain,
     switchChainAsync,
@@ -295,9 +297,20 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
     ) {
       return;
     }
-    const timeout = window.setTimeout(() => setCurrentStep('token-approval'), 4000);
+    const timeout = window.setTimeout(
+      () => setCurrentStep(!needsApproval ? 'payment-confirm' : 'token-approval'),
+      4000
+    );
     return () => window.clearTimeout(timeout);
-  }, [paymentDetails, isConnected, address, currentStep, buttonConnectClicked, lockReconnect]);
+  }, [
+    paymentDetails,
+    isConnected,
+    address,
+    currentStep,
+    buttonConnectClicked,
+    lockReconnect,
+    needsApproval,
+  ]);
 
   // Auto-advance after approval confirmation
   useEffect(() => {
@@ -307,6 +320,13 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
       goToPaymentConfirm();
     }
   }, [approvalTxHash, isApprovalConfirming, approvalError, refetchToken]);
+
+  // Auto-advance from token-approval if already approved
+  useEffect(() => {
+    if (currentStep === 'token-approval' && !isTokenLoading && !needsApproval) {
+      goToPaymentConfirm();
+    }
+  }, [currentStep, isTokenLoading, needsApproval]);
 
   // Auto-advance when gasless payment confirms
   useEffect(() => {
@@ -330,7 +350,13 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
           hour12: false,
         })
       );
-      goToPaymentComplete();
+
+      // Delay the transition by 500ms so the user can visually register the 100% completion state
+      const timer = setTimeout(() => {
+        goToPaymentComplete();
+      }, 500);
+
+      return () => clearTimeout(timer);
     }
   }, [currentStep, relayTxHash, isRelayConfirming, gaslessError, locale]);
 
@@ -642,7 +668,11 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
           return (
             <LoadingSpinner
               message={
-                isCheckingPermit ? t('error.checkingTokenSupport') : t('error.loadingPayment')
+                isCheckingPermit
+                  ? t('error.checkingTokenSupport')
+                  : isTokenLoading
+                    ? t('error.checkingBalanceApproval')
+                    : t('error.loadingPayment')
               }
             />
           );
@@ -659,7 +689,6 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
             onDisconnect={handleDisconnect}
             onCancel={effectiveFailUrl ? handleCancel : undefined}
             isApproving={isApproving || isApprovalConfirming}
-            needsApproval={needsApproval}
             isLoading={isTokenLoading}
             error={
               !hasSufficientBalance && !isTokenLoading
@@ -702,9 +731,9 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
           <PaymentProcessing
             amount={displayAmount}
             token={paymentDetails.tokenSymbol}
+            progressState={progressState}
             onRetry={handleRetryPayment}
             onCancel={effectiveFailUrl ? handleCancel : undefined}
-            isPending={isPayingGasless || isRelayConfirming}
             error={parseErrorMessage(gaslessError?.message, t)}
           />
         );
