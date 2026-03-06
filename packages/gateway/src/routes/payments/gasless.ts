@@ -156,11 +156,9 @@ Submits a gasless (meta-transaction) payment using ERC-2771 forwarder.
         }
 
         // Reject if relay already in flight (duplicate submit would revert on-chain as already processed).
-        // RelayStatus in DB: QUEUED | SUBMITTED | CONFIRMED | FAILED; in-flight = not FAILED.
+        // RelayStatus in DB: QUEUED | SUBMITTED | CONFIRMED | FAILED; in-flight = any status other than FAILED.
         const existingRelays = await relayService.findByPaymentId(payment.id);
-        const inFlight = existingRelays.filter((r) =>
-          ['QUEUED', 'SUBMITTED', 'CONFIRMED'].includes(r.status)
-        );
+        const inFlight = existingRelays.filter((r) => r.status !== 'FAILED');
         if (inFlight.length > 0) {
           return reply.code(400).send({
             code: 'RELAY_ALREADY_SUBMITTED',

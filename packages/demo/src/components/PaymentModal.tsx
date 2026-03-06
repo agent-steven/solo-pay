@@ -293,7 +293,7 @@ export function PaymentModal({ product, onClose, onSuccess }: PaymentModalProps)
           if (status === 'ESCROWED' || status === 'FINALIZED') {
             return;
           }
-          if (status === 'FAILED' || status === 'failed') {
+          if (status.toUpperCase() === 'FAILED') {
             throw new Error('Payment failed on server');
           }
         }
