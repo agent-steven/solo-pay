@@ -56,13 +56,16 @@ SOLO_PAY_API_URL=http://localhost:3001
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your-walletconnect-project-id
 ```
 
-| Variable                               | Required | Location | Description                                                   |
-| -------------------------------------- | -------- | -------- | ------------------------------------------------------------- |
-| `SOLO_PAY_API_KEY`                     | ✅       | Server   | SoloPay server authentication key                             |
-| `SOLO_PAY_API_URL`                     | ❌       | Server   | Payment server URL (default: localhost:3001)                  |
-| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | ✅       | Client   | Issued from [WalletConnect](https://cloud.walletconnect.com/) |
+| Variable                               | Required | Location | Description                                                                                                                                                                                                                |
+| -------------------------------------- | -------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SOLO_PAY_API_KEY`                     | ✅       | Server   | SoloPay server authentication key                                                                                                                                                                                          |
+| `SOLO_PAY_API_URL`                     | ❌       | Server   | Payment server URL (default: localhost:3001)                                                                                                                                                                               |
+| `SOLO_PAY_ORIGIN`                      | ❌       | Server   | Origin sent to gateway on create/checkout. When the gateway has `ALLOWED_WIDGET_ORIGIN` set, this must match it (e.g. `http://localhost:3005` for widget). Omit or leave default when the gateway does not enforce origin. |
+| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | ✅       | Client   | Issued from [WalletConnect](https://cloud.walletconnect.com/)                                                                                                                                                              |
 
 > **Note**: Chain configuration (RPC URLs, contract addresses) is managed in the payment server's database. Wallet connection is handled through RainbowKit.
+>
+> **Origin and create endpoint**: The demo app calls the gateway `POST /payments` (create) from the server. The gateway may require the `Origin` header to match `ALLOWED_WIDGET_ORIGIN`. Set `SOLO_PAY_ORIGIN` to that value (e.g. the widget URL) so create and checkout succeed.
 
 ### 2. Install Dependencies
 

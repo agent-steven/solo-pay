@@ -108,6 +108,11 @@ const POLYGON_GAS_CONFIG = {
   maxFeePerGas: parseGwei('100'), // 100 gwei max
 };
 
+// Explicit gas limits so the tx never exceeds chain gas cap (e.g. 16777216 on some L2s).
+// Without these, viem may use estimated/default limits that exceed the cap and cause revert.
+const APPROVE_GAS_LIMIT = 150000n;
+const PAY_GAS_LIMIT = 500000n;
+
 interface Product {
   id: string;
   name: string;
@@ -268,7 +273,9 @@ export function PaymentModal({ product, onClose, onSuccess }: PaymentModalProps)
     }
   );
 
-  // Poll server for payment status (Contract = Source of Truth)
+  // Poll server for payment status (Contract = Source of Truth).
+  // After pay(), status becomes ESCROWED (funds in escrow). FINALIZED only after merchant finalize.
+  // Treat ESCROWED or FINALIZED as success so we do not timeout waiting for finalize.
   const pollPaymentStatus = useCallback(
     async (paymentId: string): Promise<void> => {
       if (!serverConfig) {
@@ -282,10 +289,11 @@ export function PaymentModal({ product, onClose, onSuccess }: PaymentModalProps)
         const response = await getPaymentStatus(paymentId);
 
         if (response.success && response.data) {
-          if (response.data.status === 'FINALIZED') {
+          const status = response.data.status;
+          if (status === 'ESCROWED' || status === 'FINALIZED') {
             return;
           }
-          if (response.data.status === 'FAILED' || response.data.status === 'failed') {
+          if (status === 'FAILED' || status === 'failed') {
             throw new Error('Payment failed on server');
           }
         }
@@ -335,6 +343,7 @@ export function PaymentModal({ product, onClose, onSuccess }: PaymentModalProps)
         abi: ERC20_ABI,
         functionName: 'approve',
         args: [serverConfig.gatewayAddress as Address, maxUint256],
+        gas: APPROVE_GAS_LIMIT,
         ...gasConfig,
       });
 
@@ -389,6 +398,7 @@ export function PaymentModal({ product, onClose, onSuccess }: PaymentModalProps)
           serverConfig.serverSignature as `0x${string}`,
           EMPTY_PERMIT,
         ],
+        gas: PAY_GAS_LIMIT,
         ...gasConfig,
       });
 
@@ -524,7 +534,7 @@ export function PaymentModal({ product, onClose, onSuccess }: PaymentModalProps)
         throw new Error(submitResponse.message || 'Failed to submit gasless payment');
       }
 
-      // 6. Poll payment status until CONFIRMED
+      // 6. Poll payment status until ESCROWED (or FINALIZED)
       await pollPaymentStatus(paymentId);
 
       // 7. Get final status for txHash

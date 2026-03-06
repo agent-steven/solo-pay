@@ -242,9 +242,12 @@ export async function merchantPaymentRoute(
     async (request, reply) => {
       try {
         const { id } = request.params;
-        const merchant = (request as { merchant?: { id: number } }).merchant;
+        const merchant = request.merchant;
         if (!merchant) {
-          return reply.code(401).send({ code: 'UNAUTHORIZED', message: 'Authentication required' });
+          return reply.code(401).send({
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required',
+          });
         }
 
         const payment = await paymentService.findByHash(id);

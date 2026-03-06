@@ -13,12 +13,18 @@ Refunds are for payments that are already **finalized** (funds have been release
 - The payment status is **FINALIZED** (merchant has received the funds).
 - You need to return the full or partial amount to the buyer (e.g. customer request, order cancellation after fulfillment).
 
+## Before refund: merchant must approve
+
+Before the on-chain refund transaction can succeed, the **merchant's wallet (recipient address)** must have **approved** the Payment Gateway contract to spend the refund amount of the payment token. This is done by calling the ERC20 `approve(gatewayAddress, amount)` on the token contract. The gateway does not perform this step; the merchant must do it (or use ERC20 Permit if supported). If the merchant has not approved, the on-chain refund transaction will fail. The Refund API does not check approval on-chain; it only validates auth and payment state and returns the server signature.
+
 ## Flow
 
 1. Payment is **FINALIZED** (funds with merchant).
-2. Merchant server calls **POST /refunds** with `paymentId` and optional `reason`. Auth: `x-api-key`.
-3. Refund status moves: **PENDING** → **SUBMITTED** → **CONFIRMED** (or **FAILED**).
-4. Use **GET /refunds/:refundId** or **GET /refunds** to track status.
+2. Merchant ensures the recipient wallet has **approved** the gateway for the token (see above).
+3. Merchant server calls **POST /refunds** with `paymentId` and optional `reason`. Auth: `x-api-key`. The API returns a refund record and **server signature**; it does not submit the transaction to a relayer.
+4. Merchant (or a relayer) submits the on-chain refund transaction by calling the gateway contract's `refund(paymentId, serverSignature, permit)`.
+5. Refund status moves: **PENDING** → **SUBMITTED** → **CONFIRMED** (or **FAILED**) as the transaction is submitted and confirmed.
+6. Use **GET /refunds/:refundId** or **GET /refunds** to track status.
 
 Payment status will show **REFUND_SUBMITTED** then **REFUNDED** when the on-chain refund is confirmed.
 

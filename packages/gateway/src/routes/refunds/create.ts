@@ -8,6 +8,9 @@ import { RefundService } from '../../services/refund.service';
 import { ServerSigningService } from '../../services/signature-server.service';
 import { BlockchainService } from '../../services/blockchain.service';
 import { createAuthMiddleware } from '../../middleware/auth.middleware';
+import { ErrorResponseSchema, BYTES32_PATTERN } from '../../docs/schemas';
+
+const REFUND_SALT_BYTES = 16;
 
 interface CreateRefundBody {
   paymentId: string;
@@ -43,8 +46,7 @@ Creates a refund request for a finalized payment.
 **Flow:**
 1. Validate payment status and ownership
 2. Generate refund hash and server signature
-3. Submit refund transaction to relayer
-4. Return refund status
+3. Return refund record and server signature (no submit to relayer; merchant or relayer submits the on-chain refund transaction separately)
         `,
         security: [{ ApiKeyAuth: [] }],
         body: {
@@ -53,8 +55,9 @@ Creates a refund request for a finalized payment.
           properties: {
             paymentId: {
               type: 'string',
+              pattern: BYTES32_PATTERN,
               description: 'Payment hash (bytes32)',
-              example: '0x1234567890abcdef...',
+              example: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234',
             },
             reason: {
               type: 'string',
@@ -85,27 +88,10 @@ Creates a refund request for a finalized payment.
               },
             },
           },
-          400: {
-            type: 'object',
-            properties: {
-              code: { type: 'string' },
-              message: { type: 'string' },
-            },
-          },
-          403: {
-            type: 'object',
-            properties: {
-              code: { type: 'string' },
-              message: { type: 'string' },
-            },
-          },
-          404: {
-            type: 'object',
-            properties: {
-              code: { type: 'string' },
-              message: { type: 'string' },
-            },
-          },
+          400: ErrorResponseSchema,
+          403: ErrorResponseSchema,
+          404: ErrorResponseSchema,
+          500: ErrorResponseSchema,
         },
       },
       preHandler: authMiddleware,
@@ -113,8 +99,13 @@ Creates a refund request for a finalized payment.
     async (request, reply) => {
       try {
         const { paymentId, reason } = request.body;
-        const merchant = (request as unknown as { merchant: { id: number; merchant_key: string } })
-          .merchant;
+        const merchant = request.merchant;
+        if (!merchant) {
+          return reply.code(401).send({
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required',
+          });
+        }
 
         // 1. Find payment
         const payment = await paymentService.findByHash(paymentId);
@@ -197,7 +188,7 @@ Creates a refund request for a finalized payment.
         }
 
         // 9. Generate refund hash
-        const randomSalt = randomBytes(16).toString('hex');
+        const randomSalt = randomBytes(REFUND_SALT_BYTES).toString('hex');
         const refundHash = keccak256(
           encodePacked(
             ['bytes32', 'address', 'uint256', 'bytes16'],

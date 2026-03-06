@@ -87,9 +87,9 @@ export async function paymentMethodsRoute(
       try {
         const merchant = request.merchant;
         if (!merchant) {
-          return reply.code(500).send({
-            code: 'INTERNAL_ERROR',
-            message: 'Authentication context is missing',
+          return reply.code(401).send({
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required',
           });
         }
 
@@ -187,9 +187,9 @@ export async function paymentMethodsRoute(
       try {
         const merchant = request.merchant;
         if (!merchant) {
-          return reply.code(500).send({
-            code: 'INTERNAL_ERROR',
-            message: 'Authentication context is missing',
+          return reply.code(401).send({
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required',
           });
         }
 
@@ -361,6 +361,7 @@ export async function paymentMethodsRoute(
             },
           },
           400: ErrorResponseSchema,
+          401: ErrorResponseSchema,
           403: ErrorResponseSchema,
           404: ErrorResponseSchema,
           500: ErrorResponseSchema,
@@ -372,9 +373,9 @@ export async function paymentMethodsRoute(
       try {
         const merchant = request.merchant;
         if (!merchant) {
-          return reply.code(500).send({
-            code: 'INTERNAL_ERROR',
-            message: 'Authentication context is missing',
+          return reply.code(401).send({
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required',
           });
         }
 
@@ -497,6 +498,7 @@ export async function paymentMethodsRoute(
             },
           },
           400: ErrorResponseSchema,
+          401: ErrorResponseSchema,
           403: ErrorResponseSchema,
           404: ErrorResponseSchema,
           500: ErrorResponseSchema,
@@ -508,9 +510,9 @@ export async function paymentMethodsRoute(
       try {
         const merchant = request.merchant;
         if (!merchant) {
-          return reply.code(500).send({
-            code: 'INTERNAL_ERROR',
-            message: 'Authentication context is missing',
+          return reply.code(401).send({
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required',
           });
         }
 

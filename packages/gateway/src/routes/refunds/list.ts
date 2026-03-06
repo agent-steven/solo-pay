@@ -4,6 +4,7 @@ import { MerchantService } from '../../services/merchant.service';
 import { PaymentService } from '../../services/payment.service';
 import { RefundService } from '../../services/refund.service';
 import { createAuthMiddleware } from '../../middleware/auth.middleware';
+import { ErrorResponseSchema } from '../../docs/schemas';
 
 interface RefundListQuery {
   page?: number;
@@ -98,6 +99,7 @@ export async function getRefundListRoute(
               },
             },
           },
+          500: ErrorResponseSchema,
         },
       },
       preHandler: authMiddleware,
@@ -105,7 +107,13 @@ export async function getRefundListRoute(
     async (request, reply) => {
       try {
         const { page = 1, limit = 20, status, paymentId } = request.query;
-        const merchant = (request as unknown as { merchant: { id: number } }).merchant;
+        const merchant = request.merchant;
+        if (!merchant) {
+          return reply.code(401).send({
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required',
+          });
+        }
 
         const result = await refundService.findByMerchant(merchant.id, {
           page,
