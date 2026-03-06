@@ -141,4 +141,6 @@ const Home: NextPage = () => {
   );
 };
 
+export const getServerSideProps = () => ({ props: {} });
+
 export default Home;
