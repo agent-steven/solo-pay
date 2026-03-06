@@ -140,6 +140,7 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
     approvalTxHash,
     approvalError,
     refetch: refetchToken,
+    isLoading: isTokenLoading,
   } = useToken({
     tokenAddress: paymentDetails?.tokenAddress as `0x${string}` | undefined,
     spenderAddress: paymentDetails?.gatewayAddress as `0x${string}` | undefined,
@@ -648,8 +649,9 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
             onCancel={effectiveFailUrl ? handleCancel : undefined}
             isApproving={isApproving || isApprovalConfirming}
             needsApproval={needsApproval}
+            isLoading={isTokenLoading}
             error={
-              !hasSufficientBalance
+              !hasSufficientBalance && !isTokenLoading
                 ? t('error.insufficientBalance', {
                     amount: displayAmount,
                     token: paymentDetails.tokenSymbol,
