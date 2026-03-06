@@ -152,13 +152,13 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
   // Gasless payment (meta-transaction)
   const {
     payGasless,
-    isPayingGasless,
     isRelayConfirming,
     relayTxHash,
     error: gaslessError,
     isGaslessSupported,
     isPermitSupported,
     isCheckingPermit,
+    progressState,
   } = useGaslessPayment({ paymentDetails, publicKey: urlParams?.pk });
 
   /** Prevents duplicate switchChainAsync (wallet errors on "request already pending") */
@@ -321,7 +321,13 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
           hour12: false,
         })
       );
-      goToPaymentComplete();
+
+      // Delay the transition by 500ms so the user can visually register the 100% completion state
+      const timer = setTimeout(() => {
+        goToPaymentComplete();
+      }, 500);
+
+      return () => clearTimeout(timer);
     }
   }, [currentStep, relayTxHash, isRelayConfirming, gaslessError, locale]);
 
@@ -695,9 +701,9 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
           <PaymentProcessing
             amount={displayAmount}
             token={paymentDetails.tokenSymbol}
+            progressState={progressState}
             onRetry={handleRetryPayment}
             onCancel={effectiveFailUrl ? handleCancel : undefined}
-            isPending={isPayingGasless || isRelayConfirming}
             error={parseErrorMessage(gaslessError?.message, t)}
           />
         );

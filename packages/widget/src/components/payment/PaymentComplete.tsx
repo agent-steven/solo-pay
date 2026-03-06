@@ -131,7 +131,7 @@ export default function PaymentComplete({
         className="w-full py-3 sm:py-3.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-500 active:bg-blue-700 transition-colors cursor-pointer"
         onClick={onConfirm}
       >
-        {t('common.confirm')}
+        {t('complete.returnToMerchant')}
       </button>
     </div>
   );

@@ -96,13 +96,25 @@ const translations = {
     'processing.pleaseWait': 'Please wait a moment',
     'processing.paymentAmount': 'Payment Amount',
     'processing.paymentStatus': 'Payment Status',
-    'processing.requestingPayment': 'Requesting Payment',
-    'processing.signingTransaction': 'Signing Transaction',
-    'processing.confirmingPayment': 'Confirming Payment',
+
+    // Progress States
+    'progress.SIGNING_PERMIT': 'Please sign token approval in wallet',
+    'progress.SIGNING_FORWARD': 'Please sign payment transaction in wallet',
+    'progress.RELAYING': 'Sending to payment network...',
+    'progress.CONFIRMING': 'Verifying on blockchain... please wait',
+    'progress.ESCROWED': 'Payment Secured!',
+    'progress.ERROR': 'Transaction failed',
+
+    // Processing Steps List
+    'step.signing': 'Sign Transaction',
+    'step.relaying': 'Send to Network',
+    'step.confirming': 'Verify on Blockchain',
+    'step.escrowed': 'Payment Secured',
 
     // Complete
-    'complete.title': 'Payment Complete',
-    'complete.description': 'Your payment has been successfully processed',
+    'complete.title': 'Payment Secured',
+    'complete.description': 'Please return to the merchant to finalize your order.',
+    'complete.returnToMerchant': 'Return to Merchant',
     'complete.date': 'Date',
     'complete.amount': 'Amount',
     'complete.transactionHash': 'Transaction Hash',
@@ -181,12 +193,22 @@ const translations = {
     'processing.pleaseWait': '잠시만 기다려 주세요',
     'processing.paymentAmount': '결제 금액',
     'processing.paymentStatus': '결제 상태',
-    'processing.requestingPayment': '결제 요청',
-    'processing.signingTransaction': '트랜잭션 서명',
-    'processing.confirmingPayment': '결제 확인',
 
-    'complete.title': '결제 완료',
-    'complete.description': '결제가 완료되었습니다',
+    'progress.SIGNING_PERMIT': '지갑에서 토큰 사용을 수락해 주세요',
+    'progress.SIGNING_FORWARD': '지갑에서 결제 트랜잭션을 승인해 주세요',
+    'progress.RELAYING': '결제 네트워크로 전송 중...',
+    'progress.CONFIRMING': '블록체인 검증 중... 잠시만 대기해 주세요',
+    'progress.ESCROWED': '안전 결제 예치 완료!',
+    'progress.ERROR': '결제 실패',
+
+    'step.signing': '결제 트랜잭션 서명',
+    'step.relaying': '결제 네트워크 전송',
+    'step.confirming': '블록체인 검증',
+    'step.escrowed': '안전 결제 예치',
+
+    'complete.title': '안전 결제 예치 완료',
+    'complete.description': '상점으로 돌아가 결제를 최종 완료해 주세요.',
+    'complete.returnToMerchant': '상점으로 돌아가기',
     'complete.date': '일시',
     'complete.amount': '금액',
     'complete.transactionHash': '트랜잭션 해시',
