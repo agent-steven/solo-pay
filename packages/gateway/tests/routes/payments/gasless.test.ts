@@ -170,7 +170,7 @@ describe('POST /payments/:id/relay', () => {
       expect(response.statusCode).toBe(202);
       const body = JSON.parse(response.body);
       expect(body.success).toBe(true);
-      expect(body.status).toBe('submitted');
+      expect(body.data.status).toBe('submitted');
     });
 
     it('Gasless 거래 응답에 필요한 모든 필드가 포함되어야 함', async () => {
@@ -186,8 +186,8 @@ describe('POST /payments/:id/relay', () => {
       expect(response.statusCode).toBe(202);
       const body = JSON.parse(response.body);
       expect(body).toHaveProperty('success');
-      expect(body).toHaveProperty('status');
-      expect(body).toHaveProperty('message');
+      expect(body.data).toHaveProperty('status');
+      expect(body.data).toHaveProperty('message');
     });
   });
 

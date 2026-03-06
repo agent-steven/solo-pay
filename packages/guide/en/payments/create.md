@@ -51,23 +51,25 @@ Example: `amount: 10, currency: "USD"` → pays 10 USD worth of tokens
 ```json
 {
   "success": true,
-  "paymentId": "0xabc123def456...",
-  "orderId": "order-001",
-  "serverSignature": "0x...",
-  "chainId": 80002,
-  "tokenAddress": "0xE4C687167705Abf55d709395f92e254bdF5825a2",
-  "tokenSymbol": "SUT",
-  "tokenDecimals": 18,
-  "gatewayAddress": "0x...",
-  "forwarderAddress": "0x...",
-  "amount": "10500000000000000000",
-  "recipientAddress": "0xMerchantWallet...",
-  "merchantId": "0x...",
-  "deadline": "1706281200",
-  "escrowDuration": "300",
-  "successUrl": "https://example.com/success",
-  "failUrl": "https://example.com/fail",
-  "expiresAt": "2024-01-26T13:00:00.000Z"
+  "data": {
+    "paymentId": "0xabc123def456...",
+    "orderId": "order-001",
+    "serverSignature": "0x...",
+    "chainId": 80002,
+    "tokenAddress": "0xE4C687167705Abf55d709395f92e254bdF5825a2",
+    "tokenSymbol": "SUT",
+    "tokenDecimals": 18,
+    "gatewayAddress": "0x...",
+    "forwarderAddress": "0x...",
+    "amount": "10500000000000000000",
+    "recipientAddress": "0xMerchantWallet...",
+    "merchantId": "0x...",
+    "deadline": "1706281200",
+    "escrowDuration": "300",
+    "successUrl": "https://example.com/success",
+    "failUrl": "https://example.com/fail",
+    "expiresAt": "2024-01-26T13:00:00.000Z"
+  }
 }
 ```
 

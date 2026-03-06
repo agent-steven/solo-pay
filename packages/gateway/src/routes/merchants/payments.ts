@@ -167,7 +167,13 @@ export async function merchantPaymentRoute(
           required: ['orderId'],
         },
         response: {
-          200: detailResponseSchema,
+          200: {
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              data: detailResponseSchema,
+            },
+          },
           400: ErrorResponseSchema,
           401: ErrorResponseSchema,
           404: ErrorResponseSchema,
@@ -204,7 +210,9 @@ export async function merchantPaymentRoute(
           payment.payment_method_id
         );
 
-        return reply.code(200).send(buildPaymentDetailResponse(payment, tokenPermitSupported));
+        return reply
+          .code(200)
+          .send({ success: true, data: buildPaymentDetailResponse(payment, tokenPermitSupported) });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to get payment';
         return reply.code(500).send({ code: 'INTERNAL_ERROR', message });
@@ -229,7 +237,13 @@ export async function merchantPaymentRoute(
           required: ['id'],
         },
         response: {
-          200: detailResponseSchema,
+          200: {
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              data: detailResponseSchema,
+            },
+          },
           400: ErrorResponseSchema,
           401: ErrorResponseSchema,
           403: ErrorResponseSchema,
@@ -270,7 +284,9 @@ export async function merchantPaymentRoute(
           payment.payment_method_id
         );
 
-        return reply.code(200).send(buildPaymentDetailResponse(payment, tokenPermitSupported));
+        return reply
+          .code(200)
+          .send({ success: true, data: buildPaymentDetailResponse(payment, tokenPermitSupported) });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to get payment';
         return reply.code(500).send({ code: 'INTERNAL_ERROR', message });

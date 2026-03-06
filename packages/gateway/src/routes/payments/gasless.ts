@@ -201,8 +201,10 @@ Submits a gasless (meta-transaction) payment using ERC-2771 forwarder.
 
         return reply.code(202).send({
           success: true,
-          status: result.status,
-          message: 'Gasless 거래가 제출되었습니다',
+          data: {
+            status: result.status,
+            message: 'Gasless 거래가 제출되었습니다',
+          },
         });
       } catch (error) {
         const message =

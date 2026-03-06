@@ -92,9 +92,8 @@ export async function createPayment(
     );
   }
 
-  if (data && typeof data === 'object' && 'success' in data) {
-    const { success: _success, ...rest } = data as Record<string, unknown>;
-    return rest as unknown as CreatePaymentResponse;
+  if (data && data.success === true && data.data) {
+    return data.data as CreatePaymentResponse;
   }
 
   return data as CreatePaymentResponse;
@@ -332,9 +331,8 @@ export async function submitGaslessPayment(
     );
   }
 
-  if (data && typeof data === 'object' && 'success' in data) {
-    const { success: _success, ...rest } = data as Record<string, unknown>;
-    return rest as unknown as GaslessPaymentResponse;
+  if (data && data.success === true && data.data) {
+    return data.data as GaslessPaymentResponse;
   }
 
   return data as GaslessPaymentResponse;

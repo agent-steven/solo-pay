@@ -74,7 +74,7 @@ describe('Concurrent Finalize/Cancel', () => {
     const client = createTestClient(TEST_MERCHANT);
     const params = makeCreatePaymentParams(Number(amount / BigInt(10 ** token.decimals)), orderId);
     const createRes = await client.createPayment(params);
-    const paymentHash = createRes.paymentId;
+    const paymentHash = createRes.data.paymentId;
 
     // Approve and pay on-chain
     await approveToken(token.address, gatewayAddress, amount, payerPrivateKey);
@@ -84,11 +84,11 @@ describe('Concurrent Finalize/Cancel', () => {
       paymentHash,
       token.address,
       amount,
-      createRes.recipientAddress,
-      createRes.merchantId,
-      BigInt(createRes.deadline),
-      BigInt(createRes.escrowDuration),
-      createRes.serverSignature,
+      createRes.data.recipientAddress,
+      createRes.data.merchantId,
+      BigInt(createRes.data.deadline),
+      BigInt(createRes.data.escrowDuration),
+      createRes.data.serverSignature,
       ZERO_PERMIT
     );
     await tx.wait();
@@ -115,9 +115,9 @@ describe('Concurrent Finalize/Cancel', () => {
           signal: AbortSignal.timeout(5000),
         });
         if (res.ok) {
-          const body = (await res.json()) as { status: string };
-          if (body.status === expectedStatus) {
-            return body;
+          const body = (await res.json()) as { success: boolean; data: { status: string } };
+          if (body.data.status === expectedStatus) {
+            return body.data;
           }
         }
       } catch {
@@ -143,8 +143,8 @@ describe('Concurrent Finalize/Cancel', () => {
         signal: AbortSignal.timeout(5000),
       });
       if (res.ok) {
-        const body = (await res.json()) as { status: string };
-        return body.status;
+        const body = (await res.json()) as { success: boolean; data: { status: string } };
+        return body.data.status;
       }
       if (res.status >= 500 && i < retries - 1) {
         await sleep(2000);

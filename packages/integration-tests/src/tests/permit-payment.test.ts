@@ -317,8 +317,8 @@ describe('Permit Payment Flow', () => {
       const params = makeCreatePaymentParams(10);
       const response = await client.createPayment(params);
 
-      expect(response.tokenPermitSupported).toBeDefined();
-      expect(typeof response.tokenPermitSupported).toBe('boolean');
+      expect(response.data.tokenPermitSupported).toBeDefined();
+      expect(typeof response.data.tokenPermitSupported).toBe('boolean');
     });
 
     it('should complete payment via Gateway API + permit (no approve tx)', async () => {
@@ -327,24 +327,24 @@ describe('Permit Payment Flow', () => {
       const client = createTestClient(TEST_MERCHANT);
       const amount = parseUnits('25', token.decimals);
       const createResponse = await client.createPayment(makeCreatePaymentParams(25));
-      const paymentId = createResponse.paymentId;
+      const paymentId = createResponse.data.paymentId;
 
       // Sign permit instead of calling approve
       const permitDeadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
       const permit = await signPermit(payerPrivateKey, gatewayAddress, amount, permitDeadline);
 
       const wallet = getWallet(payerPrivateKey);
-      const gateway = getContract(createResponse.gatewayAddress, PaymentGatewayABI, wallet);
+      const gateway = getContract(createResponse.data.gatewayAddress, PaymentGatewayABI, wallet);
 
       const tx = await gateway.pay(
         paymentId,
         tokenAddress,
         amount,
-        createResponse.recipientAddress,
-        createResponse.merchantId,
-        BigInt(createResponse.deadline),
-        BigInt(createResponse.escrowDuration),
-        createResponse.serverSignature,
+        createResponse.data.recipientAddress,
+        createResponse.data.merchantId,
+        BigInt(createResponse.data.deadline),
+        BigInt(createResponse.data.escrowDuration),
+        createResponse.data.serverSignature,
         permit
       );
       await tx.wait();

@@ -42,23 +42,25 @@ Create a payment. **Auth**: `x-public-key` + `Origin`
 ```json
 {
   "success": true,
-  "paymentId": "0xabc123...",
-  "orderId": "order-001",
-  "serverSignature": "0x...",
-  "chainId": 80002,
-  "tokenAddress": "0xE4C687167705Abf55d709395f92e254bdF5825a2",
-  "tokenSymbol": "SUT",
-  "tokenDecimals": 18,
-  "gatewayAddress": "0x...",
-  "forwarderAddress": "0x...",
-  "amount": "10500000000000000000",
-  "recipientAddress": "0xMerchantWallet...",
-  "merchantId": "0x...",
-  "deadline": "1706281200",
-  "escrowDuration": "300",
-  "successUrl": "https://example.com/success",
-  "failUrl": "https://example.com/fail",
-  "expiresAt": "2024-01-26T13:00:00.000Z"
+  "data": {
+    "paymentId": "0xabc123...",
+    "orderId": "order-001",
+    "serverSignature": "0x...",
+    "chainId": 80002,
+    "tokenAddress": "0xE4C687167705Abf55d709395f92e254bdF5825a2",
+    "tokenSymbol": "SUT",
+    "tokenDecimals": 18,
+    "gatewayAddress": "0x...",
+    "forwarderAddress": "0x...",
+    "amount": "10500000000000000000",
+    "recipientAddress": "0xMerchantWallet...",
+    "merchantId": "0x...",
+    "deadline": "1706281200",
+    "escrowDuration": "300",
+    "successUrl": "https://example.com/success",
+    "failUrl": "https://example.com/fail",
+    "expiresAt": "2024-01-26T13:00:00.000Z"
+  }
 }
 ```
 
@@ -127,7 +129,13 @@ Submit a Gasless payment (ERC-2771). **Auth**: `x-public-key` + `Origin`
 **Response (202)**
 
 ```json
-{ "success": true, "status": "submitted", "message": "Gasless transaction submitted" }
+{
+  "success": true,
+  "data": {
+    "status": "submitted",
+    "message": "Gasless transaction submitted"
+  }
+}
 ```
 
 ---
@@ -192,18 +200,20 @@ Get merchant info. **Auth**: `x-api-key`
 ```json
 {
   "success": true,
-  "merchant": {
-    "id": 1,
-    "merchant_key": "my-store",
-    "name": "My Store",
-    "chain_id": 80002,
-    "chain": { "id": 1, "network_id": 80002, "name": "Polygon Amoy", "is_testnet": true },
-    "webhook_url": null,
-    "public_key": "pk_test_xxx",
-    "is_enabled": true,
-    "payment_methods": [...]
-  },
-  "chainTokens": [...]
+  "data": {
+    "merchant": {
+      "id": 1,
+      "merchant_key": "my-store",
+      "name": "My Store",
+      "chain_id": 80002,
+      "chain": { "id": 1, "network_id": 80002, "name": "Polygon Amoy", "is_testnet": true },
+      "webhook_url": null,
+      "public_key": "pk_test_xxx",
+      "is_enabled": true,
+      "payment_methods": [...]
+    },
+    "chainTokens": [...]
+  }
 }
 ```
 
@@ -301,11 +311,13 @@ Get supported chains. **No auth required.**
 ```json
 {
   "success": true,
-  "chains": [
-    { "id": 1, "network_id": 80002, "name": "Polygon Amoy", "is_testnet": true },
-    { "id": 2, "network_id": 97, "name": "BSC Testnet", "is_testnet": true },
-    { "id": 3, "network_id": 11155111, "name": "Sepolia", "is_testnet": true }
-  ]
+  "data": {
+    "chains": [
+      { "id": 1, "network_id": 80002, "name": "Polygon Amoy", "is_testnet": true },
+      { "id": 2, "network_id": 97, "name": "BSC Testnet", "is_testnet": true },
+      { "id": 3, "network_id": 11155111, "name": "Sepolia", "is_testnet": true }
+    ]
+  }
 }
 ```
 

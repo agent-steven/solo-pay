@@ -44,7 +44,7 @@ const response = await fetch('https://pay-api.staging.sut.com/api/v1/payments', 
   }),
 });
 
-const payment = await response.json();
+const { data: payment } = await response.json();
 // payment: paymentId, forwarderAddress, gatewayAddress, amount, serverSignature 등 포함
 ```
 
