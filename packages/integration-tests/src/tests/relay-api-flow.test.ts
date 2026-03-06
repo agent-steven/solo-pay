@@ -238,7 +238,10 @@ describe('Relay API Flow', () => {
       const res = await submitRelay(createResponse.data.paymentId, forwardRequest, signature);
 
       expect(res.status).toBe(202);
-      const body = (await res.json()) as { success: boolean; data: { status: string; message: string } };
+      const body = (await res.json()) as {
+        success: boolean;
+        data: { status: string; message: string };
+      };
       expect(body.success).toBe(true);
       expect(body.data.status).toBeDefined();
     });
@@ -257,7 +260,11 @@ describe('Relay API Flow', () => {
       expect(submitRes.status).toBe(202);
 
       // Poll until CONFIRMED
-      const relayStatus = await waitForRelayStatus(createResponse.data.paymentId, ['CONFIRMED'], 30000);
+      const relayStatus = await waitForRelayStatus(
+        createResponse.data.paymentId,
+        ['CONFIRMED'],
+        30000
+      );
       expect(relayStatus.status).toBe('CONFIRMED');
       expect(relayStatus.transactionHash).toBeDefined();
       expect(relayStatus.transactionHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
@@ -319,12 +326,15 @@ describe('Relay API Flow', () => {
       // Wait a moment for relay to be processed
       await sleep(2000);
 
-      const res = await fetch(`${GATEWAY_API_URL}/payments/${createResponse.data.paymentId}/relay`, {
-        headers: {
-          'x-public-key': TEST_MERCHANT.publicKey ?? '',
-          Origin: TEST_MERCHANT.origin ?? '',
-        },
-      });
+      const res = await fetch(
+        `${GATEWAY_API_URL}/payments/${createResponse.data.paymentId}/relay`,
+        {
+          headers: {
+            'x-public-key': TEST_MERCHANT.publicKey ?? '',
+            Origin: TEST_MERCHANT.origin ?? '',
+          },
+        }
+      );
 
       expect(res.ok).toBe(true);
       const body = (await res.json()) as {

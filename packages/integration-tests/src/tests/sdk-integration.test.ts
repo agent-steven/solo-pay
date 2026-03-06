@@ -178,7 +178,12 @@ describe('SDK Integration', () => {
       const createResponse = await client.createPayment(makeCreatePaymentParams(10));
       const paymentId = createResponse.data.paymentId;
 
-      await approveToken(token.address, createResponse.data.gatewayAddress, amount, payerPrivateKey);
+      await approveToken(
+        token.address,
+        createResponse.data.gatewayAddress,
+        amount,
+        payerPrivateKey
+      );
 
       const wallet = getWallet(payerPrivateKey);
       const gateway = getContract(createResponse.data.gatewayAddress, PaymentGatewayABI, wallet);
@@ -224,7 +229,12 @@ describe('SDK Integration', () => {
         throw new Error('forwarderAddress missing from create response');
       }
 
-      await approveToken(token.address, createResponse.data.gatewayAddress, amount, payerPrivateKey);
+      await approveToken(
+        token.address,
+        createResponse.data.gatewayAddress,
+        amount,
+        payerPrivateKey
+      );
 
       const forwarder = getContract(forwarderAddress, ERC2771ForwarderABI);
       const nonce = await forwarder.nonces(payerAddress);
@@ -283,7 +293,12 @@ describe('SDK Integration', () => {
 
       const createResponse = await client.createPayment(makeCreatePaymentParams(3));
 
-      await approveToken(token.address, createResponse.data.gatewayAddress, amount, payerPrivateKey);
+      await approveToken(
+        token.address,
+        createResponse.data.gatewayAddress,
+        amount,
+        payerPrivateKey
+      );
 
       const { recipientAddress, merchantId: respMerchantId, serverSignature } = createResponse.data;
       if (!recipientAddress || !respMerchantId || !serverSignature) {
