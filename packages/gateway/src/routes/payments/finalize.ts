@@ -7,6 +7,7 @@ import { BlockchainService } from '../../services/blockchain.service';
 import { RelayerService } from '../../services/relayer.service';
 import { createAuthMiddleware } from '../../middleware/auth.middleware';
 import { ErrorResponseSchema, BYTES32_PATTERN } from '../../docs/schemas';
+import { ErrorCodes } from '../../error-codes';
 
 interface FinalizePaymentParams {
   id: string;
@@ -99,7 +100,7 @@ Finalizes an escrowed payment, releasing funds to the merchant.
         const merchant = request.merchant;
         if (!merchant) {
           return reply.code(401).send({
-            code: 'UNAUTHORIZED',
+            code: ErrorCodes.UNAUTHORIZED,
             message: 'Authentication required',
           });
         }
@@ -108,7 +109,7 @@ Finalizes an escrowed payment, releasing funds to the merchant.
         const payment = await paymentService.findByHash(paymentId);
         if (!payment) {
           return reply.code(404).send({
-            code: 'PAYMENT_NOT_FOUND',
+            code: ErrorCodes.PAYMENT_NOT_FOUND,
             message: 'Payment not found',
           });
         }
@@ -116,7 +117,7 @@ Finalizes an escrowed payment, releasing funds to the merchant.
         // 2. Verify merchant ownership
         if (payment.merchant_id !== merchant.id) {
           return reply.code(403).send({
-            code: 'FORBIDDEN',
+            code: ErrorCodes.FORBIDDEN,
             message: 'Payment does not belong to this merchant',
           });
         }
@@ -124,7 +125,7 @@ Finalizes an escrowed payment, releasing funds to the merchant.
         // 3. Check payment status
         if (payment.status !== 'ESCROWED') {
           return reply.code(400).send({
-            code: 'INVALID_STATUS',
+            code: ErrorCodes.INVALID_STATUS,
             message: `Payment must be ESCROWED to finalize. Current status: ${payment.status}`,
           });
         }
@@ -132,7 +133,7 @@ Finalizes an escrowed payment, releasing funds to the merchant.
         // 4. Check escrow deadline
         if (payment.escrow_deadline && new Date(payment.escrow_deadline) < new Date()) {
           return reply.code(400).send({
-            code: 'ESCROW_EXPIRED',
+            code: ErrorCodes.ESCROW_EXPIRED,
             message: 'Escrow deadline has expired',
           });
         }
@@ -145,7 +146,7 @@ Finalizes an escrowed payment, releasing funds to the merchant.
         );
         if (!claimed) {
           return reply.code(409).send({
-            code: 'CONFLICT',
+            code: ErrorCodes.CONFLICT,
             message: 'Payment is already being processed by another request',
           });
         }
@@ -154,7 +155,7 @@ Finalizes an escrowed payment, releasing funds to the merchant.
         const chainContracts = blockchainService.getChainContracts(payment.network_id);
         if (!chainContracts || !chainContracts.gateway) {
           return reply.code(500).send({
-            code: 'CHAIN_CONFIG_ERROR',
+            code: ErrorCodes.CHAIN_CONFIG_ERROR,
             message: 'Chain configuration not found',
           });
         }
@@ -163,7 +164,7 @@ Finalizes an escrowed payment, releasing funds to the merchant.
         const signingService = signingServices.get(payment.network_id);
         if (!signingService) {
           return reply.code(500).send({
-            code: 'SIGNING_SERVICE_ERROR',
+            code: ErrorCodes.SIGNING_SERVICE_ERROR,
             message: 'Signing service not available for this chain',
           });
         }
@@ -172,7 +173,7 @@ Finalizes an escrowed payment, releasing funds to the merchant.
         const relayerService = relayerServices.get(payment.network_id);
         if (!relayerService) {
           return reply.code(500).send({
-            code: 'RELAYER_ERROR',
+            code: ErrorCodes.RELAYER_ERROR,
             message: 'Relayer service not available for this chain',
           });
         }
@@ -209,7 +210,7 @@ Finalizes an escrowed payment, releasing funds to the merchant.
       } catch (error) {
         request.log.error({ err: error }, 'Failed to finalize payment');
         return reply.code(500).send({
-          code: 'INTERNAL_ERROR',
+          code: ErrorCodes.INTERNAL_ERROR,
           message: 'Failed to finalize payment',
         });
       }

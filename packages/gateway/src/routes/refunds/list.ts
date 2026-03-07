@@ -5,6 +5,7 @@ import { PaymentService } from '../../services/payment.service';
 import { RefundService } from '../../services/refund.service';
 import { createAuthMiddleware } from '../../middleware/auth.middleware';
 import { ErrorResponseSchema } from '../../docs/schemas';
+import { ErrorCodes } from '../../error-codes';
 
 interface RefundListQuery {
   page?: number;
@@ -110,7 +111,7 @@ export async function getRefundListRoute(
         const merchant = request.merchant;
         if (!merchant) {
           return reply.code(401).send({
-            code: 'UNAUTHORIZED',
+            code: ErrorCodes.UNAUTHORIZED,
             message: 'Authentication required',
           });
         }
@@ -150,7 +151,7 @@ export async function getRefundListRoute(
       } catch (error) {
         request.log.error({ err: error }, 'Failed to list refunds');
         return reply.code(500).send({
-          code: 'INTERNAL_ERROR',
+          code: ErrorCodes.INTERNAL_ERROR,
           message: 'Failed to list refunds',
         });
       }

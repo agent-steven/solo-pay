@@ -1,6 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { Merchant } from '@solo-pay/database';
 import { MerchantService } from '../services/merchant.service';
+import { ErrorCodes } from '../error-codes';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -21,7 +22,7 @@ export function createAuthMiddleware(merchantService: MerchantService) {
 
     if (!apiKey || apiKey.trim() === '') {
       return reply.code(401).send({
-        code: 'UNAUTHORIZED',
+        code: ErrorCodes.UNAUTHORIZED,
         message: 'Missing or invalid x-api-key header',
       });
     }
@@ -31,7 +32,7 @@ export function createAuthMiddleware(merchantService: MerchantService) {
 
       if (!merchant) {
         return reply.code(401).send({
-          code: 'UNAUTHORIZED',
+          code: ErrorCodes.UNAUTHORIZED,
           message: 'Invalid API key',
         });
       }
@@ -40,7 +41,7 @@ export function createAuthMiddleware(merchantService: MerchantService) {
     } catch (error) {
       request.log.error(error, 'Authentication failed due to an internal error');
       return reply.code(500).send({
-        code: 'INTERNAL_ERROR',
+        code: ErrorCodes.INTERNAL_ERROR,
         message: 'Authentication failed',
       });
     }

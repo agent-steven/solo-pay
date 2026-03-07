@@ -23,19 +23,20 @@ interface PaymentStepProps {
 /**
  * Get human-readable network name from chain ID
  */
+const NETWORK_NAMES: Record<number, string> = {
+  1: 'Ethereum',
+  11155111: 'Sepolia',
+  137: 'Polygon',
+  80002: 'Polygon Amoy',
+  56: 'BSC',
+  97: 'BSC Testnet',
+  42161: 'Arbitrum',
+  10: 'Optimism',
+  8453: 'Base',
+};
+
 function getNetworkName(chainId: number): string {
-  const networks: Record<number, string> = {
-    1: 'Ethereum',
-    11155111: 'Sepolia',
-    137: 'Polygon',
-    80002: 'Polygon Amoy',
-    56: 'BSC',
-    97: 'BSC Testnet',
-    42161: 'Arbitrum',
-    10: 'Optimism',
-    8453: 'Base',
-  };
-  return networks[chainId] ?? `Chain ${chainId}`;
+  return NETWORK_NAMES[chainId] ?? `Chain ${chainId}`;
 }
 
 /**
@@ -54,9 +55,6 @@ function formatAddress(addr: string): string {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
-/**
- * Parse blockchain error message to user-friendly text (locale-aware via t)
- */
 /**
  * Safely append paymentId, orderId, and status query parameters to a redirect URL.
  * Returns empty string for non-http(s) protocols or malformed URLs to prevent XSS.
@@ -79,12 +77,26 @@ function appendPaymentParams(
   }
 }
 
+/**
+ * Resolve a user-friendly error message.
+ * Priority: errorCode → i18n key (apiError.*) → string pattern match → raw message.
+ */
 function parseErrorMessage(
   error: string | undefined,
-  t: (key: TranslationKeys, params?: Record<string, string | number>) => string
+  t: (key: TranslationKeys, params?: Record<string, string | number>) => string,
+  errorCode?: string | null
 ): string | undefined {
   if (!error) return undefined;
 
+  // 1. Map gateway error code to i18n key
+  if (errorCode) {
+    const i18nKey = `apiError.${errorCode}` as TranslationKeys;
+    const translated = t(i18nKey);
+    // t() returns the key itself when no translation exists; only use if we got an actual translation
+    if (translated !== i18nKey) return translated;
+  }
+
+  // 2. Wallet / blockchain error pattern matching (these don't come with gateway error codes)
   if (error.includes('User rejected') || error.includes('User denied')) {
     return t('error.transactionCancelled');
   }
@@ -102,6 +114,8 @@ function parseErrorMessage(
   if (error.includes('network') || error.includes('connection')) {
     return t('error.networkError');
   }
+
+  // 3. Fallback: truncate long messages
   if (error.length > 100) {
     return error.substring(0, 100) + '...';
   }
@@ -132,6 +146,7 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
     payment: paymentDetails,
     isLoading,
     error: apiError,
+    errorCode: apiErrorCode,
     createPayment,
     fetchPayment,
   } = usePaymentApi();
@@ -522,7 +537,7 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
           </svg>
           <p className="font-medium">{t('error.paymentError')}</p>
         </div>
-        <p className="text-sm text-gray-600 mb-4">{apiError}</p>
+        <p className="text-sm text-gray-600 mb-4">{parseErrorMessage(apiError, t, apiErrorCode)}</p>
         {effectiveFailUrl && (
           <button
             onClick={handleCancel}

@@ -16,6 +16,7 @@ import {
   GaslessResponseSchema,
   ErrorResponseSchema,
 } from '../../docs/schemas';
+import { ErrorCodes } from '../../error-codes';
 
 export interface SubmitGaslessRequest {
   paymentId: string;
@@ -85,32 +86,32 @@ Submits a gasless (meta-transaction) payment using ERC-2771 forwarder.
 
         if (!id || typeof id !== 'string') {
           return reply.code(400).send({
-            code: 'INVALID_REQUEST',
-            message: '결제 ID는 필수입니다',
+            code: ErrorCodes.INVALID_REQUEST,
+            message: 'Payment ID is required',
           });
         }
 
-        // 입력 검증
+        // Validate input
         let validatedData;
         try {
           validatedData = GaslessRequestSchema.parse(request.body);
         } catch (error) {
           if (error instanceof ZodError) {
             return reply.code(400).send({
-              code: 'VALIDATION_ERROR',
-              message: '입력 검증 실패',
+              code: ErrorCodes.VALIDATION_ERROR,
+              message: 'Input validation failed',
               details: error.errors,
             });
           }
           throw error;
         }
 
-        // Payment 조회
+        // Find payment
         const payment = await paymentService.findByHash(id);
         if (!payment) {
           return reply.code(404).send({
-            code: 'PAYMENT_NOT_FOUND',
-            message: '결제를 찾을 수 없습니다',
+            code: ErrorCodes.PAYMENT_NOT_FOUND,
+            message: 'Payment not found',
           });
         }
 
@@ -118,7 +119,7 @@ Submits a gasless (meta-transaction) payment using ERC-2771 forwarder.
         const merchant = request.merchant;
         if (merchant && payment.merchant_id !== merchant.id) {
           return reply.code(403).send({
-            code: 'FORBIDDEN',
+            code: ErrorCodes.FORBIDDEN,
             message: 'Payment does not belong to this merchant',
           });
         }
@@ -130,28 +131,28 @@ Submits a gasless (meta-transaction) payment using ERC-2771 forwarder.
         } catch (error) {
           if (error instanceof ZodError) {
             return reply.code(400).send({
-              code: 'VALIDATION_ERROR',
-              message: '입력 검증 실패',
+              code: ErrorCodes.VALIDATION_ERROR,
+              message: 'Input validation failed',
               details: error.errors,
             });
           }
           throw error;
         }
 
-        // 이미 처리된 결제인지 확인
+        // Check payment status
         if (payment.status !== 'CREATED') {
           return reply.code(400).send({
-            code: 'INVALID_PAYMENT_STATUS',
-            message: `결제 상태가 ${payment.status}입니다. Gasless 요청은 CREATED 상태에서만 가능합니다.`,
+            code: ErrorCodes.INVALID_PAYMENT_STATUS,
+            message: `Payment status is ${payment.status}. Gasless request is only allowed in CREATED status.`,
           });
         }
 
-        // 결제 만료 확인
+        // Check payment expiry
         if (payment.expires_at && new Date() > new Date(payment.expires_at)) {
           await paymentService.updateStatus(payment.id, 'EXPIRED');
           return reply.code(400).send({
-            code: 'PAYMENT_EXPIRED',
-            message: '결제가 만료되었습니다',
+            code: ErrorCodes.PAYMENT_EXPIRED,
+            message: 'Payment has expired',
           });
         }
 
@@ -161,7 +162,7 @@ Submits a gasless (meta-transaction) payment using ERC-2771 forwarder.
         const inFlight = existingRelays.filter((r) => r.status !== 'FAILED');
         if (inFlight.length > 0) {
           return reply.code(400).send({
-            code: 'RELAY_ALREADY_SUBMITTED',
+            code: ErrorCodes.RELAY_ALREADY_SUBMITTED,
             message:
               'Gasless already submitted for this payment. Check relay status or use a new checkout.',
           });
@@ -171,46 +172,46 @@ Submits a gasless (meta-transaction) payment using ERC-2771 forwarder.
         const relayerService = relayerServices.get(payment.network_id);
         if (!relayerService) {
           return reply.code(400).send({
-            code: 'RELAYER_NOT_CONFIGURED',
+            code: ErrorCodes.RELAYER_NOT_CONFIGURED,
             message: `No relayer configured for chain ${payment.network_id}`,
           });
         }
 
-        // ForwardRequest 서명 검증
+        // Validate ForwardRequest signature
         if (!relayerService.validateTransactionData(validatedData.forwardRequest.signature)) {
           return reply.code(400).send({
-            code: 'INVALID_SIGNATURE',
-            message: '유효하지 않은 서명 형식입니다',
+            code: ErrorCodes.INVALID_SIGNATURE,
+            message: 'Invalid signature format',
           });
         }
 
-        // Gasless 거래 제출 (ForwardRequest 포함)
+        // Submit gasless transaction (with ForwardRequest)
         const result = await relayerService.submitForwardTransaction(
           id,
           validatedData.forwarderAddress as Address,
           validatedData.forwardRequest
         );
 
-        // DB에 RelayRequest 저장
+        // Save RelayRequest to DB
         await relayService.create({
           relay_ref: result.relayRequestId,
           payment_id: payment.id,
         });
 
-        // Relay 제출 후에도 CREATED 유지 (온체인 확인 시 ESCROWED로 전환)
+        // Keep CREATED status after relay submit (transitions to ESCROWED on on-chain confirmation)
 
         return reply.code(202).send({
           success: true,
           data: {
             status: result.status,
-            message: 'Gasless 거래가 제출되었습니다',
+            message: 'Gasless transaction submitted',
           },
         });
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : 'Gasless 거래를 제출할 수 없습니다';
+          error instanceof Error ? error.message : 'Failed to submit gasless transaction';
         return reply.code(500).send({
-          code: 'INTERNAL_ERROR',
+          code: ErrorCodes.INTERNAL_ERROR,
           message,
         });
       }

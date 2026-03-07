@@ -7,6 +7,7 @@ import { TokenService } from '../../services/token.service';
 import { ChainService } from '../../services/chain.service';
 import { createAuthMiddleware } from '../../middleware/auth.middleware';
 import { ErrorResponseSchema } from '../../docs/schemas';
+import { ErrorCodes } from '../../error-codes';
 
 // Note: recipientAddress removed - contract pays to treasury (set at deployment)
 const CreatePaymentMethodSchema = z.object({
@@ -93,7 +94,7 @@ export async function paymentMethodsRoute(
         const merchant = request.merchant;
         if (!merchant) {
           return reply.code(401).send({
-            code: 'UNAUTHORIZED',
+            code: ErrorCodes.UNAUTHORIZED,
             message: 'Authentication required',
           });
         }
@@ -117,7 +118,7 @@ export async function paymentMethodsRoute(
         const message = error instanceof Error ? error.message : 'Failed to get payment methods';
         request.log.error(error, 'Failed to get payment methods');
         return reply.code(500).send({
-          code: 'INTERNAL_ERROR',
+          code: ErrorCodes.INTERNAL_ERROR,
           message,
         });
       }
@@ -200,7 +201,7 @@ export async function paymentMethodsRoute(
         const merchant = request.merchant;
         if (!merchant) {
           return reply.code(401).send({
-            code: 'UNAUTHORIZED',
+            code: ErrorCodes.UNAUTHORIZED,
             message: 'Authentication required',
           });
         }
@@ -210,7 +211,7 @@ export async function paymentMethodsRoute(
         // Validate merchant has chain configured
         if (!merchant.chain_id) {
           return reply.code(400).send({
-            code: 'MERCHANT_CHAIN_NOT_CONFIGURED',
+            code: ErrorCodes.MERCHANT_CHAIN_NOT_CONFIGURED,
             message: 'Merchant chain is not configured. Please configure merchant chain first.',
           });
         }
@@ -219,7 +220,7 @@ export async function paymentMethodsRoute(
         const chain = await chainService.findById(merchant.chain_id);
         if (!chain) {
           return reply.code(404).send({
-            code: 'CHAIN_NOT_FOUND',
+            code: ErrorCodes.CHAIN_NOT_FOUND,
             message: 'Merchant chain not found',
           });
         }
@@ -228,7 +229,7 @@ export async function paymentMethodsRoute(
         const token = await tokenService.findByAddress(chain.id, validatedData.tokenAddress);
         if (!token) {
           return reply.code(404).send({
-            code: 'TOKEN_NOT_FOUND',
+            code: ErrorCodes.TOKEN_NOT_FOUND,
             message: 'Token not found',
           });
         }
@@ -236,7 +237,7 @@ export async function paymentMethodsRoute(
         // Validate that token's chain matches merchant's chain
         if (token.chain_id !== merchant.chain_id) {
           return reply.code(400).send({
-            code: 'CHAIN_MISMATCH',
+            code: ErrorCodes.CHAIN_MISMATCH,
             message: `Token belongs to chain ${token.chain_id}, but merchant is configured for chain ${merchant.chain_id}`,
           });
         }
@@ -258,7 +259,7 @@ export async function paymentMethodsRoute(
           } else {
             // Active payment method already exists
             return reply.code(409).send({
-              code: 'PAYMENT_METHOD_EXISTS',
+              code: ErrorCodes.PAYMENT_METHOD_EXISTS,
               message: 'Payment method already exists for this token',
             });
           }
@@ -299,7 +300,7 @@ export async function paymentMethodsRoute(
       } catch (error) {
         if (error instanceof z.ZodError) {
           return reply.code(400).send({
-            code: 'VALIDATION_ERROR',
+            code: ErrorCodes.VALIDATION_ERROR,
             message: 'Input validation failed',
             details: error.errors,
           });
@@ -307,7 +308,7 @@ export async function paymentMethodsRoute(
         const message = error instanceof Error ? error.message : 'Failed to create payment method';
         request.log.error(error, 'Failed to create payment method');
         return reply.code(500).send({
-          code: 'INTERNAL_ERROR',
+          code: ErrorCodes.INTERNAL_ERROR,
           message,
         });
       }
@@ -393,7 +394,7 @@ export async function paymentMethodsRoute(
         const merchant = request.merchant;
         if (!merchant) {
           return reply.code(401).send({
-            code: 'UNAUTHORIZED',
+            code: ErrorCodes.UNAUTHORIZED,
             message: 'Authentication required',
           });
         }
@@ -401,7 +402,7 @@ export async function paymentMethodsRoute(
         const paymentMethodId = parseInt(request.params.id, 10);
         if (isNaN(paymentMethodId)) {
           return reply.code(400).send({
-            code: 'INVALID_REQUEST',
+            code: ErrorCodes.INVALID_REQUEST,
             message: 'Invalid payment method ID',
           });
         }
@@ -410,14 +411,14 @@ export async function paymentMethodsRoute(
         const paymentMethod = await paymentMethodService.findById(paymentMethodId);
         if (!paymentMethod) {
           return reply.code(404).send({
-            code: 'NOT_FOUND',
+            code: ErrorCodes.NOT_FOUND,
             message: 'Payment method not found',
           });
         }
 
         if (paymentMethod.merchant_id !== merchant.id) {
           return reply.code(403).send({
-            code: 'FORBIDDEN',
+            code: ErrorCodes.FORBIDDEN,
             message: 'Payment method does not belong to this merchant',
           });
         }
@@ -426,7 +427,7 @@ export async function paymentMethodsRoute(
 
         if (Object.keys(validatedData).length === 0) {
           return reply.code(400).send({
-            code: 'VALIDATION_ERROR',
+            code: ErrorCodes.VALIDATION_ERROR,
             message: 'At least one field must be provided for update',
           });
         }
@@ -478,7 +479,7 @@ export async function paymentMethodsRoute(
       } catch (error) {
         if (error instanceof z.ZodError) {
           return reply.code(400).send({
-            code: 'VALIDATION_ERROR',
+            code: ErrorCodes.VALIDATION_ERROR,
             message: 'Input validation failed',
             details: error.errors,
           });
@@ -486,7 +487,7 @@ export async function paymentMethodsRoute(
         const message = error instanceof Error ? error.message : 'Failed to update payment method';
         request.log.error(error, 'Failed to update payment method');
         return reply.code(500).send({
-          code: 'INTERNAL_ERROR',
+          code: ErrorCodes.INTERNAL_ERROR,
           message,
         });
       }
@@ -537,7 +538,7 @@ export async function paymentMethodsRoute(
         const merchant = request.merchant;
         if (!merchant) {
           return reply.code(401).send({
-            code: 'UNAUTHORIZED',
+            code: ErrorCodes.UNAUTHORIZED,
             message: 'Authentication required',
           });
         }
@@ -545,7 +546,7 @@ export async function paymentMethodsRoute(
         const paymentMethodId = parseInt(request.params.id, 10);
         if (isNaN(paymentMethodId)) {
           return reply.code(400).send({
-            code: 'INVALID_REQUEST',
+            code: ErrorCodes.INVALID_REQUEST,
             message: 'Invalid payment method ID',
           });
         }
@@ -554,14 +555,14 @@ export async function paymentMethodsRoute(
         const paymentMethod = await paymentMethodService.findById(paymentMethodId);
         if (!paymentMethod) {
           return reply.code(404).send({
-            code: 'NOT_FOUND',
+            code: ErrorCodes.NOT_FOUND,
             message: 'Payment method not found',
           });
         }
 
         if (paymentMethod.merchant_id !== merchant.id) {
           return reply.code(403).send({
-            code: 'FORBIDDEN',
+            code: ErrorCodes.FORBIDDEN,
             message: 'Payment method does not belong to this merchant',
           });
         }
@@ -579,7 +580,7 @@ export async function paymentMethodsRoute(
         const message = error instanceof Error ? error.message : 'Failed to delete payment method';
         request.log.error(error, 'Failed to delete payment method');
         return reply.code(500).send({
-          code: 'INTERNAL_ERROR',
+          code: ErrorCodes.INTERNAL_ERROR,
           message,
         });
       }

@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { ChainService } from '../../services/chain.service';
 import { TokenService } from '../../services/token.service';
 import { ErrorResponseSchema } from '../../docs/schemas';
+import { ErrorCodes } from '../../error-codes';
 
 export async function getChainsRoute(
   app: FastifyInstance,
@@ -65,7 +66,7 @@ export async function getChainsRoute(
         const message = error instanceof Error ? error.message : 'Failed to get chains';
         request.log.error(error, 'Failed to get chains');
         return reply.code(500).send({
-          code: 'INTERNAL_ERROR',
+          code: ErrorCodes.INTERNAL_ERROR,
           message,
         });
       }
@@ -168,7 +169,7 @@ export async function getChainsRoute(
         const message = error instanceof Error ? error.message : 'Failed to get chains and tokens';
         request.log.error(error, 'Failed to get chains and tokens');
         return reply.code(500).send({
-          code: 'INTERNAL_ERROR',
+          code: ErrorCodes.INTERNAL_ERROR,
           message,
         });
       }

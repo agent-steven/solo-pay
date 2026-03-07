@@ -48,6 +48,33 @@ const translations = {
     'error.insufficientBalance': 'Insufficient balance. You need {amount} {token}',
     'error.paymentExpired': 'This payment has expired',
 
+    // API error codes (mapped from gateway ErrorCodes)
+    'apiError.UNAUTHORIZED': 'Authentication failed',
+    'apiError.FORBIDDEN': 'Access denied',
+    'apiError.VALIDATION_ERROR': 'Invalid input. Please check and try again',
+    'apiError.INVALID_REQUEST': 'Invalid request',
+    'apiError.PAYMENT_NOT_FOUND': 'Payment not found',
+    'apiError.PAYMENT_EXPIRED': 'This payment has expired',
+    'apiError.INVALID_PAYMENT_STATUS': 'Invalid payment status',
+    'apiError.DUPLICATE_ORDER': 'This order has already been processed',
+    'apiError.AMOUNT_MISMATCH': 'Payment amount mismatch',
+    'apiError.TOKEN_NOT_FOUND': 'Token is not supported',
+    'apiError.TOKEN_NOT_ENABLED': 'Token is not enabled for this merchant',
+    'apiError.UNSUPPORTED_TOKEN': 'Token is not supported',
+    'apiError.UNSUPPORTED_CHAIN': 'Network is not supported',
+    'apiError.CHAIN_NOT_FOUND': 'Network not found',
+    'apiError.CHAIN_NOT_CONFIGURED': 'Network is not configured',
+    'apiError.RECIPIENT_NOT_CONFIGURED':
+      'Payment configuration error. Please contact support.',
+    'apiError.RELAY_ALREADY_SUBMITTED': 'Payment is already being processed',
+    'apiError.RELAYER_NOT_CONFIGURED':
+      'Gasless payment is not available. Please contact support.',
+    'apiError.INVALID_SIGNATURE': 'Invalid signature. Please try again',
+    'apiError.INTERNAL_ERROR': 'Server error. Please try again later',
+    'apiError.NOT_FOUND': 'Resource not found',
+    'apiError.CONFLICT': 'Request conflict. Please try again',
+    'apiError.UNKNOWN': 'An unexpected error occurred. Please try again',
+
     // Connect wallet
     'connect.title': 'Connect Wallet',
     'connect.description':
@@ -148,6 +175,33 @@ const translations = {
     'error.insufficientBalance': '잔액이 부족합니다. {amount} {token} 필요',
     'error.paymentExpired': '결제가 만료되었습니다',
 
+    // API error codes (mapped from gateway ErrorCodes)
+    'apiError.UNAUTHORIZED': '인증에 실패했습니다',
+    'apiError.FORBIDDEN': '접근이 거부되었습니다',
+    'apiError.VALIDATION_ERROR': '입력이 올바르지 않습니다. 확인 후 다시 시도해 주세요',
+    'apiError.INVALID_REQUEST': '잘못된 요청입니다',
+    'apiError.PAYMENT_NOT_FOUND': '결제를 찾을 수 없습니다',
+    'apiError.PAYMENT_EXPIRED': '결제가 만료되었습니다',
+    'apiError.INVALID_PAYMENT_STATUS': '결제 상태가 올바르지 않습니다',
+    'apiError.DUPLICATE_ORDER': '이미 처리된 주문입니다',
+    'apiError.AMOUNT_MISMATCH': '결제 금액이 일치하지 않습니다',
+    'apiError.TOKEN_NOT_FOUND': '지원하지 않는 토큰입니다',
+    'apiError.TOKEN_NOT_ENABLED': '이 가맹점에서 활성화되지 않은 토큰입니다',
+    'apiError.UNSUPPORTED_TOKEN': '지원하지 않는 토큰입니다',
+    'apiError.UNSUPPORTED_CHAIN': '지원하지 않는 네트워크입니다',
+    'apiError.CHAIN_NOT_FOUND': '네트워크를 찾을 수 없습니다',
+    'apiError.CHAIN_NOT_CONFIGURED': '네트워크가 설정되어 있지 않습니다',
+    'apiError.RECIPIENT_NOT_CONFIGURED':
+      '결제 설정 오류입니다. 고객센터에 문의하세요.',
+    'apiError.RELAY_ALREADY_SUBMITTED': '결제가 이미 처리 중입니다',
+    'apiError.RELAYER_NOT_CONFIGURED':
+      '가스리스 결제를 사용할 수 없습니다. 고객센터에 문의하세요.',
+    'apiError.INVALID_SIGNATURE': '서명이 올바르지 않습니다. 다시 시도해 주세요',
+    'apiError.INTERNAL_ERROR': '서버 오류입니다. 잠시 후 다시 시도해 주세요',
+    'apiError.NOT_FOUND': '리소스를 찾을 수 없습니다',
+    'apiError.CONFLICT': '요청 충돌이 발생했습니다. 다시 시도해 주세요',
+    'apiError.UNKNOWN': '예기치 않은 오류가 발생했습니다. 다시 시도해 주세요',
+
     'connect.title': '지갑 연결',
     'connect.description': '결제를 위해 지갑을 연결해 주세요.\nMetaMask, Trust Wallet 지원.',
     'connect.connecting': '연결 중...',
@@ -226,7 +280,7 @@ export function t(
   let text = dict[key] ?? (translations.en as Record<string, string>)[key] ?? key;
   if (params) {
     Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
+      text = text.replaceAll(`{${k}}`, String(v));
     });
   }
   return text;

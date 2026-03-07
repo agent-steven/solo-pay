@@ -109,13 +109,21 @@ const wagmiLocalhost = viemDefineChain({
   rpcUrls: { default: { http: [RPC.localhost] } },
 });
 
+// Override Polygon Amoy chain definition with public RPC URL.
+// The default from wagmi/chains uses rpc.walletconnect.org which wallets reject
+// as "Invalid URL" when adding a custom network via wallet_addEthereumChain.
+const wagmiPolygonAmoyOverride = viemDefineChain({
+  ...wagmiPolygonAmoy,
+  rpcUrls: { default: { http: [RPC.polygonAmoy] } },
+});
+
 export const fallbackConfig = createConfig({
   connectors: [injected(), trustWalletConnector, metaMask({ enableAnalytics: false })],
   chains: [
     wagmiLocalhost,
     wagmiMainnet,
     wagmiPolygon,
-    wagmiPolygonAmoy,
+    wagmiPolygonAmoyOverride,
     wagmiOptimism,
     wagmiArbitrum,
     wagmiBase,
@@ -125,7 +133,7 @@ export const fallbackConfig = createConfig({
     [wagmiLocalhost.id]: http(RPC.localhost),
     [wagmiMainnet.id]: http(RPC.mainnet),
     [wagmiPolygon.id]: http(RPC.polygon),
-    [wagmiPolygonAmoy.id]: fallback([http(RPC.polygonAmoy), http(RPC.polygonAmoyFallback)]),
+    [wagmiPolygonAmoyOverride.id]: fallback([http(RPC.polygonAmoy), http(RPC.polygonAmoyFallback)]),
     [wagmiOptimism.id]: http(RPC.optimism),
     [wagmiArbitrum.id]: http(RPC.arbitrum),
     [wagmiBase.id]: http(RPC.base),
