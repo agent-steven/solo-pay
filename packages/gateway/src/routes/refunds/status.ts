@@ -4,6 +4,7 @@ import { PaymentService } from '../../services/payment.service';
 import { RefundService } from '../../services/refund.service';
 import { createAuthMiddleware } from '../../middleware/auth.middleware';
 import { ErrorResponseSchema } from '../../docs/schemas';
+import { ErrorCodes } from '../../error-codes';
 
 interface RefundStatusParams {
   refundId: string;
@@ -76,7 +77,7 @@ export async function getRefundStatusRoute(
         const merchant = request.merchant;
         if (!merchant) {
           return reply.code(401).send({
-            code: 'UNAUTHORIZED',
+            code: ErrorCodes.UNAUTHORIZED,
             message: 'Authentication required',
           });
         }
@@ -85,7 +86,7 @@ export async function getRefundStatusRoute(
         const refund = await refundService.findByHash(refundId);
         if (!refund) {
           return reply.code(404).send({
-            code: 'REFUND_NOT_FOUND',
+            code: ErrorCodes.REFUND_NOT_FOUND,
             message: 'Refund not found',
           });
         }
@@ -93,7 +94,7 @@ export async function getRefundStatusRoute(
         // Verify merchant ownership
         if (refund.merchant_id !== merchant.id) {
           return reply.code(403).send({
-            code: 'FORBIDDEN',
+            code: ErrorCodes.FORBIDDEN,
             message: 'Refund does not belong to this merchant',
           });
         }
@@ -102,7 +103,7 @@ export async function getRefundStatusRoute(
         const payment = await paymentService.findById(refund.payment_id);
         if (!payment) {
           return reply.code(404).send({
-            code: 'PAYMENT_NOT_FOUND',
+            code: ErrorCodes.PAYMENT_NOT_FOUND,
             message: 'Associated payment not found',
           });
         }
@@ -129,7 +130,7 @@ export async function getRefundStatusRoute(
       } catch (error) {
         request.log.error({ err: error }, 'Failed to get refund status');
         return reply.code(500).send({
-          code: 'INTERNAL_ERROR',
+          code: ErrorCodes.INTERNAL_ERROR,
           message: 'Failed to get refund status',
         });
       }

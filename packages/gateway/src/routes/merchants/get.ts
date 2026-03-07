@@ -5,6 +5,7 @@ import { TokenService } from '../../services/token.service';
 import { ChainService } from '../../services/chain.service';
 import { createAuthMiddleware } from '../../middleware/auth.middleware';
 import { ErrorResponseSchema } from '../../docs/schemas';
+import { ErrorCodes } from '../../error-codes';
 
 export async function getMerchantRoute(
   app: FastifyInstance,
@@ -136,7 +137,7 @@ export async function getMerchantRoute(
         const merchant = request.merchant;
         if (!merchant) {
           return reply.code(401).send({
-            code: 'UNAUTHORIZED',
+            code: ErrorCodes.UNAUTHORIZED,
             message: 'Authentication required',
           });
         }
@@ -211,7 +212,7 @@ export async function getMerchantRoute(
         const message = error instanceof Error ? error.message : 'Failed to get merchant';
         request.log.error(error, 'Failed to get merchant');
         return reply.code(500).send({
-          code: 'INTERNAL_ERROR',
+          code: ErrorCodes.INTERNAL_ERROR,
           message,
         });
       }

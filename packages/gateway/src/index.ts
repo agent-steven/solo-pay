@@ -166,7 +166,8 @@ const registerRoutes = async () => {
         relayerServices,
         relayService,
         paymentService,
-        merchantService
+        merchantService,
+        blockchainService
       );
       await getPaymentRelayStatusRoute(
         scope,

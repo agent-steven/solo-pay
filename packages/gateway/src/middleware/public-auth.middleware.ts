@@ -1,6 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { Merchant } from '@solo-pay/database';
 import { MerchantService } from '../services/merchant.service';
+import { ErrorCodes } from '../error-codes';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -36,7 +37,7 @@ export function createPublicAuthMiddleware(merchantService: MerchantService) {
 
     if (!publicKey || publicKey.trim() === '') {
       return reply.code(401).send({
-        code: 'UNAUTHORIZED',
+        code: ErrorCodes.UNAUTHORIZED,
         message: 'Missing or invalid x-public-key header',
       });
     }
@@ -46,7 +47,7 @@ export function createPublicAuthMiddleware(merchantService: MerchantService) {
 
       if (!merchant) {
         return reply.code(401).send({
-          code: 'UNAUTHORIZED',
+          code: ErrorCodes.UNAUTHORIZED,
           message: 'Invalid public key',
         });
       }
@@ -55,7 +56,7 @@ export function createPublicAuthMiddleware(merchantService: MerchantService) {
         const origin = resolveOrigin(request);
         if (!origin || origin !== ALLOWED_WIDGET_ORIGIN) {
           return reply.code(403).send({
-            code: 'FORBIDDEN',
+            code: ErrorCodes.FORBIDDEN,
             message: 'Origin not allowed',
           });
         }
@@ -65,7 +66,7 @@ export function createPublicAuthMiddleware(merchantService: MerchantService) {
     } catch (error) {
       request.log.error(error, 'Public key authentication failed due to an internal error');
       return reply.code(500).send({
-        code: 'INTERNAL_ERROR',
+        code: ErrorCodes.INTERNAL_ERROR,
         message: 'Authentication failed',
       });
     }

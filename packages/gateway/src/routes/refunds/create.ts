@@ -9,6 +9,7 @@ import { ServerSigningService } from '../../services/signature-server.service';
 import { BlockchainService } from '../../services/blockchain.service';
 import { createAuthMiddleware } from '../../middleware/auth.middleware';
 import { ErrorResponseSchema, BYTES32_PATTERN } from '../../docs/schemas';
+import { ErrorCodes } from '../../error-codes';
 
 const REFUND_SALT_BYTES = 16;
 
@@ -102,7 +103,7 @@ Creates a refund request for a finalized payment.
         const merchant = request.merchant;
         if (!merchant) {
           return reply.code(401).send({
-            code: 'UNAUTHORIZED',
+            code: ErrorCodes.UNAUTHORIZED,
             message: 'Authentication required',
           });
         }
@@ -111,7 +112,7 @@ Creates a refund request for a finalized payment.
         const payment = await paymentService.findByHash(paymentId);
         if (!payment) {
           return reply.code(404).send({
-            code: 'PAYMENT_NOT_FOUND',
+            code: ErrorCodes.PAYMENT_NOT_FOUND,
             message: 'Payment not found',
           });
         }
@@ -119,7 +120,7 @@ Creates a refund request for a finalized payment.
         // 2. Verify merchant ownership
         if (payment.merchant_id !== merchant.id) {
           return reply.code(403).send({
-            code: 'FORBIDDEN',
+            code: ErrorCodes.FORBIDDEN,
             message: 'Payment does not belong to this merchant',
           });
         }
@@ -127,7 +128,7 @@ Creates a refund request for a finalized payment.
         // 3. Check payment status
         if (payment.status !== 'FINALIZED') {
           return reply.code(400).send({
-            code: 'PAYMENT_NOT_FINALIZED',
+            code: ErrorCodes.PAYMENT_NOT_FINALIZED,
             message: `Payment must be FINALIZED to refund. Current status: ${payment.status}`,
           });
         }
@@ -135,7 +136,7 @@ Creates a refund request for a finalized payment.
         // 4. Check payer_address
         if (!payment.payer_address) {
           return reply.code(400).send({
-            code: 'PAYER_ADDRESS_NOT_FOUND',
+            code: ErrorCodes.PAYER_ADDRESS_NOT_FOUND,
             message: 'Payer address not found for this payment',
           });
         }
@@ -144,7 +145,7 @@ Creates a refund request for a finalized payment.
         const hasCompleted = await refundService.hasCompletedRefund(payment.id);
         if (hasCompleted) {
           return reply.code(400).send({
-            code: 'PAYMENT_ALREADY_REFUNDED',
+            code: ErrorCodes.PAYMENT_ALREADY_REFUNDED,
             message: 'This payment has already been refunded',
           });
         }
@@ -152,7 +153,7 @@ Creates a refund request for a finalized payment.
         const hasActive = await refundService.hasActiveRefund(payment.id);
         if (hasActive) {
           return reply.code(400).send({
-            code: 'REFUND_IN_PROGRESS',
+            code: ErrorCodes.REFUND_IN_PROGRESS,
             message: 'A refund is already in progress for this payment',
           });
         }
@@ -161,7 +162,7 @@ Creates a refund request for a finalized payment.
         const chainContracts = blockchainService.getChainContracts(payment.network_id);
         if (!chainContracts || !chainContracts.gateway) {
           return reply.code(500).send({
-            code: 'CHAIN_CONFIG_ERROR',
+            code: ErrorCodes.CHAIN_CONFIG_ERROR,
             message: 'Chain configuration not found',
           });
         }
@@ -170,7 +171,7 @@ Creates a refund request for a finalized payment.
         const signingService = signingServices.get(payment.network_id);
         if (!signingService) {
           return reply.code(500).send({
-            code: 'SIGNING_SERVICE_ERROR',
+            code: ErrorCodes.SIGNING_SERVICE_ERROR,
             message: 'Signing service not available for this chain',
           });
         }
@@ -182,7 +183,7 @@ Creates a refund request for a finalized payment.
         );
         if (!tokenConfig) {
           return reply.code(500).send({
-            code: 'TOKEN_INFO_ERROR',
+            code: ErrorCodes.TOKEN_INFO_ERROR,
             message: 'Token information not found',
           });
         }
@@ -238,7 +239,7 @@ Creates a refund request for a finalized payment.
       } catch (error) {
         request.log.error({ err: error }, 'Failed to create refund');
         return reply.code(500).send({
-          code: 'INTERNAL_ERROR',
+          code: ErrorCodes.INTERNAL_ERROR,
           message: 'Failed to create refund',
         });
       }

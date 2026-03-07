@@ -9,6 +9,7 @@ import { PaymentMethodService } from '../../services/payment-method.service';
 import { ServerSigningService } from '../../services/signature-server.service';
 import { createPublicAuthMiddleware } from '../../middleware/public-auth.middleware';
 import { PaymentStatusResponseSchema, ErrorResponseSchema } from '../../docs/schemas';
+import { ErrorCodes } from '../../error-codes';
 
 export async function getPaymentStatusRoute(
   app: FastifyInstance,
@@ -90,7 +91,7 @@ For non-terminal statuses, a fresh server signature with a new deadline is gener
 
         if (!id || typeof id !== 'string') {
           return reply.code(400).send({
-            code: 'INVALID_REQUEST',
+            code: ErrorCodes.INVALID_REQUEST,
             message: 'Payment ID is required',
           });
         }
@@ -99,7 +100,7 @@ For non-terminal statuses, a fresh server signature with a new deadline is gener
 
         if (!paymentData) {
           return reply.code(404).send({
-            code: 'NOT_FOUND',
+            code: ErrorCodes.NOT_FOUND,
             message: 'Payment not found',
           });
         }
@@ -108,7 +109,7 @@ For non-terminal statuses, a fresh server signature with a new deadline is gener
         const merchant = request.merchant;
         if (merchant && paymentData.merchant_id !== merchant.id) {
           return reply.code(403).send({
-            code: 'FORBIDDEN',
+            code: ErrorCodes.FORBIDDEN,
             message: 'Payment does not belong to this merchant',
           });
         }
@@ -117,7 +118,7 @@ For non-terminal statuses, a fresh server signature with a new deadline is gener
 
         if (!blockchainService.isChainSupported(chainIdNum)) {
           return reply.code(400).send({
-            code: 'UNSUPPORTED_CHAIN',
+            code: ErrorCodes.UNSUPPORTED_CHAIN,
             message: 'Unsupported chain',
           });
         }
@@ -126,7 +127,7 @@ For non-terminal statuses, a fresh server signature with a new deadline is gener
 
         if (!paymentStatus) {
           return reply.code(404).send({
-            code: 'NOT_FOUND',
+            code: ErrorCodes.NOT_FOUND,
             message: 'Payment not found',
           });
         }
@@ -137,7 +138,7 @@ For non-terminal statuses, a fresh server signature with a new deadline is gener
 
           if (eventAmount !== dbAmount) {
             return reply.code(400).send({
-              code: 'AMOUNT_MISMATCH',
+              code: ErrorCodes.AMOUNT_MISMATCH,
               message: `Payment amount mismatch. DB: ${dbAmount.toString()}, on-chain: ${eventAmount.toString()}`,
               details: {
                 dbAmount: dbAmount.toString(),
@@ -274,7 +275,7 @@ For non-terminal statuses, a fresh server signature with a new deadline is gener
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to get payment status';
         return reply.code(500).send({
-          code: 'INTERNAL_ERROR',
+          code: ErrorCodes.INTERNAL_ERROR,
           message,
         });
       }

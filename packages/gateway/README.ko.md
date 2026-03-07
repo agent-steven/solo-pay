@@ -141,6 +141,38 @@ curl http://localhost:3001/health
 
 자세한 API 문서는 [docs/reference/api.md](../../docs/reference/api.ko.md)를 참고하세요.
 
+## 에러 코드
+
+모든 API 에러는 `code`, `message`, 선택적 `details` 필드를 포함하는 JSON을 반환합니다. 에러 코드는 [`src/error-codes.ts`](src/error-codes.ts)에 정의되어 있습니다.
+
+| 분류   | 코드                       | HTTP | 설명                                     |
+| ------ | -------------------------- | ---- | ---------------------------------------- |
+| 인증   | `UNAUTHORIZED`             | 401  | API 키 / 공개 키 누락 또는 유효하지 않음 |
+|        | `FORBIDDEN`                | 403  | 접근 거부                                |
+| 검증   | `VALIDATION_ERROR`         | 400  | 입력값 검증 실패                         |
+|        | `INVALID_REQUEST`          | 400  | 잘못된 요청 또는 필수 파라미터 누락      |
+|        | `INVALID_CURRENCY`         | 400  | 지원하지 않는 법정화폐 코드              |
+| 결제   | `PAYMENT_NOT_FOUND`        | 404  | 결제 ID가 존재하지 않음                  |
+|        | `PAYMENT_EXPIRED`          | 400  | 결제 만료                                |
+|        | `INVALID_PAYMENT_STATUS`   | 400  | 현재 상태에서 허용되지 않는 작업         |
+|        | `DUPLICATE_ORDER`          | 409  | 이미 처리된 주문 ID                      |
+|        | `AMOUNT_MISMATCH`          | 400  | 금액 불일치                              |
+|        | `CONFLICT`                 | 409  | 동시 수정 충돌                           |
+| 체인   | `CHAIN_NOT_FOUND`          | 404  | 체인 ID가 데이터베이스에 없음            |
+|        | `CHAIN_NOT_CONFIGURED`     | 400  | 체인 미설정                              |
+|        | `UNSUPPORTED_CHAIN`        | 400  | 지원하지 않는 체인                       |
+| 토큰   | `TOKEN_NOT_FOUND`          | 404  | 토큰을 찾을 수 없음                      |
+|        | `TOKEN_NOT_ENABLED`        | 400  | 가맹점에 활성화되지 않은 토큰            |
+|        | `UNSUPPORTED_TOKEN`        | 400  | 지원하지 않는 토큰                       |
+| 릴레이 | `RELAY_ALREADY_SUBMITTED`  | 400  | 릴레이 이미 진행 중                      |
+|        | `RELAYER_NOT_CONFIGURED`   | 400  | 이 체인에 릴레이어 없음                  |
+|        | `INVALID_SIGNATURE`        | 400  | 서명 검증 실패                           |
+| 가맹점 | `RECIPIENT_NOT_CONFIGURED` | 400  | 수신자 주소 미설정                       |
+| 환불   | `REFUND_NOT_FOUND`         | 404  | 환불을 찾을 수 없음                      |
+|        | `REFUND_IN_PROGRESS`       | 400  | 환불이 이미 처리 중                      |
+| 일반   | `NOT_FOUND`                | 404  | 리소스를 찾을 수 없음                    |
+|        | `INTERNAL_ERROR`           | 500  | 예기치 않은 서버 오류                    |
+
 ## 프로젝트 구조
 
 ```

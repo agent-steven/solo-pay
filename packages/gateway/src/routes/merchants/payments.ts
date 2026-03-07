@@ -5,6 +5,7 @@ import { PaymentService } from '../../services/payment.service';
 import { createAuthMiddleware } from '../../middleware/auth.middleware';
 import { MerchantService } from '../../services/merchant.service';
 import { ErrorResponseSchema } from '../../docs/schemas';
+import { ErrorCodes } from '../../error-codes';
 
 /**
  * Syncs payment status from blockchain based on on-chain state.
@@ -187,12 +188,14 @@ export async function merchantPaymentRoute(
         const { orderId } = request.query;
         const merchant = (request as { merchant?: { id: number } }).merchant;
         if (!merchant) {
-          return reply.code(401).send({ code: 'UNAUTHORIZED', message: 'Authentication required' });
+          return reply
+            .code(401)
+            .send({ code: ErrorCodes.UNAUTHORIZED, message: 'Authentication required' });
         }
 
         if (!orderId || typeof orderId !== 'string') {
           return reply.code(400).send({
-            code: 'INVALID_REQUEST',
+            code: ErrorCodes.INVALID_REQUEST,
             message: 'orderId query parameter is required',
           });
         }
@@ -200,7 +203,7 @@ export async function merchantPaymentRoute(
         const payment = await paymentService.findByOrderId(orderId, merchant.id);
         if (!payment) {
           return reply.code(404).send({
-            code: 'NOT_FOUND',
+            code: ErrorCodes.NOT_FOUND,
             message: 'Payment not found for this order ID',
           });
         }
@@ -215,7 +218,7 @@ export async function merchantPaymentRoute(
           .send({ success: true, data: buildPaymentDetailResponse(payment, tokenPermitSupported) });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to get payment';
-        return reply.code(500).send({ code: 'INTERNAL_ERROR', message });
+        return reply.code(500).send({ code: ErrorCodes.INTERNAL_ERROR, message });
       }
     }
   );
@@ -259,7 +262,7 @@ export async function merchantPaymentRoute(
         const merchant = request.merchant;
         if (!merchant) {
           return reply.code(401).send({
-            code: 'UNAUTHORIZED',
+            code: ErrorCodes.UNAUTHORIZED,
             message: 'Authentication required',
           });
         }
@@ -267,14 +270,14 @@ export async function merchantPaymentRoute(
         const payment = await paymentService.findByHash(id);
         if (!payment) {
           return reply.code(404).send({
-            code: 'NOT_FOUND',
+            code: ErrorCodes.NOT_FOUND,
             message: 'Payment not found',
           });
         }
 
         if (payment.merchant_id !== merchant.id) {
           return reply.code(403).send({
-            code: 'FORBIDDEN',
+            code: ErrorCodes.FORBIDDEN,
             message: 'Payment does not belong to this merchant',
           });
         }
@@ -289,7 +292,7 @@ export async function merchantPaymentRoute(
           .send({ success: true, data: buildPaymentDetailResponse(payment, tokenPermitSupported) });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to get payment';
-        return reply.code(500).send({ code: 'INTERNAL_ERROR', message });
+        return reply.code(500).send({ code: ErrorCodes.INTERNAL_ERROR, message });
       }
     }
   );

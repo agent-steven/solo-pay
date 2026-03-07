@@ -2,6 +2,7 @@
  * OpenAPI JSON Schemas for API documentation
  * These schemas are used by @fastify/swagger to generate API documentation
  */
+import { ErrorCodes } from '../error-codes';
 
 // ============================================
 // Common Schemas
@@ -10,7 +11,12 @@
 export const ErrorResponseSchema = {
   type: 'object',
   properties: {
-    code: { type: 'string', description: 'Error code', example: 'INVALID_REQUEST' },
+    code: {
+      type: 'string',
+      description: 'Error code (see error-codes.ts for full list)',
+      example: 'INVALID_REQUEST',
+      enum: Object.values(ErrorCodes),
+    },
     message: { type: 'string', description: 'Error message' },
     details: {
       type: 'object',

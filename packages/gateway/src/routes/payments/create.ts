@@ -15,6 +15,7 @@ import { CurrencyService } from '../../services/currency.service';
 import { PriceClient } from '../../services/price-client.service';
 import { createPublicAuthMiddleware } from '../../middleware/public-auth.middleware';
 import { ErrorResponseSchema } from '../../docs/schemas';
+import { ErrorCodes } from '../../error-codes';
 
 export interface CreatePaymentBody {
   orderId: string;
@@ -196,14 +197,16 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
           }
         ).merchant;
         if (!merchant) {
-          return reply.code(403).send({ code: 'UNAUTHORIZED', message: 'Merchant required' });
+          return reply
+            .code(403)
+            .send({ code: ErrorCodes.UNAUTHORIZED, message: 'Merchant required' });
         }
 
         const origin = (request.headers['origin'] as string) ?? '';
 
         if (!merchant.chain_id) {
           return reply.code(400).send({
-            code: 'CHAIN_NOT_CONFIGURED',
+            code: ErrorCodes.CHAIN_NOT_CONFIGURED,
             message: 'Merchant chain is not configured',
           });
         }
@@ -211,7 +214,7 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
         const chain = await chainService.findById(merchant.chain_id);
         if (!chain || !chain.gateway_address) {
           return reply.code(404).send({
-            code: 'CHAIN_NOT_FOUND',
+            code: ErrorCodes.CHAIN_NOT_FOUND,
             message: 'Merchant chain or gateway not found',
           });
         }
@@ -219,7 +222,7 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
         const chainId = chain.network_id;
         if (!blockchainService.isChainSupported(chainId)) {
           return reply.code(400).send({
-            code: 'UNSUPPORTED_CHAIN',
+            code: ErrorCodes.UNSUPPORTED_CHAIN,
             message: 'Unsupported chain',
           });
         }
@@ -228,13 +231,13 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
         const token = await tokenService.findByAddress(chain.id, validated.tokenAddress);
         if (!token) {
           return reply.code(404).send({
-            code: 'TOKEN_NOT_FOUND',
+            code: ErrorCodes.TOKEN_NOT_FOUND,
             message: 'Token not found or not whitelisted for this chain',
           });
         }
         if (token.chain_id !== merchant.chain_id) {
           return reply.code(400).send({
-            code: 'CHAIN_MISMATCH',
+            code: ErrorCodes.CHAIN_MISMATCH,
             message: 'Token does not belong to merchant chain',
           });
         }
@@ -244,7 +247,7 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
         );
         if (!paymentMethod || !paymentMethod.is_enabled) {
           return reply.code(400).send({
-            code: 'TOKEN_NOT_ENABLED',
+            code: ErrorCodes.TOKEN_NOT_ENABLED,
             message:
               'Token is not enabled for this merchant. Add and enable it in payment methods first.',
           });
@@ -253,7 +256,7 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
         const tokenAddress = token.address;
         if (!blockchainService.validateTokenByAddress(chainId, tokenAddress)) {
           return reply.code(400).send({
-            code: 'UNSUPPORTED_TOKEN',
+            code: ErrorCodes.UNSUPPORTED_TOKEN,
             message: 'Unsupported token',
           });
         }
@@ -270,7 +273,7 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
         if (validated.currency) {
           if (!currencyService || !priceClient) {
             return reply.code(500).send({
-              code: 'PRICE_SERVICE_NOT_CONFIGURED',
+              code: ErrorCodes.PRICE_SERVICE_NOT_CONFIGURED,
               message: 'Price service is not configured',
             });
           }
@@ -278,7 +281,7 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
           const currency = await currencyService.findByCode(validated.currency);
           if (!currency) {
             return reply.code(400).send({
-              code: 'INVALID_CURRENCY',
+              code: ErrorCodes.INVALID_CURRENCY,
               message: `Unsupported currency: ${validated.currency}`,
             });
           }
@@ -302,7 +305,7 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
         const recipientAddress = (merchant.recipient_address ?? '') as Address;
         if (!recipientAddress) {
           return reply.code(400).send({
-            code: 'RECIPIENT_NOT_CONFIGURED',
+            code: ErrorCodes.RECIPIENT_NOT_CONFIGURED,
             message: 'Merchant recipient address is not configured',
           });
         }
@@ -311,7 +314,7 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
         const existingPayment = await paymentService.findByOrderId(validated.orderId, merchant.id);
         if (existingPayment) {
           return reply.code(409).send({
-            code: 'DUPLICATE_ORDER',
+            code: ErrorCodes.DUPLICATE_ORDER,
             message: 'Order ID already used for this merchant.',
           });
         }
@@ -337,7 +340,7 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
           } catch (err) {
             app.log.error({ err }, 'Failed to generate server signature');
             return reply.code(500).send({
-              code: 'SIGNATURE_ERROR',
+              code: ErrorCodes.SIGNATURE_ERROR,
               message: 'Failed to generate payment signature',
             });
           }
@@ -393,19 +396,19 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
       } catch (err) {
         if (err instanceof ZodError) {
           return reply.code(400).send({
-            code: 'VALIDATION_ERROR',
+            code: ErrorCodes.VALIDATION_ERROR,
             message: 'Input validation failed',
             details: err.errors,
           });
         }
         if (err && typeof err === 'object' && 'code' in err && err.code === 'P2002') {
           return reply.code(409).send({
-            code: 'DUPLICATE_ORDER',
+            code: ErrorCodes.DUPLICATE_ORDER,
             message: 'A payment with this orderId already exists',
           });
         }
         const message = err instanceof Error ? err.message : 'Failed to create payment';
-        return reply.code(500).send({ code: 'INTERNAL_ERROR', message });
+        return reply.code(500).send({ code: ErrorCodes.INTERNAL_ERROR, message });
       }
     }
   );
