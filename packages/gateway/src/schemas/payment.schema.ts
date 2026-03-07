@@ -140,8 +140,7 @@ export function createAmountValidationSchema(expectedAmount: bigint): z.ZodType<
       // If decoding fails, the data is invalid
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message:
-          'Failed to parse forwardRequest.data. Must be valid pay() function call data.',
+        message: 'Failed to parse forwardRequest.data. Must be valid pay() function call data.',
         path: ['forwardRequest', 'data'],
       });
     }

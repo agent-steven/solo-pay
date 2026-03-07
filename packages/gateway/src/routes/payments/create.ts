@@ -197,7 +197,9 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
           }
         ).merchant;
         if (!merchant) {
-          return reply.code(403).send({ code: ErrorCodes.UNAUTHORIZED, message: 'Merchant required' });
+          return reply
+            .code(403)
+            .send({ code: ErrorCodes.UNAUTHORIZED, message: 'Merchant required' });
         }
 
         const origin = (request.headers['origin'] as string) ?? '';

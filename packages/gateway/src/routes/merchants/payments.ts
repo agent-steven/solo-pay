@@ -188,7 +188,9 @@ export async function merchantPaymentRoute(
         const { orderId } = request.query;
         const merchant = (request as { merchant?: { id: number } }).merchant;
         if (!merchant) {
-          return reply.code(401).send({ code: ErrorCodes.UNAUTHORIZED, message: 'Authentication required' });
+          return reply
+            .code(401)
+            .send({ code: ErrorCodes.UNAUTHORIZED, message: 'Authentication required' });
         }
 
         if (!orderId || typeof orderId !== 'string') {
