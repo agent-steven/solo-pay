@@ -44,6 +44,34 @@ All errors follow a consistent format:
 }
 \`\`\`
 
+### Error Codes
+
+| Category | Code | Description |
+|----------|------|-------------|
+| **Auth** | \`UNAUTHORIZED\` | Missing or invalid API key / public key |
+| | \`FORBIDDEN\` | Access denied (wrong merchant, origin not allowed) |
+| **Validation** | \`VALIDATION_ERROR\` | Input validation failed (details in \`details\` field) |
+| | \`INVALID_REQUEST\` | Malformed or missing required parameters |
+| | \`INVALID_CURRENCY\` | Unsupported fiat currency code |
+| **Payment** | \`PAYMENT_NOT_FOUND\` | Payment ID does not exist |
+| | \`PAYMENT_EXPIRED\` | Payment has passed its expiration time |
+| | \`INVALID_PAYMENT_STATUS\` | Operation not allowed for current payment status |
+| | \`DUPLICATE_ORDER\` | Order ID already exists for this merchant |
+| | \`AMOUNT_MISMATCH\` | Submitted amount does not match expected amount |
+| | \`CONFLICT\` | Concurrent modification conflict |
+| **Chain** | \`CHAIN_NOT_FOUND\` | Chain ID not in database |
+| | \`CHAIN_NOT_CONFIGURED\` | Chain exists but is not configured for use |
+| | \`UNSUPPORTED_CHAIN\` | Chain is not supported by the gateway |
+| **Token** | \`TOKEN_NOT_FOUND\` | Token address not found on chain |
+| | \`TOKEN_NOT_ENABLED\` | Token not enabled for this merchant |
+| | \`UNSUPPORTED_TOKEN\` | Token is not supported |
+| **Relay** | \`RELAY_ALREADY_SUBMITTED\` | Gasless relay already in-flight for this payment |
+| | \`RELAYER_NOT_CONFIGURED\` | No relayer available for this chain |
+| | \`INVALID_SIGNATURE\` | EIP-712 signature validation failed |
+| **Merchant** | \`RECIPIENT_NOT_CONFIGURED\` | Merchant recipient address not set |
+| **General** | \`NOT_FOUND\` | Requested resource not found |
+| | \`INTERNAL_ERROR\` | Unexpected server error |
+
 ## Supported Networks
 | Network | Chain ID | Type |
 |---------|----------|------|

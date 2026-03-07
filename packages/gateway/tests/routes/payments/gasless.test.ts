@@ -7,6 +7,7 @@ import { RelayerService } from '../../../src/services/relayer.service';
 import { RelayService } from '../../../src/services/relay.service';
 import { PaymentService } from '../../../src/services/payment.service';
 import { MerchantService } from '../../../src/services/merchant.service';
+import { BlockchainService } from '../../../src/services/blockchain.service';
 import { API_V1_BASE_PATH } from '../../../src/constants';
 import PaymentGatewayV1Artifact from '@solo-pay/contracts/artifacts/src/PaymentGatewayV1.sol/PaymentGatewayV1.json';
 
@@ -101,6 +102,7 @@ describe('POST /payments/:id/relay', () => {
   let relayService: Partial<RelayService>;
   let paymentService: Partial<PaymentService>;
   let merchantService: Partial<MerchantService>;
+  let blockchainService: Partial<BlockchainService>;
 
   beforeEach(async () => {
     app = Fastify({
@@ -139,6 +141,13 @@ describe('POST /payments/:id/relay', () => {
       findByPublicKey: vi.fn().mockResolvedValue(mockMerchant),
     };
 
+    blockchainService = {
+      getChainContracts: vi.fn().mockReturnValue({
+        gateway: '0x' + 'b'.repeat(40),
+        forwarder: '0x' + 'e'.repeat(40),
+      }),
+    };
+
     relayerServices = new Map();
     relayerServices.set(80002, relayerService as RelayerService);
 
@@ -149,7 +158,8 @@ describe('POST /payments/:id/relay', () => {
           relayerServices,
           relayService as RelayService,
           paymentService as PaymentService,
-          merchantService as MerchantService
+          merchantService as MerchantService,
+          blockchainService as BlockchainService
         );
       },
       { prefix: API_V1_BASE_PATH }
@@ -216,6 +226,66 @@ describe('POST /payments/:id/relay', () => {
       const body = JSON.parse(response.body);
       expect(body.code).toBe('RELAY_ALREADY_SUBMITTED');
       expect(body.message).toContain('Gasless already submitted');
+      expect(relayerService.submitForwardTransaction).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 INVALID_REQUEST when forwarderAddress does not match authorized forwarder', async () => {
+      const request = createValidGaslessRequest('payment-123', '1000000000000000000', {
+        forwarderAddress: '0x' + '1'.repeat(40), // wrong forwarder
+      });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `${API_V1_BASE_PATH}/payments/payment-123/relay`,
+        headers: { 'x-public-key': TEST_PUBLIC_KEY, origin: TEST_ORIGIN },
+        payload: request,
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.body);
+      expect(body.code).toBe('INVALID_REQUEST');
+      expect(body.message).toContain('Forwarder address');
+      expect(relayerService.submitForwardTransaction).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 INVALID_REQUEST when forwardRequest.to does not match authorized gateway', async () => {
+      const request = createValidGaslessRequest('payment-123', '1000000000000000000', {
+        forwardRequest: createValidForwardRequest('payment-123', '1000000000000000000', {
+          to: '0x' + '1'.repeat(40), // wrong gateway
+        }),
+      });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `${API_V1_BASE_PATH}/payments/payment-123/relay`,
+        headers: { 'x-public-key': TEST_PUBLIC_KEY, origin: TEST_ORIGIN },
+        payload: request,
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.body);
+      expect(body.code).toBe('INVALID_REQUEST');
+      expect(body.message).toContain('Target contract');
+      expect(relayerService.submitForwardTransaction).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 CHAIN_CONFIG_ERROR when chain contracts not found', async () => {
+      (blockchainService.getChainContracts as ReturnType<typeof vi.fn>).mockReturnValueOnce(
+        undefined
+      );
+
+      const request = createValidGaslessRequest('payment-123');
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `${API_V1_BASE_PATH}/payments/payment-123/relay`,
+        headers: { 'x-public-key': TEST_PUBLIC_KEY, origin: TEST_ORIGIN },
+        payload: request,
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.body);
+      expect(body.code).toBe('CHAIN_CONFIG_ERROR');
       expect(relayerService.submitForwardTransaction).not.toHaveBeenCalled();
     });
 

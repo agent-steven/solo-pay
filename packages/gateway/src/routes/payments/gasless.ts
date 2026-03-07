@@ -10,6 +10,7 @@ import { RelayerService } from '../../services/relayer.service';
 import { RelayService } from '../../services/relay.service';
 import { PaymentService } from '../../services/payment.service';
 import { MerchantService } from '../../services/merchant.service';
+import { BlockchainService } from '../../services/blockchain.service';
 import { createPublicAuthMiddleware } from '../../middleware/public-auth.middleware';
 import {
   GaslessRequestSchema as GaslessRequestDocSchema,
@@ -29,7 +30,8 @@ export async function submitGaslessRoute(
   relayerServices: Map<number, RelayerService>,
   relayService: RelayService,
   paymentService: PaymentService,
-  merchantService: MerchantService
+  merchantService: MerchantService,
+  blockchainService: BlockchainService
 ) {
   const authMiddleware = createPublicAuthMiddleware(merchantService);
 
@@ -58,6 +60,7 @@ Submits a gasless (meta-transaction) payment using ERC-2771 forwarder.
 - Public key + Origin authentication required
 - Payment ID is validated (payment must exist; amount and status checked)
 - Amount in forwardRequest.data is validated against DB amount
+- forwarderAddress and forwardRequest.to are validated against authorized contract addresses
 - Signature format is validated before relay submission
         `,
         params: {
@@ -174,6 +177,33 @@ Submits a gasless (meta-transaction) payment using ERC-2771 forwarder.
           return reply.code(400).send({
             code: ErrorCodes.RELAYER_NOT_CONFIGURED,
             message: `No relayer configured for chain ${payment.network_id}`,
+          });
+        }
+
+        // Validate contract addresses match the authorized contracts for this chain
+        const chainContracts = blockchainService.getChainContracts(payment.network_id);
+        if (!chainContracts) {
+          return reply.code(400).send({
+            code: ErrorCodes.CHAIN_CONFIG_ERROR,
+            message: `Chain configuration not found for chain ${payment.network_id}`,
+          });
+        }
+
+        if (
+          validatedData.forwarderAddress.toLowerCase() !== chainContracts.forwarder.toLowerCase()
+        ) {
+          return reply.code(400).send({
+            code: ErrorCodes.INVALID_REQUEST,
+            message: 'Forwarder address does not match the authorized forwarder for this chain',
+          });
+        }
+
+        if (
+          validatedData.forwardRequest.to.toLowerCase() !== chainContracts.gateway.toLowerCase()
+        ) {
+          return reply.code(400).send({
+            code: ErrorCodes.INVALID_REQUEST,
+            message: 'Target contract does not match the authorized PaymentGateway for this chain',
           });
         }
 
