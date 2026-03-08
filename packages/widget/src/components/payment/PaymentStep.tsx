@@ -494,7 +494,7 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
       const redirectUrl = appendPaymentParams(
         effectiveFailUrl,
         paymentDetails?.paymentId,
-        paymentDetails?.orderId,
+        paymentDetails?.orderId || urlParams?.orderId,
         'fail'
       );
       if (!redirectUrl) return;
@@ -510,7 +510,13 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
         window.location.href = redirectUrl;
       }
     }
-  }, [effectiveFailUrl, paymentDetails?.paymentId, paymentDetails?.orderId, isPopup]);
+  }, [
+    effectiveFailUrl,
+    paymentDetails?.paymentId,
+    paymentDetails?.orderId,
+    urlParams?.orderId,
+    isPopup,
+  ]);
 
   // Loading state (skip when walletOnly — no API call)
   if (!urlParams?.walletOnly && isLoading) {
