@@ -102,8 +102,11 @@ export class WidgetLauncher {
     this.popupWindow.focus();
 
     const widgetOrigin = new URL(this.widgetUrl).origin;
+    const popupRef = this.popupWindow;
+    let handled = false;
+
     const handleMessage = (event: MessageEvent) => {
-      if (event.source !== this.popupWindow) return;
+      if (event.source !== popupRef) return;
       if (event.origin !== widgetOrigin) return;
       const data = event.data;
       if (
@@ -113,6 +116,7 @@ export class WidgetLauncher {
       )
         return;
 
+      handled = true;
       this.log('Widget message:', data.type, data.status ?? '');
       window.removeEventListener('message', handleMessage);
       this.pendingFailUrl = null;
@@ -137,14 +141,25 @@ export class WidgetLauncher {
 
     this.popupCheckInterval = setInterval(() => {
       if (this.popupWindow?.closed) {
-        window.removeEventListener('message', handleMessage);
-        const failUrl = this.pendingFailUrl;
-        this.clearPopupCheck();
-        this.pendingFailUrl = null;
-        this.handleClose();
-        if (failUrl) {
-          window.location.href = failUrl;
+        // Stop polling but keep popupWindow reference alive for message handler.
+        if (this.popupCheckInterval !== null) {
+          clearInterval(this.popupCheckInterval);
+          this.popupCheckInterval = null;
         }
+        // Wait briefly for any pending postMessage to arrive before fallback.
+        // Widget sends postMessage before window.close(), but the event may
+        // still be queued when we detect the popup is closed.
+        setTimeout(() => {
+          if (handled) return;
+          window.removeEventListener('message', handleMessage);
+          const failUrl = this.pendingFailUrl;
+          this.pendingFailUrl = null;
+          this.popupWindow = null;
+          this.handleClose();
+          if (failUrl) {
+            window.location.href = failUrl;
+          }
+        }, 150);
       }
     }, POPUP_POLL_MS);
   }
