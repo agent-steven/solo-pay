@@ -207,7 +207,7 @@ const paymentStatus = await fetch(
     headers: { 'x-public-key': 'pk_xxxxx' },
   }
 ).then((r) => r.json());
-// paymentStatus.data.status: 'CREATED' | 'ESCROWED' | 'FINALIZE_SUBMITTED' | 'FINALIZED' | 'CANCEL_SUBMITTED' | 'CANCELLED' | 'REFUND_SUBMITTED' | 'REFUNDED' | 'EXPIRED' | 'FAILED'
+// paymentStatus.data.status: 'CREATED' | 'ESCROWED' | 'FINALIZE_SUBMITTED' | 'FINALIZED' | 'CANCEL_SUBMITTED' | 'CANCELLED' | 'EXPIRED' | 'FAILED'
 ```
 
 ## Full Example (React + wagmi)

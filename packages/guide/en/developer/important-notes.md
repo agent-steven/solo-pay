@@ -11,7 +11,7 @@ This page summarizes the essential points you must understand when integrating S
 ## What happens if the user closes the window during payment?
 
 - `successUrl`/`failUrl` rely on browser redirects, so they will not be reached if the user closes the window.
-- You must implement Webhooks (`payment.escrowed`, `payment.finalized`, etc.) to reliably receive payment results.
+- You must implement Webhooks (`ESCROWED`, `FINALIZED`, etc.) to reliably receive payment results.
 - Using both Webhooks and Callback URLs together is recommended.
 - As a fallback, you can poll using `GET /payments/:id`.
 
@@ -49,7 +49,7 @@ This page summarizes the essential points you must understand when integrating S
 
 ## What should you verify before calling Finalize?
 
-- Confirm receipt of the `payment.escrowed` webhook, or verify `status === "ESCROWED"` via `GET /payments/:id`.
+- Confirm receipt of the `ESCROWED` webhook, or verify `status === "ESCROWED"` via `GET /payments/:id`.
 - Confirm that `amount` matches the merchant's order amount.
 - Confirm that `orderId` matches the merchant's records.
 - Confirm that the payment has not already been processed (prevent duplicate finalize calls).

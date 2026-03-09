@@ -37,47 +37,19 @@ curl "https://gateway.dev.solonetwork.io/api/v1/merchant/payments/0xabc123..." \
 
 ## Response Fields
 
-| Field           | Type     | Description                                                                                                                |
-| --------------- | -------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `paymentId`     | `string` | Unique payment identifier (bytes32 hash)                                                                                   |
-| `orderId`       | `string` | Merchant order ID                                                                                                          |
-| `status`        | `string` | CREATED, ESCROWED, FINALIZE_SUBMITTED, FINALIZED, CANCEL_SUBMITTED, CANCELLED, REFUND_SUBMITTED, REFUNDED, EXPIRED, FAILED |
-| `amount`        | `string` | Amount in wei                                                                                                              |
-| `tokenSymbol`   | `string` | Token symbol                                                                                                               |
-| `tokenDecimals` | `number` | Token decimals                                                                                                             |
-| `txHash`        | `string` | On-chain transaction hash (present after confirmation)                                                                     |
-| `payerAddress`  | `string` | Payer wallet address (present after confirmation)                                                                          |
-| `confirmedAt`   | `string` | Payment confirmation timestamp                                                                                             |
-| `expiresAt`     | `string` | Payment expiry timestamp                                                                                                   |
-
-## On-chain Query via Subgraph
-
-You can also query on-chain payment events directly via Subgraph.
-
-```graphql
-query PaymentHistory($payer: Bytes!) {
-  paymentReceivedEvents(
-    where: { payer: $payer }
-    orderBy: blockTimestamp
-    orderDirection: desc
-    first: 10
-  ) {
-    id
-    paymentId
-    payer
-    token
-    amount
-    transactionHash
-    blockTimestamp
-  }
-}
-```
-
-::: tip Subgraph Usage
-Use Subgraph for bulk history queries or complex filtering.
-:::
+| Field           | Type     | Description                                                                                    |
+| --------------- | -------- | ---------------------------------------------------------------------------------------------- |
+| `paymentId`     | `string` | Unique payment identifier (bytes32 hash)                                                       |
+| `orderId`       | `string` | Merchant order ID                                                                              |
+| `status`        | `string` | CREATED, ESCROWED, FINALIZE_SUBMITTED, FINALIZED, CANCEL_SUBMITTED, CANCELLED, EXPIRED, FAILED |
+| `amount`        | `string` | Amount in wei                                                                                  |
+| `tokenSymbol`   | `string` | Token symbol                                                                                   |
+| `tokenDecimals` | `number` | Token decimals                                                                                 |
+| `txHash`        | `string` | On-chain transaction hash (present after confirmation)                                         |
+| `payerAddress`  | `string` | Payer wallet address (present after confirmation)                                              |
+| `confirmedAt`   | `string` | Payment confirmation timestamp                                                                 |
+| `expiresAt`     | `string` | Payment expiry timestamp                                                                       |
 
 ## Next Steps
 
-- [Refunds](/en/payments/refunds) - Payment refund processing
 - [Error Codes](/en/api/errors) - Error handling

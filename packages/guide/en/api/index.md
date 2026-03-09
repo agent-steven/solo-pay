@@ -12,11 +12,11 @@ Full SoloPay REST API specification.
 
 ## Authentication
 
-| Method     | Header         | Endpoints                                                                                                                             |
-| ---------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Public Key | `x-public-key` | POST /payments, GET /payments/:id, POST /payments/:id/relay, GET /payments/:id/relay                                                  |
-| API Key    | `x-api-key`    | GET /merchant/\*, POST /merchant/payment-methods, POST /payments/:id/finalize, POST /payments/:id/cancel, POST /refunds, GET /refunds |
-| None       | -              | GET /chains, GET /chains/tokens                                                                                                       |
+| Method     | Header         | Endpoints                                                                                                |
+| ---------- | -------------- | -------------------------------------------------------------------------------------------------------- |
+| Public Key | `x-public-key` | POST /payments, GET /payments/:id, POST /payments/:id/relay, GET /payments/:id/relay                     |
+| API Key    | `x-api-key`    | GET /merchant/\*, POST /merchant/payment-methods, POST /payments/:id/finalize, POST /payments/:id/cancel |
+| None       | -              | GET /chains, GET /chains/tokens                                                                          |
 
 ---
 
@@ -74,7 +74,7 @@ Create a payment. **Auth**: `x-public-key` + `Origin`
 
 Get payment status. **Auth**: `x-public-key`
 
-**Status values:** CREATED, ESCROWED, FINALIZE_SUBMITTED, FINALIZED, CANCEL_SUBMITTED, CANCELLED, REFUND_SUBMITTED, REFUNDED, EXPIRED, FAILED. Payment success = ESCROWED (in escrow, finalize required), confirmed = FINALIZED.
+**Status values:** CREATED, ESCROWED, FINALIZE_SUBMITTED, FINALIZED, CANCEL_SUBMITTED, CANCELLED, EXPIRED, FAILED. Payment success = ESCROWED (in escrow, finalize required), confirmed = FINALIZED.
 
 **Response (200)**
 
@@ -83,26 +83,37 @@ Get payment status. **Auth**: `x-public-key`
   "success": true,
   "data": {
     "paymentId": "0xabc123...",
+    "orderId": "order-001",
     "status": "ESCROWED",
-    "amount": "10500000000000000000",
+    "chainId": 80002,
+    "serverSignature": "0x...",
     "tokenAddress": "0xE4C687167705Abf55d709395f92e254bdF5825a2",
     "tokenSymbol": "SUT",
-    "payerAddress": "0x...",
-    "treasuryAddress": "0xMerchantWallet...",
-    "transactionHash": "0xdef789...",
-    "releaseTxHash": null,
-    "payment_hash": "0xabc123...",
-    "network_id": 80002,
-    "token_symbol": "SUT",
+    "tokenDecimals": 18,
+    "tokenPermitSupported": true,
+    "gatewayAddress": "0x...",
+    "forwarderAddress": "0x...",
+    "amount": "10500000000000000000",
+    "recipientAddress": "0xMerchantWallet...",
+    "merchantId": "0x...",
     "deadline": "1706281200",
     "escrowDuration": "300",
+    "successUrl": "https://example.com/success",
+    "failUrl": "https://example.com/fail",
+    "expiresAt": "2024-01-26T12:35:00.000Z",
+    "txHash": "0xdef789...",
+    "releaseTxHash": null,
+    "payerAddress": "0x...",
     "createdAt": "2024-01-26T12:30:00Z",
-    "updatedAt": "2024-01-26T12:35:42Z"
+    "currency": "USD",
+    "fiatAmount": 10.5,
+    "tokenPrice": 1.0
   }
 }
 ```
 
-- **transactionHash** — Hash of the escrow (pay) transaction. Present once the user has paid and the payment is ESCROWED or later.
+- **serverSignature** — Server-generated signature for the payment request. Used by the client SDK to construct the on-chain transaction.
+- **txHash** — Hash of the escrow (pay) transaction. Present once the user has paid and the payment is ESCROWED or later.
 - **releaseTxHash** — Hash of the finalize or cancel transaction. Present when status is FINALIZE_SUBMITTED, FINALIZED, CANCEL_SUBMITTED, or CANCELLED; null otherwise.
 - **deadline** — Signature deadline (Unix timestamp) for the payment request; used when status is not yet terminal.
 - **escrowDuration** — Escrow duration in seconds. The merchant must call finalize before this duration elapses after the payment is escrowed; the exact escrow deadline (ISO datetime) is not returned by this API.
@@ -258,51 +269,6 @@ List payments. **Auth**: `x-api-key`. Query: `orderId`
 ### GET /merchant/payments/:id
 
 Get payment detail. **Auth**: `x-api-key`
-
----
-
-## Refunds
-
-### POST /refunds
-
-Request a refund. **Auth**: `x-api-key`
-
-```json
-{ "paymentId": "0xabc123...", "reason": "Customer request" }
-```
-
-**Response (201)**
-
-```json
-{
-  "success": true,
-  "data": {
-    "refundId": "0xabcd...",
-    "paymentId": "0xabc123...",
-    "amount": "10500000000000000000",
-    "tokenAddress": "0x...",
-    "payerAddress": "0x...",
-    "status": "PENDING",
-    "serverSignature": "0x...",
-    "merchantId": "0x...",
-    "createdAt": "2024-01-26T12:40:00Z"
-  }
-}
-```
-
----
-
-### GET /refunds/:refundId
-
-Get refund status. **Auth**: `x-api-key`
-
-**Status**: `PENDING` → `SUBMITTED` → `CONFIRMED` (or `FAILED`)
-
----
-
-### GET /refunds
-
-List refunds. **Auth**: `x-api-key`. Query: `page`, `limit`, `status`, `paymentId`
 
 ---
 

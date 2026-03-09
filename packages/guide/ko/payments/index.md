@@ -106,15 +106,18 @@ curl -X POST https://gateway.dev.solonetwork.io/api/v1/payments \
 
 #### 에러 응답
 
-| HTTP | 코드                       | 원인                              |
-| ---- | -------------------------- | --------------------------------- |
-| 400  | `TOKEN_NOT_ENABLED`        | 해당 토큰이 가맹점에서 비활성화됨 |
-| 404  | `TOKEN_NOT_FOUND`          | 화이트리스트에 없는 토큰          |
-| 400  | `UNSUPPORTED_CHAIN`        | 지원하지 않는 체인                |
-| 400  | `CHAIN_NOT_CONFIGURED`     | 가맹점에 체인이 설정되지 않음     |
-| 400  | `RECIPIENT_NOT_CONFIGURED` | 가맹점 수령 주소 미설정           |
-| 400  | `VALIDATION_ERROR`         | 입력값 검증 실패                  |
-| 409  | `DUPLICATE_ORDER`          | 이미 사용된 orderId               |
+| HTTP | 코드                           | 원인                              |
+| ---- | ------------------------------ | --------------------------------- |
+| 400  | `TOKEN_NOT_ENABLED`            | 해당 토큰이 가맹점에서 비활성화됨 |
+| 404  | `TOKEN_NOT_FOUND`              | 화이트리스트에 없는 토큰          |
+| 400  | `UNSUPPORTED_CHAIN`            | 지원하지 않는 체인                |
+| 400  | `CHAIN_NOT_CONFIGURED`         | 가맹점에 체인이 설정되지 않음     |
+| 400  | `RECIPIENT_NOT_CONFIGURED`     | 가맹점 수령 주소 미설정           |
+| 400  | `CHAIN_MISMATCH`               | 토큰이 가맹점 체인에 속하지 않음  |
+| 400  | `UNSUPPORTED_TOKEN`            | 해당 체인에서 지원되지 않는 토큰  |
+| 400  | `PRICE_SERVICE_NOT_CONFIGURED` | 통화 변환 서비스 사용 불가        |
+| 400  | `VALIDATION_ERROR`             | 입력값 검증 실패                  |
+| 409  | `DUPLICATE_ORDER`              | 이미 사용된 orderId               |
 
 ### 응답 필드 설명
 
@@ -165,35 +168,45 @@ curl https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123... \
   "success": true,
   "data": {
     "paymentId": "0xabc123...",
+    "orderId": "order-001",
     "status": "ESCROWED",
-    "amount": "10500000000000000000",
+    "chainId": 80002,
+    "serverSignature": "0x...",
     "tokenAddress": "0xE4C687167705Abf55d709395f92e254bdF5825a2",
     "tokenSymbol": "SUT",
-    "payerAddress": "0x...",
-    "treasuryAddress": "0xMerchantWallet...",
-    "transactionHash": "0xdef789...",
-    "releaseTxHash": null,
+    "tokenDecimals": 18,
+    "tokenPermitSupported": true,
+    "gatewayAddress": "0x...",
+    "forwarderAddress": "0x...",
+    "amount": "10500000000000000000",
+    "recipientAddress": "0xMerchantWallet...",
+    "merchantId": "0x...",
     "deadline": "1706281200",
     "escrowDuration": "300",
+    "successUrl": "https://example.com/success",
+    "failUrl": "https://example.com/fail",
+    "expiresAt": "2024-01-26T12:35:00.000Z",
+    "txHash": "0xdef789...",
+    "releaseTxHash": null,
+    "payerAddress": "0x...",
     "createdAt": "2024-01-26T12:30:00Z",
-    "updatedAt": "2024-01-26T12:35:42Z",
-    "payment_hash": "0xabc123...",
-    "network_id": 80002,
-    "token_symbol": "SUT"
+    "currency": "USD",
+    "fiatAmount": 10.5,
+    "tokenPrice": 1.0
   }
 }
 ```
 
-- **transactionHash** — 에스크로(결제) 트랜잭션 해시.
+- **txHash** — 에스크로(결제) 트랜잭션 해시. 사용자가 결제를 완료하여 ESCROWED 이후 상태일 때 존재합니다.
 - **releaseTxHash** — 확정 또는 취소 트랜잭션 해시. 상태가 FINALIZE_SUBMITTED, FINALIZED, CANCEL_SUBMITTED, CANCELLED일 때 존재합니다.
-- **escrowDuration** — 에스크로 유지 시간(초). API는 에스크로 기한의 정확한 일시(ISO)를 반환하지 않으며, 이 값으로 결제 에스크로 후 상점이 확정할 수 있는 기간을 알 수 있습니다.
+- **serverSignature** — 비종료 상태에 대한 새로운 EIP-712 서버 서명. 종료 상태(FINALIZED, CANCELLED, EXPIRED, FAILED)에서는 비어 있습니다.
+- **escrowDuration** — 에스크로 유지 시간(초). 결제가 에스크로된 후 이 기간이 경과하기 전에 상점이 확정(finalize)을 호출해야 합니다.
 
 ### 상태 흐름
 
 ```
 CREATED ──► ESCROWED ──► FINALIZE_SUBMITTED ──► FINALIZED
-                    └──► CANCEL_SUBMITTED   ──► CANCELLED ──► REFUND_SUBMITTED ──► REFUNDED
-
+                    └──► CANCEL_SUBMITTED   ──► CANCELLED
 CREATED ──► EXPIRED
 CREATED ──► FAILED
 ```
@@ -204,12 +217,10 @@ CREATED ──► FAILED
 | -------------------- | --------------------------------- | ------------------------------------------------------------------- |
 | `CREATED`            | 결제 생성됨, 온체인 트랜잭션 대기 | 사용자가 결제 진행                                                  |
 | `ESCROWED`           | 결제 에스크로됨 (온체인)          | 상점: [결제 확정 및 취소](#결제-확정-및-취소) 호출로 자금 해제/환불 |
-| `FINALIZE_SUBMITTED` | 확정 트랜잭션 제출됨              | FINALIZED 될 때까지 대기 (폴링 또는 웹훅)                           |
+| `FINALIZE_SUBMITTED` | 확정 트랜잭션 제출됨              | FINALIZED 될 때까지 대기                                            |
 | `FINALIZED`          | 자금이 상점으로 해제됨            | 없음 (종료)                                                         |
 | `CANCEL_SUBMITTED`   | 취소 트랜잭션 제출됨              | CANCELLED 될 때까지 대기                                            |
 | `CANCELLED`          | 자금이 구매자에게 환불됨          | 없음 (종료)                                                         |
-| `REFUND_SUBMITTED`   | 환불 트랜잭션 제출됨              | REFUNDED 될 때까지 대기                                             |
-| `REFUNDED`           | 환불 완료                         | 없음 (종료)                                                         |
 | `FAILED`             | 트랜잭션 실패                     | 새 결제 생성                                                        |
 | `EXPIRED`            | 만료 (5분 초과)                   | 새 결제 생성                                                        |
 
@@ -258,45 +269,18 @@ curl "https://gateway.dev.solonetwork.io/api/v1/merchant/payments/0xabc123..." \
 
 ### 응답 필드
 
-| 필드            | 타입     | 설명                                                                                                                       |
-| --------------- | -------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `paymentId`     | `string` | 결제 고유 식별자 (bytes32 해시)                                                                                            |
-| `orderId`       | `string` | 가맹점 주문 ID                                                                                                             |
-| `status`        | `string` | CREATED, ESCROWED, FINALIZE_SUBMITTED, FINALIZED, CANCEL_SUBMITTED, CANCELLED, REFUND_SUBMITTED, REFUNDED, EXPIRED, FAILED |
-| `amount`        | `string` | wei 단위 금액                                                                                                              |
-| `tokenSymbol`   | `string` | 토큰 심볼                                                                                                                  |
-| `tokenDecimals` | `number` | 토큰 소수점                                                                                                                |
-| `txHash`        | `string` | 온체인 트랜잭션 해시 (확정 후 존재)                                                                                        |
-| `payerAddress`  | `string` | 결제자 지갑 주소 (확정 후 존재)                                                                                            |
-| `confirmedAt`   | `string` | 결제 확정 시각                                                                                                             |
-| `expiresAt`     | `string` | 결제 만료 시각                                                                                                             |
-
-### Subgraph를 통한 온체인 조회
-
-Subgraph를 통해 온체인 결제 이벤트를 직접 조회할 수도 있습니다.
-
-```graphql
-query PaymentHistory($payer: Bytes!) {
-  paymentReceivedEvents(
-    where: { payer: $payer }
-    orderBy: blockTimestamp
-    orderDirection: desc
-    first: 10
-  ) {
-    id
-    paymentId
-    payer
-    token
-    amount
-    transactionHash
-    blockTimestamp
-  }
-}
-```
-
-::: tip Subgraph 사용
-대량의 히스토리 조회나 복잡한 필터링이 필요한 경우 Subgraph를 사용하세요.
-:::
+| 필드            | 타입     | 설명                                                                                           |
+| --------------- | -------- | ---------------------------------------------------------------------------------------------- |
+| `paymentId`     | `string` | 결제 고유 식별자 (bytes32 해시)                                                                |
+| `orderId`       | `string` | 가맹점 주문 ID                                                                                 |
+| `status`        | `string` | CREATED, ESCROWED, FINALIZE_SUBMITTED, FINALIZED, CANCEL_SUBMITTED, CANCELLED, EXPIRED, FAILED |
+| `amount`        | `string` | wei 단위 금액                                                                                  |
+| `tokenSymbol`   | `string` | 토큰 심볼                                                                                      |
+| `tokenDecimals` | `number` | 토큰 소수점                                                                                    |
+| `txHash`        | `string` | 온체인 트랜잭션 해시 (확정 후 존재)                                                            |
+| `payerAddress`  | `string` | 결제자 지갑 주소 (확정 후 존재)                                                                |
+| `confirmedAt`   | `string` | 결제 확정 시각                                                                                 |
+| `expiresAt`     | `string` | 결제 만료 시각                                                                                 |
 
 ---
 
@@ -316,7 +300,7 @@ query PaymentHistory($payer: Bytes!) {
 
 ### 호출 시점
 
-- **payment.escrowed** 웹훅을 받은 후, 또는
+- **ESCROWED** 웹훅을 받은 후, 또는
 - **GET /payments/:id** 응답에서 `status: "ESCROWED"`인 경우
 
 이후 **POST /payments/:id/finalize**로 자금을 본인 지갑으로 해제하거나, **POST /payments/:id/cancel**로 구매자에게 환불합니다.
@@ -349,7 +333,7 @@ curl -X POST https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123.../fina
 }
 ```
 
-응답의 `data.status`는 **릴레이 제출 상태**(`submitted` 또는 `pending`)이며 결제 상태가 아닙니다. 결제 상태는 DB에서 **FINALIZE_SUBMITTED**가 되고, 온체인 트랜잭션 확정 후 **FINALIZED**가 되며 **payment.finalized** 웹훅이 전달됩니다. **GET /payments/:id**로 폴링하여 `status === "FINALIZED"`가 될 때까지 확인하세요.
+응답의 `data.status`는 **릴레이 제출 상태**(`submitted` 또는 `pending`)이며 결제 상태가 아닙니다. 결제 상태는 DB에서 **FINALIZE_SUBMITTED**가 되고, 온체인 트랜잭션 확정 후 **FINALIZED**가 되며 **FINALIZED** 웹훅이 전달됩니다. **GET /payments/:id**로 폴링하여 `status === "FINALIZED"`가 될 때까지 확인하세요.
 
 ::: tip 에스크로 기한 (기본 5분)
 확정(finalize)은 에스크로 기한(기본 300초 = 5분) 내에 호출해야 합니다. 이 기한은 온체인 에스크로 시점(`pay()` 트랜잭션 확정)부터 카운트됩니다. 기한이 지나면 API는 `ESCROW_EXPIRED`를 반환하고, 컨트랙트에서는 누구나 온체인에서 취소(권한 없이)할 수 있습니다.
@@ -376,7 +360,7 @@ curl -X POST https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123.../fina
 }
 ```
 
-finalize와 마찬가지로 `data.status`는 릴레이 제출 상태입니다. 결제 상태는 **CANCEL_SUBMITTED**가 된 뒤 온체인 확정 시 **CANCELLED**가 되며 **payment.cancelled** 웹훅이 전달됩니다.
+finalize와 마찬가지로 `data.status`는 릴레이 제출 상태입니다. 결제 상태는 **CANCEL_SUBMITTED**가 된 뒤 온체인 확정 시 **CANCELLED**가 되며 **CANCELLED** 웹훅이 전달됩니다.
 
 ### 에러 코드
 
@@ -390,49 +374,3 @@ finalize와 마찬가지로 `data.status`는 릴레이 제출 상태입니다. �
 | 500  | CHAIN_CONFIG_ERROR, SIGNING_SERVICE_ERROR, RELAYER_ERROR, INTERNAL_ERROR | 서버 또는 체인 오류                     |
 
 자세한 내용은 [에러 코드](/ko/api/errors)를 참조하세요.
-
----
-
-## 환불
-
-환불은 이미 **finalized**(확정)된 결제, 즉 자금이 가맹점에게 해제된 이후 구매자에게 금액을 돌려줄 때 사용합니다. 완료된 결제에 대한 환불은 Refunds API를 사용하세요.
-
-::: info 환불(Refund) vs 취소(Cancel)
-
-- **취소(Cancel)** — 결제가 아직 **ESCROWED**(에스크로) 상태일 때 사용. **POST /payments/:id/cancel** 호출로 확정 전 구매자에게 자금 반환. [결제 확정 및 취소](#결제-확정-및-취소) 참조.
-- **환불(Refund)** — 결제가 이미 **FINALIZED**(확정)된 경우 사용. **POST /refunds** 호출로 구매자에게 환불. 이 섹션은 환불(Refund) 흐름을 설명합니다.
-  :::
-
-### 사용 시점
-
-- 결제 상태가 **FINALIZED**이며, 가맹점이 이미 자금을 수령한 경우.
-- 구매자에게 전액 또는 일부를 반환해야 할 때 (예: 고객 요청, 주문 취소).
-
-### 환불 전: 가맹점 승인(approve) 필요
-
-온체인 환불 트랜잭션이 성공하려면 **가맹점 지갑(수취인 주소)**이 결제 토큰의 환불 금액에 대해 **Payment Gateway 컨트랙트의 spend 권한을 승인(approve)**해 두어야 합니다. 토큰 컨트랙트에서 ERC20 `approve(gatewayAddress, amount)`를 호출하면 됩니다. 게이트웨이는 이 단계를 대신 수행하지 않으며, 가맹점이 직접 수행해야 합니다(ERC20 Permit 지원 시 Permit 사용 가능). 승인하지 않으면 온체인 환불 트랜잭션이 실패합니다. Refund API는 온체인 승인 여부를 검사하지 않고, 인증 및 결제 상태만 검증한 뒤 서버 서명을 반환합니다.
-
-### 흐름
-
-1. 결제가 **FINALIZED** 상태 (자금 가맹점 지갑).
-2. 가맹점은 수취인 지갑이 해당 토큰에 대해 게이트웨이를 **승인(approve)**했는지 확인 (위 참조).
-3. 가맹점 서버에서 **POST /refunds** 호출 (`paymentId`, 선택 사항 `reason`). 인증: `x-api-key`. API는 환불 레코드와 **서버 서명**을 반환하며, relayer로 트랜잭션을 제출하지 않습니다.
-4. 가맹점(또는 relayer)이 게이트웨이 컨트랙트의 `refund(paymentId, serverSignature, permit)`를 호출하여 온체인 환불 트랜잭션을 제출합니다.
-5. 트랜잭션 제출 및 확정에 따라 환불 상태: **PENDING** → **SUBMITTED** → **CONFIRMED** (또는 **FAILED**).
-6. **GET /refunds/:refundId** 또는 **GET /refunds**로 상태 조회.
-
-결제 상태는 온체인 환불이 확정되면 **REFUND_SUBMITTED** → **REFUNDED**로 표시됩니다.
-
-### API 요약
-
-| 동작           | 엔드포인트                 | 인증        |
-| -------------- | -------------------------- | ----------- |
-| 환불 요청      | **POST /refunds**          | `x-api-key` |
-| 환불 상태 조회 | **GET /refunds/:refundId** | `x-api-key` |
-| 환불 목록 조회 | **GET /refunds**           | `x-api-key` |
-
-**POST /refunds** 요청 본문: `{ "paymentId": "0x...", "reason": "고객 요청" }` (reason 선택).
-
-### 전체 API 명세
-
-요청/응답 스키마, 상태 값, 에러 코드는 [API 전체 명세의 환불 섹션](/ko/api/#refunds)을 참조하세요.

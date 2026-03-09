@@ -11,7 +11,7 @@ SoloPay를 연동할 때 반드시 알아야 할 핵심 사항을 정리합니�
 ## 사용자가 결제 중간에 창을 닫으면?
 
 - `successUrl`/`failUrl`은 브라우저 리다이렉트에 의존하므로, 유저가 창을 닫으면 도달하지 못합니다.
-- 반드시 Webhook(`payment.escrowed`, `payment.finalized` 등)을 구현해야 안정적으로 결제 결과를 수신할 수 있습니다.
+- 반드시 Webhook(`ESCROWED`, `FINALIZED` 등)을 구현해야 안정적으로 결제 결과를 수신할 수 있습니다.
 - Webhook + Callback URL 병행 사용을 권장합니다.
 - Fallback 수단으로 `GET /payments/:id` 폴링을 활용할 수 있습니다.
 
@@ -49,7 +49,7 @@ SoloPay를 연동할 때 반드시 알아야 할 핵심 사항을 정리합니�
 
 ## Finalize 전에 무엇을 검증해야 하나요?
 
-- `payment.escrowed` 웹훅 수신 또는 `GET /payments/:id`에서 `status === "ESCROWED"` 확인
+- `ESCROWED` 웹훅 수신 또는 `GET /payments/:id`에서 `status === "ESCROWED"` 확인
 - `amount`가 가맹점 주문 금액과 일치하는지 확인
 - `orderId`가 가맹점 기록과 일치하는지 확인
 - 이미 처리된 결제가 아닌지 확인 (중복 finalize 방지)

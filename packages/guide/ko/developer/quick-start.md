@@ -75,18 +75,18 @@ Callback은 브라우저 리다이렉트 기반이므로 네트워크 장애 등
 
 주요 이벤트:
 
-- `payment.escrowed` — 사용자 결제 완료, 에스크로 보관
-- `payment.finalized` — 자금이 상점 지갑으로 해제됨
+- `ESCROWED` — 사용자 결제 완료, 에스크로 보관
+- `FINALIZED` — 자금이 상점 지갑으로 해제됨
 
 ```json
 {
-  "event": "payment.escrowed",
-  "data": {
-    "paymentId": "0xabc123...",
-    "status": "ESCROWED",
-    "amount": "10500000000000000000",
-    "orderId": "order-001"
-  }
+  "paymentId": "0xabc123...",
+  "orderId": "order-001",
+  "status": "ESCROWED",
+  "txHash": "0xdef789...",
+  "amount": "10500000000000000000",
+  "tokenSymbol": "SUT",
+  "escrowedAt": "2024-01-26T12:35:00.000Z"
 }
 ```
 
@@ -134,7 +134,7 @@ finalize를 호출해도 블록체인 네트워크 이슈로 트랜잭션이 실
 
 finalize 호출 후 상태는 `FINALIZE_SUBMITTED` → `FINALIZED`로 전환됩니다. 다음 두 가지 방법으로 `FINALIZED`를 확인합니다.
 
-- **Webhook** — `payment.finalized` 이벤트 수신 후, `GET /payments/:id`를 호출하여 `FINALIZED` 상태를 재확인
+- **Webhook** — `FINALIZED` 이벤트 수신 후, `GET /payments/:id`를 호출하여 `FINALIZED` 상태를 재확인
 - **API 폴링** — `GET /payments/:id`를 주기적으로 호출하여 `status === 'FINALIZED'` 확인
 
 ```bash
