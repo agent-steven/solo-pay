@@ -37,7 +37,7 @@ curl -X POST https://gateway.dev.solonetwork.io/api/v1/payments \
 | Field          | Type      | Req. | Description                                                        |
 | -------------- | --------- | ---- | ------------------------------------------------------------------ |
 | `orderId`      | `string`  | ✓    | Merchant order ID (no duplicates per merchant)                     |
-| `amount`       | `number`  | ✓    | Payment amount (token units or fiat units)                         |
+| `amount`       | `number`  | ✓    | Payment amount (token units or fiat units). Max 2 decimal places   |
 | `tokenAddress` | `address` | ✓    | ERC-20 token contract address (whitelisted & enabled for merchant) |
 | `successUrl`   | `string`  | ✓    | Redirect URL on success                                            |
 | `failUrl`      | `string`  | ✓    | Redirect URL on failure                                            |
@@ -46,6 +46,10 @@ curl -X POST https://gateway.dev.solonetwork.io/api/v1/payments \
 ::: tip currency option
 When `currency` is provided, `amount` is treated as a fiat amount. The server fetches the token price and converts automatically.
 Example: `amount: 10, currency: "USD"` → pays 10 USD worth of tokens
+:::
+
+::: warning amount decimal restriction
+`amount` allows a maximum of **2 decimal places** (e.g., `10.50` ✓, `10.123` ✗). Without `currency`, the value is used directly as the token amount. With `currency`, the fiat amount is converted to token units and truncated to 2 decimal places. The minimum token amount is `0.01`.
 :::
 
 ### Response
