@@ -318,7 +318,11 @@ describe('WidgetLauncher', () => {
       launcher.open(makeRequest());
 
       // payment_init with correct source but wrong origin
-      dispatchWidgetMessage(mockPopup, { type: 'payment_init', paymentId: 'pay-evil' }, 'https://evil.com');
+      dispatchWidgetMessage(
+        mockPopup,
+        { type: 'payment_init', paymentId: 'pay-evil' },
+        'https://evil.com'
+      );
 
       (mockPopup as { closed: boolean }).closed = true;
       vi.advanceTimersByTime(300 + 150);
@@ -333,7 +337,10 @@ describe('WidgetLauncher', () => {
         widgetUrl: WIDGET_URL + '/payment/checkout',
       });
 
-      vi.stubGlobal('open', vi.fn(() => mockPopup));
+      vi.stubGlobal(
+        'open',
+        vi.fn(() => mockPopup)
+      );
       launcherWithPath.open(makeRequest());
 
       // postMessage origin = widget origin (no path)
