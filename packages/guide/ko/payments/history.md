@@ -6,11 +6,11 @@
 
 ```bash
 # orderId로 조회
-curl "https://pay-api.staging.sut.com/api/v1/merchant/payments?orderId=order-001" \
+curl "https://gateway.dev.solonetwork.io/api/v1/merchant/payments?orderId=order-001" \
   -H "x-api-key: sk_xxxxx"
 
 # paymentId로 조회
-curl "https://pay-api.staging.sut.com/api/v1/merchant/payments/0xabc123..." \
+curl "https://gateway.dev.solonetwork.io/api/v1/merchant/payments/0xabc123..." \
   -H "x-api-key: sk_xxxxx"
 ```
 
@@ -30,7 +30,7 @@ curl "https://pay-api.staging.sut.com/api/v1/merchant/payments/0xabc123..." \
     "payerAddress": "0x1234...",
     "createdAt": "2024-01-26T12:30:00Z",
     "confirmedAt": "2024-01-26T12:35:42Z",
-    "expiresAt": "2024-01-26T13:00:00Z"
+    "expiresAt": "2024-01-26T12:35:00Z"
   }
 }
 ```

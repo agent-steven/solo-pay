@@ -31,7 +31,7 @@ SoloPay의 전체 결제 파이프라인과 가스리스 아키텍처를 설명�
     payment.escrowed / payment.finalized / payment.cancelled / payment.failed / payment.expired Webhook 이벤트 전송
 ```
 
-결제가 **ESCROWED**가 된 후, 가맹점 서버에서 **POST /payments/:id/finalize**(또는 **POST /payments/:id/cancel**)를 호출하여 자금을 머천트 지갑으로 해제하거나 구매자에게 환불할 수 있습니다. [결제 확정 및 취소](/ko/payments/finalize)를 참조하세요.
+결제가 **ESCROWED**가 된 후, 가맹점 서버에서 **POST /payments/:id/finalize**(또는 **POST /payments/:id/cancel**)를 호출하여 자금을 상점 지갑으로 해제하거나 구매자에게 환불할 수 있습니다. [결제 확정 및 취소](/ko/payments/finalize)를 참조하세요.
 
 ### 단계별 설명
 
@@ -165,14 +165,14 @@ CREATED ──► EXPIRED
 CREATED ──► FAILED
 ```
 
-| 상태        | 설명                                                      |
-| ----------- | --------------------------------------------------------- |
-| `CREATED`   | 결제 생성됨, 온체인 트랜잭션 대기                         |
-| `ESCROWED`  | 사용자 결제 완료, 에스크로 보관 (머천트가 확정/취소 가능) |
-| `FINALIZED` | 자금 머천트로 해제됨                                      |
-| `CANCELLED` | 자금 구매자에게 환불됨                                    |
-| `FAILED`    | 트랜잭션 실패 또는 서명 검증 실패                         |
-| `EXPIRED`   | 결제 만료 (30분 초과)                                     |
+| 상태        | 설명                                                                |
+| ----------- | ------------------------------------------------------------------- |
+| `CREATED`   | 결제 생성됨, 온체인 트랜잭션 대기                                   |
+| `ESCROWED`  | 사용자 결제 완료, 에스크로 보관 (상점이 기본 5분 내 확정/취소 가능) |
+| `FINALIZED` | 자금 상점으로 확정됨                                                |
+| `CANCELLED` | 자금 구매자에게 환불됨                                              |
+| `FAILED`    | 트랜잭션 실패 또는 서명 검증 실패                                   |
+| `EXPIRED`   | 결제 만료 (5분 초과)                                                |
 
 ### Relay 상태 (가스리스 전용)
 
@@ -194,7 +194,7 @@ QUEUED ──────▶ SUBMITTED ──────▶ CONFIRMED
 
 - **결제 상태**는 온체인 상태(ESCROWED, FINALIZED, CANCELLED 등)를 반영합니다.
 - **Relay 상태**는 릴레이어의 TX 제출 과정(QUEUED → SUBMITTED → CONFIRMED/FAILED)을 반영합니다.
-- 에스크로 TX가 확정되면 결제 상태가 ESCROWED가 됩니다. 이후 머천트가 [결제 확정 및 취소](/ko/payments/finalize)를 호출하여 자금을 해제하거나 환불합니다.
+- 에스크로 TX가 확정되면 결제 상태가 ESCROWED가 됩니다. 이후 상점이 [결제 확정 및 취소](/ko/payments/finalize)를 호출하여 자금을 해제하거나 환불합니다.
   :::
 
 ## 다음 단계

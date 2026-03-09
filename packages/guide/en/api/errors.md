@@ -124,7 +124,7 @@ Returned when calling **POST /payments/:id/finalize** after the escrow deadline 
 }
 ```
 
-**Resolution**: After the escrow deadline, finalize via API is no longer allowed. Anyone can cancel the payment on-chain (permissionless) to return funds to the buyer.
+**Resolution**: After the escrow deadline, finalize via API is no longer allowed. Permissionless cancel is activated, allowing anyone to call cancel on-chain. Upon calling, funds are returned to the buyer.
 
 ### INVALID_SIGNATURE
 

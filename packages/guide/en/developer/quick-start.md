@@ -19,7 +19,7 @@ npm install @solo-pay/widget-js
 import { SoloPay } from '@solo-pay/widget-js';
 
 const solopay = new SoloPay({
-  publicKey: 'pk_test_xxxxx',
+  publicKey: 'pk_xxxxx',
 });
 
 solopay.requestPayment({
@@ -33,18 +33,116 @@ solopay.requestPayment({
 
 For React projects, using the [`useWidget` hook from `@solo-pay/widget-react`](/en/widget/) is recommended.
 
-## Step 2: Verify Payment Result
+For Vanilla JS or other frameworks, you can use the CDN directly.
 
-As soon as the `paymentId` is received from the callback URL, verify the final status from the server.
-
-```bash
-curl https://pay-api.staging.sut.com/api/v1/payments/0xabc123... \
-  -H "x-public-key: pk_test_xxxxx"
+```html
+<script src="https://cdn.jsdelivr.net/npm/@solo-pay/widget-js/dist/widget.min.js"></script>
+<script>
+  const solopay = new SoloPay({ publicKey: 'pk_xxxxx' });
+  solopay.requestPayment({
+    orderId: 'order-001',
+    amount: '10.5',
+    tokenAddress: '0xE4C687167705Abf55d709395f92e254bdF5825a2',
+    successUrl: 'https://yourshop.com/payment/success',
+    failUrl: 'https://yourshop.com/payment/fail',
+  });
+</script>
 ```
 
-Only mark the order complete when `status === 'ESCROWED'` or `status === 'FINALIZED'` and `amount`, `tokenAddress`, and `orderId` all match.
+## Step 2: Receive Payment Results
 
-If you use escrow, after payment is **ESCROWED** your backend can call **POST /payments/:id/finalize** to release funds to your wallet. See [Finalize & Cancel](/en/payments/finalize).
+After payment completes, results are delivered through two channels.
+
+### Callback URL (Frontend)
+
+The user is redirected to the `successUrl` or `failUrl` specified in Step 1. `paymentId`, `orderId`, and `status` are passed as query parameters.
+
+- `successUrl` — `status=success` (payment succeeded)
+- `failUrl` — `status=fail` (payment failed) or `status=closed` (user closed the widget)
+
+```
+https://yourshop.com/payment/success?paymentId=0xabc123...&orderId=order-001&status=success
+https://yourshop.com/payment/fail?paymentId=0xabc123...&orderId=order-001&status=closed
+```
+
+::: warning Callback URL alone is not sufficient
+Callbacks are browser-redirect based and can be lost due to network issues. Always use Webhook together.
+:::
+
+### Webhook (Server)
+
+Register a Webhook URL with your account admin to receive HTTP POST notifications whenever the payment status changes.
+
+Key events:
+
+- `payment.escrowed` — User payment completed, held in escrow
+- `payment.finalized` — Funds released to merchant wallet
+
+```json
+{
+  "event": "payment.escrowed",
+  "data": {
+    "paymentId": "0xabc123...",
+    "status": "ESCROWED",
+    "amount": "10500000000000000000",
+    "orderId": "order-001"
+  }
+}
+```
+
+See the [Webhook Guide](/en/webhooks/) for details.
+
+## Step 3: Verify Payment Status (Required)
+
+Whether from Callback or Webhook, always verify the final status by calling the API from your server. Never trust URL parameters or Webhook payload directly.
+
+```bash
+curl https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123... \
+  -H "x-public-key: pk_xxxxx"
+```
+
+When `status` is `ESCROWED` and `amount`, `tokenAddress`, `orderId` match your order data, the payment is valid. Call finalize in Step 4 to confirm the payment.
+
+## Step 4: Finalize or Cancel Payment
+
+After payment reaches **ESCROWED** status, verify the order details and call finalize or cancel.
+
+- **Finalize** — Release funds to the merchant wallet.
+- **Cancel** — Refund funds to the buyer (e.g. out of stock, order mismatch).
+
+```bash
+# Finalize
+curl -X POST https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123.../finalize \
+  -H "x-api-key: sk_xxxxx"
+
+# Cancel
+curl -X POST https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123.../cancel \
+  -H "x-api-key: sk_xxxxx"
+```
+
+::: warning Always call finalize or cancel
+After escrow expiry, finalize is no longer possible and anyone can call cancel on-chain to refund the buyer.
+:::
+
+See [Finalize & Cancel](/en/payments/finalize) for details.
+
+## Step 5: Complete Order After FINALIZED
+
+::: danger Never complete the order before FINALIZED
+Even after calling finalize, the blockchain transaction can fail due to network issues. You must confirm `FINALIZED` status before completing the order.
+:::
+
+After calling finalize, the status transitions from `FINALIZE_SUBMITTED` to `FINALIZED`. Confirm `FINALIZED` using one of the following methods.
+
+- **Webhook** — On receiving the `payment.finalized` event, call `GET /payments/:id` to re-confirm `FINALIZED` status
+- **API Polling** — Periodically call `GET /payments/:id` and confirm `status === 'FINALIZED'`
+
+```bash
+curl https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123... \
+  -H "x-public-key: pk_xxxxx"
+```
+
+Only after confirming `FINALIZED` status should you proceed with order fulfillment such as shipping products or activating services.
 
 ## Payment Status Flow
 
@@ -55,17 +153,17 @@ CREATED ──► EXPIRED
 CREATED ──► FAILED
 ```
 
-| Status      | Description                   |
-| ----------- | ----------------------------- |
-| `CREATED`   | Payment created               |
-| `ESCROWED`  | User paid; funds in escrow    |
-| `FINALIZED` | Funds released to merchant    |
-| `FAILED`    | Transaction failed            |
-| `EXPIRED`   | Expired (30 minutes exceeded) |
+| Status      | Description                  |
+| ----------- | ---------------------------- |
+| `CREATED`   | Payment created              |
+| `ESCROWED`  | User paid; funds in escrow   |
+| `FINALIZED` | Funds released to merchant   |
+| `FAILED`    | Transaction failed           |
+| `EXPIRED`   | Expired (5 minutes exceeded) |
 
 ## Next Steps
 
+- [Webhook Guide](/en/webhooks/) - Webhook events and verification
 - [Finalize & Cancel](/en/payments/finalize) - Release or cancel escrowed payments
 - [Authentication](/en/developer/authentication) - API Key / Public Key details
-- [Client-Side Integration](/en/developer/client-side) - Step-by-step implementation guide
 - [Create Payment API](/en/payments/create) - Detailed payment API guide

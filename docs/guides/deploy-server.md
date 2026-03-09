@@ -121,6 +121,17 @@ LOG_LEVEL=info
 # ============================================
 CORS_ORIGIN=https://app.solopay.io
 # Client domain
+
+# ============================================
+# Payment Configuration (Optional)
+# ============================================
+PAYMENT_DEADLINE_SECONDS=300
+# Server signature expiration time in seconds (default: 3600)
+# Recommended: 300 (5 minutes)
+
+DEFAULT_ESCROW_DURATION=300
+# Escrow hold duration in seconds after on-chain deposit (default: 300)
+# Finalize must be called within this period; after expiry, cancel becomes permissionless
 ```
 
 ### 1.2 Multi-Chain Configuration (chains.json)

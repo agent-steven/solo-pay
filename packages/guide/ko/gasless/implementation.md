@@ -29,10 +29,10 @@
 `x-public-key` 헤더와 함께 `POST /payments`를 호출합니다. 브라우저에서 직접 호출할 수 있습니다.
 
 ```typescript
-const response = await fetch('https://pay-api.staging.sut.com/api/v1/payments', {
+const response = await fetch('https://gateway.dev.solonetwork.io/api/v1/payments', {
   method: 'POST',
   headers: {
-    'x-public-key': 'pk_test_xxxxx',
+    'x-public-key': 'pk_xxxxx',
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
@@ -165,11 +165,11 @@ const signature = await signTypedDataAsync({
 
 ```typescript
 const result = await fetch(
-  `https://pay-api.staging.sut.com/api/v1/payments/${payment.paymentId}/relay`,
+  `https://gateway.dev.solonetwork.io/api/v1/payments/${payment.paymentId}/relay`,
   {
     method: 'POST',
     headers: {
-      'x-public-key': 'pk_test_xxxxx',
+      'x-public-key': 'pk_xxxxx',
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -195,15 +195,18 @@ const result = await fetch(
 ```typescript
 // 릴레이 상태 (paymentId 기준)
 const relayStatus = await fetch(
-  `https://pay-api.staging.sut.com/api/v1/payments/${paymentId}/relay`,
-  { headers: { 'x-public-key': 'pk_test_xxxxx' } }
+  `https://gateway.dev.solonetwork.io/api/v1/payments/${paymentId}/relay`,
+  { headers: { 'x-public-key': 'pk_xxxxx' } }
 ).then((r) => r.json());
 // relayStatus.data.status: 'QUEUED' | 'SUBMITTED' | 'CONFIRMED' | 'FAILED'
 
 // 결제 상태
-const paymentStatus = await fetch(`https://pay-api.staging.sut.com/api/v1/payments/${paymentId}`, {
-  headers: { 'x-public-key': 'pk_test_xxxxx' },
-}).then((r) => r.json());
+const paymentStatus = await fetch(
+  `https://gateway.dev.solonetwork.io/api/v1/payments/${paymentId}`,
+  {
+    headers: { 'x-public-key': 'pk_xxxxx' },
+  }
+).then((r) => r.json());
 // paymentStatus.data.status: 'CREATED' | 'ESCROWED' | 'FINALIZE_SUBMITTED' | 'FINALIZED' | 'CANCEL_SUBMITTED' | 'CANCELLED' | 'REFUND_SUBMITTED' | 'REFUNDED' | 'EXPIRED' | 'FAILED'
 ```
 
@@ -251,10 +254,10 @@ function GaslessPayment({ payment }) {
     });
 
     const result = await fetch(
-      `https://pay-api.staging.sut.com/api/v1/payments/${paymentId}/relay`,
+      `https://gateway.dev.solonetwork.io/api/v1/payments/${paymentId}/relay`,
       {
         method: 'POST',
-        headers: { 'x-public-key': 'pk_test_xxxxx', 'Content-Type': 'application/json' },
+        headers: { 'x-public-key': 'pk_xxxxx', 'Content-Type': 'application/json' },
         body: JSON.stringify({
           paymentId, forwarderAddress,
           forwardRequest: {

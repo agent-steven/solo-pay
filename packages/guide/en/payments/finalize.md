@@ -9,8 +9,8 @@ After a payment reaches **ESCROWED** status, the merchant must choose: **finaliz
 
 ## Expiry vs Escrow Deadline
 
-- **Payment EXPIRED** — The payment was never completed within the creation expiry window (e.g. 30 minutes exceeded). Status becomes `EXPIRED`; no escrow occurred. Create a new payment to retry.
-- **Escrow deadline** — Once a payment is ESCROWED, the merchant has until the escrow deadline to **finalize** (release funds). After the escrow deadline, finalize via API returns `ESCROW_EXPIRED`, and the contract may allow **permissionless cancel** on-chain (anyone can call cancel on the contract to return funds to the buyer).
+- **Payment EXPIRED** — The payment was never completed within the creation expiry window (e.g. 5 minutes exceeded). Status becomes `EXPIRED`; no escrow occurred. Create a new payment to retry.
+- **Escrow deadline** — Once a payment is ESCROWED, the merchant has until the escrow deadline to **finalize** (release funds). After the escrow deadline, finalize via API returns `ESCROW_EXPIRED`, and the contract may allow **permissionless cancel** on-chain (anyone can call cancel on the contract, and upon calling, funds are returned to the buyer).
 
 ## When to Call
 
@@ -29,8 +29,8 @@ No request body. The payment ID is in the URL path.
 ### Example
 
 ```bash
-curl -X POST https://pay-api.staging.sut.com/api/v1/payments/0xabc123... \
-  -H "x-api-key: sk_test_xxxxx"
+curl -X POST https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123.../finalize \
+  -H "x-api-key: sk_xxxxx"
 ```
 
 ### Response (200 OK)
@@ -49,8 +49,8 @@ curl -X POST https://pay-api.staging.sut.com/api/v1/payments/0xabc123... \
 
 The response `data.status` is the **relay submission state** (`submitted` or `pending`), not the payment status. The payment status in the database becomes **FINALIZE_SUBMITTED**; after the on-chain transaction confirms it becomes **FINALIZED** and you receive the **payment.finalized** webhook. Poll **GET /payments/:id** until `status === "FINALIZED"` to confirm.
 
-::: tip Escrow Deadline
-Finalize must be called before the escrow deadline. After the deadline, the API returns `ESCROW_EXPIRED` and the contract may allow anyone to cancel on-chain (permissionless).
+::: tip Escrow Deadline (default: 5 minutes)
+Finalize must be called within the escrow deadline (default 300 seconds = 5 minutes). The countdown starts from the on-chain escrow moment (when the `pay()` transaction is confirmed). After the deadline, the API returns `ESCROW_EXPIRED` and the contract allows anyone to cancel on-chain (permissionless).
 :::
 
 ## Cancel (Return to Buyer)
