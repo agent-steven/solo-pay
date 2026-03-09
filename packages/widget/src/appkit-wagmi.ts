@@ -23,9 +23,7 @@ import type { Config } from 'wagmi';
 export function getWcProjectId(): string {
   const id = process.env.NEXT_PUBLIC_WC_PROJECT_ID;
   if (!id || id.length === 0) {
-    throw new Error(
-      'NEXT_PUBLIC_WC_PROJECT_ID is required. Get one at https://cloud.reown.com'
-    );
+    throw new Error('NEXT_PUBLIC_WC_PROJECT_ID is required. Get one at https://cloud.reown.com');
   }
   return id;
 }

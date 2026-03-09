@@ -38,13 +38,13 @@ export function ConnectWalletButton({
     () =>
       connectors.find((c) => c.id === 'io.metamask') ??
       connectors.find((c) => c.id === 'io.metamask.flask'),
-    [connectors],
+    [connectors]
   );
   const trustWalletConnector = useMemo(
     () =>
       connectors.find((c) => c.id === 'com.trustwallet.app') ??
       connectors.find((c) => c.id === 'trustWallet'),
-    [connectors],
+    [connectors]
   );
 
   const connectWith = useCallback(
@@ -63,7 +63,7 @@ export function ConnectWalletButton({
         console.warn('Wallet connection failed:', err);
       }
     },
-    [onConnectorClick, isConnected, disconnectAsync, connectAsync],
+    [onConnectorClick, isConnected, disconnectAsync, connectAsync]
   );
 
   const openWalletConnect = useCallback(
@@ -74,7 +74,7 @@ export function ConnectWalletButton({
         data: { wallet: { id: walletId, name: walletName } },
       });
     },
-    [onConnectorClick, open],
+    [onConnectorClick, open]
   );
 
   const handleMetaMask = useCallback(() => {

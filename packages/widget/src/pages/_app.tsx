@@ -4,11 +4,7 @@ import { useEffect, useRef, useMemo, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
 import { mainnet } from '@reown/appkit/networks';
-import {
-  createAppKitConfig,
-  appkitNetworks,
-  getWcProjectId,
-} from '../appkit-wagmi';
+import { createAppKitConfig, appkitNetworks, getWcProjectId } from '../appkit-wagmi';
 import { getMetadata, APPKIT_WALLET_IDS } from '../appkit-config';
 
 import type { createAppKit as CreateAppKitFn } from '@reown/appkit/react';
