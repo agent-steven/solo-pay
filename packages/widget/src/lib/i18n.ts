@@ -98,6 +98,7 @@ const translations = {
     'connect.description':
       'Please connect your wallet to proceed.\nSupports MetaMask and Trust Wallet.',
     'connect.connecting': 'Connecting...',
+    'connect.connectWallet': 'Connect Wallet',
     'connect.metaMask': 'MetaMask',
     'connect.trustWallet': 'Trust Wallet',
 
@@ -241,6 +242,7 @@ const translations = {
     'connect.title': '지갑 연결',
     'connect.description': '결제를 위해 지갑을 연결해 주세요.\nMetaMask, Trust Wallet 지원.',
     'connect.connecting': '연결 중...',
+    'connect.connectWallet': '지갑 연결',
     'connect.metaMask': 'MetaMask',
     'connect.trustWallet': 'Trust Wallet',
 

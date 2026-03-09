@@ -647,7 +647,7 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
     if (!isConnected || !address) {
       return (
         <div className="w-full">
-          <ConnectWalletButton />
+          <ConnectWalletButton onConnectorClick={clearWalletChangeIntent} />
         </div>
       );
     }

@@ -110,7 +110,7 @@ export function createAppKitConfig(projectId: string): AppKitConfigResult {
     metadata: {
       name: dynamicMetadata.name,
       description: dynamicMetadata.description,
-      url: dynamicMetadata.url || 'https://solopay.example',
+      url: dynamicMetadata.url || '',
       icons: dynamicMetadata.icons,
     },
   } as WagmiAdapterConfig);
