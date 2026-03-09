@@ -12,11 +12,11 @@ Full SoloPay REST API specification.
 
 ## Authentication
 
-| Method     | Header         | Endpoints                                                                                                                             |
-| ---------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Public Key | `x-public-key` | POST /payments, GET /payments/:id, POST /payments/:id/relay, GET /payments/:id/relay                                                  |
+| Method     | Header         | Endpoints                                                                                                |
+| ---------- | -------------- | -------------------------------------------------------------------------------------------------------- |
+| Public Key | `x-public-key` | POST /payments, GET /payments/:id, POST /payments/:id/relay, GET /payments/:id/relay                     |
 | API Key    | `x-api-key`    | GET /merchant/\*, POST /merchant/payment-methods, POST /payments/:id/finalize, POST /payments/:id/cancel |
-| None       | -              | GET /chains, GET /chains/tokens                                                                                                       |
+| None       | -              | GET /chains, GET /chains/tokens                                                                          |
 
 ---
 

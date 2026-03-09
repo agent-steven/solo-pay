@@ -106,18 +106,18 @@ curl -X POST https://gateway.dev.solonetwork.io/api/v1/payments \
 
 #### 에러 응답
 
-| HTTP | 코드                       | 원인                              |
-| ---- | -------------------------- | --------------------------------- |
-| 400  | `TOKEN_NOT_ENABLED`        | 해당 토큰이 가맹점에서 비활성화됨 |
-| 404  | `TOKEN_NOT_FOUND`          | 화이트리스트에 없는 토큰          |
-| 400  | `UNSUPPORTED_CHAIN`        | 지원하지 않는 체인                |
-| 400  | `CHAIN_NOT_CONFIGURED`     | 가맹점에 체인이 설정되지 않음     |
-| 400  | `RECIPIENT_NOT_CONFIGURED` | 가맹점 수령 주소 미설정           |
-| 400  | `CHAIN_MISMATCH`           | 토큰이 가맹점 체인에 속하지 않음  |
-| 400  | `UNSUPPORTED_TOKEN`        | 해당 체인에서 지원되지 않는 토큰  |
-| 400  | `PRICE_SERVICE_NOT_CONFIGURED` | 통화 변환 서비스 사용 불가    |
-| 400  | `VALIDATION_ERROR`         | 입력값 검증 실패                  |
-| 409  | `DUPLICATE_ORDER`          | 이미 사용된 orderId               |
+| HTTP | 코드                           | 원인                              |
+| ---- | ------------------------------ | --------------------------------- |
+| 400  | `TOKEN_NOT_ENABLED`            | 해당 토큰이 가맹점에서 비활성화됨 |
+| 404  | `TOKEN_NOT_FOUND`              | 화이트리스트에 없는 토큰          |
+| 400  | `UNSUPPORTED_CHAIN`            | 지원하지 않는 체인                |
+| 400  | `CHAIN_NOT_CONFIGURED`         | 가맹점에 체인이 설정되지 않음     |
+| 400  | `RECIPIENT_NOT_CONFIGURED`     | 가맹점 수령 주소 미설정           |
+| 400  | `CHAIN_MISMATCH`               | 토큰이 가맹점 체인에 속하지 않음  |
+| 400  | `UNSUPPORTED_TOKEN`            | 해당 체인에서 지원되지 않는 토큰  |
+| 400  | `PRICE_SERVICE_NOT_CONFIGURED` | 통화 변환 서비스 사용 불가        |
+| 400  | `VALIDATION_ERROR`             | 입력값 검증 실패                  |
+| 409  | `DUPLICATE_ORDER`              | 이미 사용된 orderId               |
 
 ### 응답 필드 설명
 
@@ -269,18 +269,18 @@ curl "https://gateway.dev.solonetwork.io/api/v1/merchant/payments/0xabc123..." \
 
 ### 응답 필드
 
-| 필드            | 타입     | 설명                                                                                                                       |
-| --------------- | -------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `paymentId`     | `string` | 결제 고유 식별자 (bytes32 해시)                                                                                            |
-| `orderId`       | `string` | 가맹점 주문 ID                                                                                                             |
+| 필드            | 타입     | 설명                                                                                           |
+| --------------- | -------- | ---------------------------------------------------------------------------------------------- |
+| `paymentId`     | `string` | 결제 고유 식별자 (bytes32 해시)                                                                |
+| `orderId`       | `string` | 가맹점 주문 ID                                                                                 |
 | `status`        | `string` | CREATED, ESCROWED, FINALIZE_SUBMITTED, FINALIZED, CANCEL_SUBMITTED, CANCELLED, EXPIRED, FAILED |
-| `amount`        | `string` | wei 단위 금액                                                                                                              |
-| `tokenSymbol`   | `string` | 토큰 심볼                                                                                                                  |
-| `tokenDecimals` | `number` | 토큰 소수점                                                                                                                |
-| `txHash`        | `string` | 온체인 트랜잭션 해시 (확정 후 존재)                                                                                        |
-| `payerAddress`  | `string` | 결제자 지갑 주소 (확정 후 존재)                                                                                            |
-| `confirmedAt`   | `string` | 결제 확정 시각                                                                                                             |
-| `expiresAt`     | `string` | 결제 만료 시각                                                                                                             |
+| `amount`        | `string` | wei 단위 금액                                                                                  |
+| `tokenSymbol`   | `string` | 토큰 심볼                                                                                      |
+| `tokenDecimals` | `number` | 토큰 소수점                                                                                    |
+| `txHash`        | `string` | 온체인 트랜잭션 해시 (확정 후 존재)                                                            |
+| `payerAddress`  | `string` | 결제자 지갑 주소 (확정 후 존재)                                                                |
+| `confirmedAt`   | `string` | 결제 확정 시각                                                                                 |
+| `expiresAt`     | `string` | 결제 만료 시각                                                                                 |
 
 ---
 

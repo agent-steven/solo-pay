@@ -87,18 +87,18 @@ Example: `amount: 10, currency: "USD"` → pays 10 USD worth of tokens
 
 #### Error Responses
 
-| HTTP | Code                       | Cause                                     |
-| ---- | -------------------------- | ----------------------------------------- |
-| 400  | `TOKEN_NOT_ENABLED`        | Token is not enabled for this merchant    |
-| 404  | `TOKEN_NOT_FOUND`          | Token not in whitelist                    |
-| 400  | `UNSUPPORTED_CHAIN`        | Unsupported chain                         |
-| 400  | `CHAIN_NOT_CONFIGURED`     | Merchant has no chain configured          |
-| 400  | `RECIPIENT_NOT_CONFIGURED` | Merchant recipient address not configured |
-| 400  | `CHAIN_MISMATCH`           | Token does not belong to merchant chain   |
-| 400  | `UNSUPPORTED_TOKEN`        | Token not supported on this chain         |
-| 400  | `PRICE_SERVICE_NOT_CONFIGURED` | Currency conversion unavailable        |
-| 400  | `VALIDATION_ERROR`         | Input validation failed                   |
-| 409  | `DUPLICATE_ORDER`          | orderId already used                      |
+| HTTP | Code                           | Cause                                     |
+| ---- | ------------------------------ | ----------------------------------------- |
+| 400  | `TOKEN_NOT_ENABLED`            | Token is not enabled for this merchant    |
+| 404  | `TOKEN_NOT_FOUND`              | Token not in whitelist                    |
+| 400  | `UNSUPPORTED_CHAIN`            | Unsupported chain                         |
+| 400  | `CHAIN_NOT_CONFIGURED`         | Merchant has no chain configured          |
+| 400  | `RECIPIENT_NOT_CONFIGURED`     | Merchant recipient address not configured |
+| 400  | `CHAIN_MISMATCH`               | Token does not belong to merchant chain   |
+| 400  | `UNSUPPORTED_TOKEN`            | Token not supported on this chain         |
+| 400  | `PRICE_SERVICE_NOT_CONFIGURED` | Currency conversion unavailable           |
+| 400  | `VALIDATION_ERROR`             | Input validation failed                   |
+| 409  | `DUPLICATE_ORDER`              | orderId already used                      |
 
 ### Response Fields
 
@@ -250,18 +250,18 @@ curl "https://gateway.dev.solonetwork.io/api/v1/merchant/payments/0xabc123..." \
 
 ### Response Fields
 
-| Field           | Type     | Description                                                                                                                |
-| --------------- | -------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `paymentId`     | `string` | Unique payment identifier (bytes32 hash)                                                                                   |
-| `orderId`       | `string` | Merchant order ID                                                                                                          |
+| Field           | Type     | Description                                                                                    |
+| --------------- | -------- | ---------------------------------------------------------------------------------------------- |
+| `paymentId`     | `string` | Unique payment identifier (bytes32 hash)                                                       |
+| `orderId`       | `string` | Merchant order ID                                                                              |
 | `status`        | `string` | CREATED, ESCROWED, FINALIZE_SUBMITTED, FINALIZED, CANCEL_SUBMITTED, CANCELLED, EXPIRED, FAILED |
-| `amount`        | `string` | Amount in wei                                                                                                              |
-| `tokenSymbol`   | `string` | Token symbol                                                                                                               |
-| `tokenDecimals` | `number` | Token decimals                                                                                                             |
-| `txHash`        | `string` | On-chain transaction hash (present after confirmation)                                                                     |
-| `payerAddress`  | `string` | Payer wallet address (present after confirmation)                                                                          |
-| `confirmedAt`   | `string` | Payment confirmation timestamp                                                                                             |
-| `expiresAt`     | `string` | Payment expiry timestamp                                                                                                   |
+| `amount`        | `string` | Amount in wei                                                                                  |
+| `tokenSymbol`   | `string` | Token symbol                                                                                   |
+| `tokenDecimals` | `number` | Token decimals                                                                                 |
+| `txHash`        | `string` | On-chain transaction hash (present after confirmation)                                         |
+| `payerAddress`  | `string` | Payer wallet address (present after confirmation)                                              |
+| `confirmedAt`   | `string` | Payment confirmation timestamp                                                                 |
+| `expiresAt`     | `string` | Payment expiry timestamp                                                                       |
 
 ---
 

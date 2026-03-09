@@ -52,18 +52,18 @@ Escrowed payment was cancelled; funds returned to buyer.
 
 ## Payload Fields
 
-| Field          | Type     | Description                                                        |
-| -------------- | -------- | ------------------------------------------------------------------ |
-| `paymentId`    | `string` | Unique payment identifier (bytes32 hash)                           |
-| `orderId`      | `string` | Merchant order ID (null if not provided)                           |
-| `status`       | `string` | Payment status at the time of the event                            |
-| `txHash`       | `string` | Escrow (pay) transaction hash                                      |
-| `releaseTxHash`| `string` | Finalize or cancel transaction hash (finalized/cancelled only)     |
-| `amount`       | `string` | Amount in wei (string for precision)                               |
-| `tokenSymbol`  | `string` | Token symbol (e.g., USDC, SUT)                                     |
-| `escrowedAt`   | `string` | ISO-8601 timestamp (escrowed event only)                           |
-| `finalizedAt`  | `string` | ISO-8601 timestamp (finalized event only)                          |
-| `cancelledAt`  | `string` | ISO-8601 timestamp (cancelled event only)                          |
+| Field           | Type     | Description                                                    |
+| --------------- | -------- | -------------------------------------------------------------- |
+| `paymentId`     | `string` | Unique payment identifier (bytes32 hash)                       |
+| `orderId`       | `string` | Merchant order ID (null if not provided)                       |
+| `status`        | `string` | Payment status at the time of the event                        |
+| `txHash`        | `string` | Escrow (pay) transaction hash                                  |
+| `releaseTxHash` | `string` | Finalize or cancel transaction hash (finalized/cancelled only) |
+| `amount`        | `string` | Amount in wei (string for precision)                           |
+| `tokenSymbol`   | `string` | Token symbol (e.g., USDC, SUT)                                 |
+| `escrowedAt`    | `string` | ISO-8601 timestamp (escrowed event only)                       |
+| `finalizedAt`   | `string` | ISO-8601 timestamp (finalized event only)                      |
+| `cancelledAt`   | `string` | ISO-8601 timestamp (cancelled event only)                      |
 
 ## Event Handler Example
 

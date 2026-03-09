@@ -12,11 +12,11 @@ SoloPay REST API 전체 명세입니다.
 
 ## 인증
 
-| 방식       | 헤더           | 사용 엔드포인트                                                                                                                       |
-| ---------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Public Key | `x-public-key` | POST /payments, GET /payments/:id, POST /payments/:id/relay, GET /payments/:id/relay                                                  |
+| 방식       | 헤더           | 사용 엔드포인트                                                                                          |
+| ---------- | -------------- | -------------------------------------------------------------------------------------------------------- |
+| Public Key | `x-public-key` | POST /payments, GET /payments/:id, POST /payments/:id/relay, GET /payments/:id/relay                     |
 | API Key    | `x-api-key`    | GET /merchant/\*, POST /merchant/payment-methods, POST /payments/:id/finalize, POST /payments/:id/cancel |
-| 없음       | -              | GET /chains, GET /chains/tokens                                                                                                       |
+| 없음       | -              | GET /chains, GET /chains/tokens                                                                          |
 
 ## 공통 응답 형식
 

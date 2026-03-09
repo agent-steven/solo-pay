@@ -197,7 +197,10 @@ Payer wallet address could not be resolved.
 Returned when a gasless relay has already been submitted for this payment.
 
 ```json
-{ "code": "RELAY_ALREADY_SUBMITTED", "message": "Gasless already submitted for this payment. Check relay status or use a new checkout." }
+{
+  "code": "RELAY_ALREADY_SUBMITTED",
+  "message": "Gasless already submitted for this payment. Check relay status or use a new checkout."
+}
 ```
 
 ### AMOUNT_MISMATCH

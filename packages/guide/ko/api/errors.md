@@ -258,7 +258,10 @@ EIP-712 서명 검증에 실패했습니다.
 해당 결제에 대해 가스리스 릴레이가 이미 제출된 경우 반환됩니다.
 
 ```json
-{ "code": "RELAY_ALREADY_SUBMITTED", "message": "Gasless already submitted for this payment. Check relay status or use a new checkout." }
+{
+  "code": "RELAY_ALREADY_SUBMITTED",
+  "message": "Gasless already submitted for this payment. Check relay status or use a new checkout."
+}
 ```
 
 ### AMOUNT_MISMATCH

@@ -66,16 +66,16 @@ CREATED ──► FAILED
 
 ## Status Descriptions
 
-| Status               | Description                                    | Next Action                                                                 |
-| -------------------- | ---------------------------------------------- | --------------------------------------------------------------------------- |
-| `CREATED`            | Payment created, awaiting on-chain transaction | User initiates payment                                                      |
-| `ESCROWED`           | Payment escrowed on-chain                      | Merchant: call Finalize or Cancel                                           |
-| `FINALIZE_SUBMITTED` | Finalize transaction submitted                 | Wait for FINALIZED                                                          |
-| `FINALIZED`          | Funds released to merchant                     | None (terminal)                                                             |
-| `CANCEL_SUBMITTED`   | Cancel transaction submitted                   | Wait for CANCELLED                                                          |
-| `CANCELLED`          | Funds returned to buyer                        | None (terminal)                                                             |
-| `FAILED`             | Transaction failed                             | Create new payment                                                          |
-| `EXPIRED`            | Expired (5 minutes exceeded)                   | Create new payment                                                          |
+| Status               | Description                                    | Next Action                       |
+| -------------------- | ---------------------------------------------- | --------------------------------- |
+| `CREATED`            | Payment created, awaiting on-chain transaction | User initiates payment            |
+| `ESCROWED`           | Payment escrowed on-chain                      | Merchant: call Finalize or Cancel |
+| `FINALIZE_SUBMITTED` | Finalize transaction submitted                 | Wait for FINALIZED                |
+| `FINALIZED`          | Funds released to merchant                     | None (terminal)                   |
+| `CANCEL_SUBMITTED`   | Cancel transaction submitted                   | Wait for CANCELLED                |
+| `CANCELLED`          | Funds returned to buyer                        | None (terminal)                   |
+| `FAILED`             | Transaction failed                             | Create new payment                |
+| `EXPIRED`            | Expired (5 minutes exceeded)                   | Create new payment                |
 
 ::: tip On-chain Sync
 GET /payments/:id syncs blockchain and database status in real-time. For a successful payment, status is **ESCROWED** (user paid, finalize required). After finalize, status becomes **FINALIZED** (funds released to merchant).
