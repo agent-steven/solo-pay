@@ -1,10 +1,20 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { useAppKit } from '@reown/appkit/react';
 import { useLocale } from '../context/LocaleContext';
 import { APPKIT_WALLET_IDS } from '../appkit-config';
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    setIsMobile(
+      /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    );
+  }, []);
+  return isMobile;
+}
 
 const WALLET_BUTTON_BASE =
   'w-full rounded-xl px-6 py-3 sm:py-4 text-sm sm:text-lg font-semibold text-white shadow-sm disabled:opacity-50 transition-colors';
@@ -32,6 +42,7 @@ export function ConnectWalletButton({
   const { isConnected } = useAccount();
   const { connectAsync, connectors, isPending } = useConnect();
   const { disconnectAsync } = useDisconnect();
+  const isMobile = useIsMobile();
 
   // EIP-6963 connectors (RDNS-based IDs). No MetaMask SDK.
   const metaMaskConnector = useMemo(
@@ -69,6 +80,8 @@ export function ConnectWalletButton({
   const openWalletConnect = useCallback(
     (walletId: string, walletName: string) => {
       onConnectorClick?.();
+      // Open AppKit directly to the specific wallet's WalletConnect screen.
+      // Desktop: shows QR code. Mobile: shows deep link to wallet app.
       (open as (opts: Record<string, unknown>) => void)({
         view: 'ConnectingWalletConnect',
         data: { wallet: { id: walletId, name: walletName } },
@@ -92,6 +105,11 @@ export function ConnectWalletButton({
       openWalletConnect(APPKIT_WALLET_IDS[1], 'Trust Wallet');
     }
   }, [trustWalletConnector, connectWith, openWalletConnect]);
+
+  const handleMobileConnect = useCallback(() => {
+    onConnectorClick?.();
+    open();
+  }, [onConnectorClick, open]);
 
   return (
     <div className={['w-full', className].filter(Boolean).join(' ')}>
@@ -134,23 +152,36 @@ export function ConnectWalletButton({
       </div>
 
       <div className="flex flex-col gap-2 w-full">
-        <button
-          type="button"
-          onClick={handleMetaMask}
-          disabled={isPending}
-          className={`${WALLET_BUTTON_BASE} ${WALLET_STYLES.metaMask}`}
-        >
-          {t('connect.metaMask')}
-        </button>
+        {isMobile ? (
+          <button
+            type="button"
+            onClick={handleMobileConnect}
+            disabled={isPending}
+            className={`${WALLET_BUTTON_BASE} bg-blue-600 hover:bg-blue-700 active:bg-blue-800`}
+          >
+            {t('connect.connectWallet')}
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={handleMetaMask}
+              disabled={isPending}
+              className={`${WALLET_BUTTON_BASE} ${WALLET_STYLES.metaMask}`}
+            >
+              {t('connect.metaMask')}
+            </button>
 
-        <button
-          type="button"
-          onClick={handleTrustWallet}
-          disabled={isPending}
-          className={`${WALLET_BUTTON_BASE} ${WALLET_STYLES.trustWallet}`}
-        >
-          {t('connect.trustWallet')}
-        </button>
+            <button
+              type="button"
+              onClick={handleTrustWallet}
+              disabled={isPending}
+              className={`${WALLET_BUTTON_BASE} ${WALLET_STYLES.trustWallet}`}
+            >
+              {t('connect.trustWallet')}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

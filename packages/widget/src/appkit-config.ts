@@ -17,8 +17,10 @@ export const metadata = {
 };
 
 export function getMetadata() {
+  const url = typeof window !== 'undefined' ? window.location.origin : '';
   return {
     ...metadata,
-    url: typeof window !== 'undefined' ? window.location.origin : '',
+    url,
+    icons: url ? [`${url}/favicon.ico`] : [],
   };
 }

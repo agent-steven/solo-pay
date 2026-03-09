@@ -60,6 +60,7 @@ export function validateWidgetUrlParams(
         tokenAddress: '',
         successUrl: '',
         failUrl: '',
+        ...(walletOnly ? { walletOnly: true } : {}),
         lang,
       },
     };
