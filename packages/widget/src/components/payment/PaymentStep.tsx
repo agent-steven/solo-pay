@@ -63,7 +63,7 @@ function appendPaymentParams(
   url: string,
   paymentId?: string,
   orderId?: string,
-  status?: 'success' | 'fail'
+  status?: 'success' | 'fail' | 'closed'
 ): string {
   try {
     const u = new URL(url);
@@ -201,7 +201,15 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
 
     if (isResumeMode) {
       // Resume mode: fetch existing payment details from server
-      fetchPayment(urlParams.paymentId!, urlParams.pk);
+      fetchPayment(urlParams.paymentId!, urlParams.pk).then((result) => {
+        if (result && typeof window !== 'undefined' && window.opener) {
+          try {
+            window.opener.postMessage({ type: 'payment_init', paymentId: result.paymentId }, '*');
+          } catch {
+            /* opener may be closed */
+          }
+        }
+      });
     } else {
       // Creation mode: create new payment, then replace URL
       createPayment(urlParams).then((result) => {
@@ -213,6 +221,15 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
           url.searchParams.set('paymentId', result.paymentId);
           if (lang) url.searchParams.set('lang', lang);
           window.history.replaceState({}, '', url.toString());
+
+          // Notify parent (widget-js) of paymentId so fallback close has it
+          if (window.opener) {
+            try {
+              window.opener.postMessage({ type: 'payment_init', paymentId: result.paymentId }, '*');
+            } catch {
+              /* opener may be closed */
+            }
+          }
         }
       });
     }
@@ -489,34 +506,45 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
   // Cancel/fail redirect handler
   // In resume mode, failUrl comes from paymentDetails (server) instead of URL params
   const effectiveFailUrl = urlParams?.failUrl || paymentDetails?.failUrl;
-  const handleCancel = useCallback(() => {
-    if (effectiveFailUrl) {
-      const redirectUrl = appendPaymentParams(
-        effectiveFailUrl,
-        paymentDetails?.paymentId,
-        paymentDetails?.orderId || urlParams?.orderId,
-        'fail'
-      );
-      if (!redirectUrl) return;
-      allowUnloadRef.current = true;
-      const targetOrigin = new URL(effectiveFailUrl).origin;
-      if (isPopup && window.opener) {
-        window.opener.postMessage(
-          { type: 'payment_complete', status: 'fail', failUrl: redirectUrl },
-          targetOrigin
+  const redirectToFail = useCallback(
+    (status: 'fail' | 'closed') => {
+      if (effectiveFailUrl) {
+        const redirectUrl = appendPaymentParams(
+          effectiveFailUrl,
+          paymentDetails?.paymentId,
+          paymentDetails?.orderId || urlParams?.orderId,
+          status
         );
-        window.close();
-      } else {
-        window.location.href = redirectUrl;
+        if (!redirectUrl) return;
+        allowUnloadRef.current = true;
+        const targetOrigin = new URL(effectiveFailUrl).origin;
+        if (isPopup && window.opener) {
+          window.opener.postMessage(
+            { type: 'payment_complete', status: 'fail', failUrl: redirectUrl },
+            targetOrigin
+          );
+          window.close();
+        } else {
+          window.location.href = redirectUrl;
+        }
       }
-    }
-  }, [
-    effectiveFailUrl,
-    paymentDetails?.paymentId,
-    paymentDetails?.orderId,
-    urlParams?.orderId,
-    isPopup,
-  ]);
+    },
+    [
+      effectiveFailUrl,
+      paymentDetails?.paymentId,
+      paymentDetails?.orderId,
+      urlParams?.orderId,
+      isPopup,
+    ]
+  );
+
+  const handleCancel = useCallback(() => {
+    redirectToFail('fail');
+  }, [redirectToFail]);
+
+  const handleCancelFromProcessing = useCallback(() => {
+    redirectToFail('closed');
+  }, [redirectToFail]);
 
   // Loading state (skip when walletOnly — no API call)
   if (!urlParams?.walletOnly && isLoading) {
@@ -754,7 +782,7 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
             token={paymentDetails.tokenSymbol}
             progressState={progressState}
             onRetry={handleRetryPayment}
-            onCancel={effectiveFailUrl ? handleCancel : undefined}
+            onCancel={effectiveFailUrl ? handleCancelFromProcessing : undefined}
             error={parseErrorMessage(gaslessError?.message, t)}
           />
         );
