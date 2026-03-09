@@ -84,7 +84,7 @@ function StepRow({
       </div>
 
       {/* Label Text */}
-      <div className="flex-1 pb-5">
+      <div className="flex-1 pb-3 sm:pb-5">
         <span
           className={`text-sm sm:text-base transition-colors duration-300 ${
             status === 'processing'
@@ -173,10 +173,12 @@ export default function PaymentProcessing({
   );
 
   return (
-    <div className="w-full p-4 sm:p-6">
-      <div className="text-center mb-6 sm:mb-8">
+    <div className="w-full p-2 sm:p-6">
+      <div className="text-center mb-3 sm:mb-8">
         <h1 className="text-base sm:text-lg font-bold text-gray-900">{t('processing.title')}</h1>
-        <p className="text-xs sm:text-sm text-gray-500 mt-1">{t('processing.pleaseWait')}</p>
+        <p className="text-xs sm:text-sm text-gray-500 mt-0.5 sm:mt-1">
+          {t('processing.pleaseWait')}
+        </p>
       </div>
 
       {error ? (
@@ -217,7 +219,7 @@ export default function PaymentProcessing({
       ) : (
         <div className="flex flex-col">
           {/* 1. Large Central Amount Display */}
-          <div className="mb-6 sm:mb-8">
+          <div className="mb-4 sm:mb-8">
             <div className="flex items-baseline justify-center gap-2">
               <span className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
                 {amount}
@@ -229,7 +231,7 @@ export default function PaymentProcessing({
           </div>
 
           {/* 2. Thicker Top Progress Bar */}
-          <div className="w-full px-2 mb-4">
+          <div className="w-full px-2 mb-3 sm:mb-4">
             <div className="w-full h-4 sm:h-5 bg-gray-100 rounded-full overflow-hidden shadow-inner border border-gray-200">
               <div
                 className={`h-full rounded-full transition-all duration-700 ease-out relative overflow-hidden bg-linear-to-r ${
@@ -245,9 +247,9 @@ export default function PaymentProcessing({
           </div>
 
           {/* 3. Helper Hint Text */}
-          <div className="text-center min-h-[28px] mb-6">
+          <div className="text-center min-h-[28px] mb-4 sm:mb-6">
             <div
-              className={`text-base font-bold transition-colors duration-300 ${
+              className={`text-sm sm:text-base font-bold transition-colors duration-300 ${
                 error || progressState === 'ERROR' ? 'text-red-500' : 'text-blue-600 animate-pulse'
               }`}
             >
@@ -256,8 +258,8 @@ export default function PaymentProcessing({
           </div>
 
           {/* 4. Vertical Granular Payment Steps (Inside a Card) */}
-          <div className="bg-gray-50/80 border border-gray-100 rounded-2xl p-5 sm:p-6 shadow-sm mx-1">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-5">
+          <div className="bg-gray-50/80 border border-gray-100 rounded-2xl p-4 sm:p-6 shadow-sm mx-1">
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 sm:mb-5">
               {t('processing.paymentStatus')}
             </h3>
             <div className="space-y-1">
