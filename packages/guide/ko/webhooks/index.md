@@ -15,32 +15,28 @@ Webhook을 설정하면 결제 상태가 변경될 때 지정한 URL로 HTTP POS
 
 ## 이벤트 타입
 
-| 이벤트              | 설명            | 발생 시점                  |
-| ------------------- | --------------- | -------------------------- |
-| `payment.created`   | 결제 생성됨     | 결제 생성 직후             |
-| `payment.escrowed`  | 결제 에스크로됨 | 사용자 결제 완료, 에스크로 |
-| `payment.finalized` | 결제 확정됨     | 자금 상점으로 확정         |
-| `payment.cancelled` | 결제 취소됨     | 자금 구매자에게 환불       |
-| `payment.failed`    | 결제 실패       | TX 실패 시                 |
-| `payment.expired`   | 결제 만료       | 5분 초과 시                |
+| status 값    | 설명            | 발생 시점                  |
+| ------------ | --------------- | -------------------------- |
+| `ESCROWED`   | 결제 에스크로됨 | 사용자 결제 완료, 에스크로 |
+| `FINALIZED`  | 결제 확정됨     | 자금 상점으로 확정         |
+| `CANCELLED`  | 결제 취소됨     | 자금 구매자에게 환불       |
 
-**payment.escrowed** 수신 시 주문 내용을 검증하고 finalize를 호출합니다. **payment.finalized** 수신 후 주문을 완료 처리합니다.
+**ESCROWED** 수신 시 주문 내용을 검증하고 finalize를 호출합니다. **FINALIZED** 수신 후 주문을 완료 처리합니다.
 
 ## Payload 구조
 
+Webhook payload는 플랫 JSON 객체로 전송됩니다 (래퍼 없음). `Content-Type` 헤더는 `application/json`입니다.
+
 ```json
 {
-  "event": "payment.finalized",
-  "timestamp": "2024-01-26T12:35:42Z",
-  "data": {
-    "paymentId": "0xabc123...",
-    "status": "FINALIZED",
-    "amount": "10500000000000000000",
-    "tokenSymbol": "SUT",
-    "txHash": "0xdef789...",
-    "orderId": "order-001",
-    "finalizedAt": "2024-01-26T12:35:42Z"
-  }
+  "paymentId": "0xabc123...",
+  "orderId": "order-001",
+  "status": "FINALIZED",
+  "txHash": "0xdef789...",
+  "releaseTxHash": "0xrelease123...",
+  "amount": "10500000000000000000",
+  "tokenSymbol": "SUT",
+  "finalizedAt": "2024-01-26T12:35:42.000Z"
 }
 ```
 
@@ -52,162 +48,80 @@ Webhook을 설정하면 결제 상태가 변경될 때 지정한 URL로 HTTP POS
 
 ## 이벤트별 Payload 상세
 
-### payment.created
-
-결제가 생성되었을 때 발생합니다.
-
-```json
-{
-  "event": "payment.created",
-  "timestamp": "2024-01-26T12:30:00Z",
-  "data": {
-    "paymentId": "0xabc123...",
-    "status": "CREATED",
-    "amount": "10500000000000000000",
-    "tokenAddress": "0xE4C687167705Abf55d709395f92e254bdF5825a2",
-    "tokenSymbol": "SUT",
-    "orderId": "order-001",
-    "expiresAt": "2024-01-26T12:35:00Z",
-    "createdAt": "2024-01-26T12:30:00Z"
-  }
-}
-```
-
-### payment.escrowed
+### ESCROWED
 
 결제가 에스크로된 상태입니다. 사용자가 결제를 완료했고 자금이 에스크로에 보관됩니다. 상점은 확정(자금 해제) 또는 취소(구매자 환불)를 선택할 수 있습니다.
 
 ```json
 {
-  "event": "payment.escrowed",
-  "timestamp": "2024-01-26T12:35:00Z",
-  "data": {
-    "paymentId": "0xabc123...",
-    "status": "ESCROWED",
-    "amount": "10500000000000000000",
-    "tokenSymbol": "SUT",
-    "payerAddress": "0x1234567890abcdef...",
-    "txHash": "0xdef789...",
-    "orderId": "order-001",
-    "escrowedAt": "2024-01-26T12:35:00Z"
-  }
+  "paymentId": "0xabc123...",
+  "orderId": "order-001",
+  "status": "ESCROWED",
+  "txHash": "0xdef789...",
+  "amount": "10500000000000000000",
+  "tokenSymbol": "SUT",
+  "escrowedAt": "2024-01-26T12:35:00.000Z"
 }
 ```
 
-### payment.finalized
+### FINALIZED
 
 자금이 상점으로 해제되었습니다. 확정 플로우의 최종 성공 상태입니다.
 
 ```json
 {
-  "event": "payment.finalized",
-  "timestamp": "2024-01-26T12:36:00Z",
-  "data": {
-    "paymentId": "0xabc123...",
-    "status": "FINALIZED",
-    "amount": "10500000000000000000",
-    "tokenSymbol": "SUT",
-    "payerAddress": "0x1234567890abcdef...",
-    "txHash": "0xdef789...",
-    "orderId": "order-001",
-    "finalizedAt": "2024-01-26T12:36:00Z"
-  }
+  "paymentId": "0xabc123...",
+  "orderId": "order-001",
+  "status": "FINALIZED",
+  "txHash": "0xdef789...",
+  "releaseTxHash": "0xrelease123...",
+  "amount": "10500000000000000000",
+  "tokenSymbol": "SUT",
+  "finalizedAt": "2024-01-26T12:36:00.000Z"
 }
 ```
 
-### payment.cancelled
+### CANCELLED
 
 에스크로 결제가 취소되어 자금이 구매자에게 환불되었습니다.
 
 ```json
 {
-  "event": "payment.cancelled",
-  "timestamp": "2024-01-26T12:36:00Z",
-  "data": {
-    "paymentId": "0xabc123...",
-    "status": "CANCELLED",
-    "orderId": "order-001",
-    "cancelledAt": "2024-01-26T12:36:00Z"
-  }
-}
-```
-
-### payment.failed
-
-트랜잭션이 실패했을 때 발생합니다.
-
-```json
-{
-  "event": "payment.failed",
-  "timestamp": "2024-01-26T12:35:00Z",
-  "data": {
-    "paymentId": "0xabc123...",
-    "status": "FAILED",
-    "amount": "10500000000000000000",
-    "tokenAddress": "0xE4C687167705Abf55d709395f92e254bdF5825a2",
-    "payerAddress": "0x1234567890abcdef...",
-    "txHash": "0xdef789...",
-    "orderId": "order-001",
-    "failureReason": "Transaction reverted"
-  }
-}
-```
-
-### payment.expired
-
-결제가 만료되었을 때 발생합니다. (5분 초과 시)
-
-```json
-{
-  "event": "payment.expired",
-  "timestamp": "2024-01-26T12:35:00Z",
-  "data": {
-    "paymentId": "0xabc123...",
-    "status": "EXPIRED",
-    "orderId": "order-001",
-    "expiredAt": "2024-01-26T12:35:00Z"
-  }
+  "paymentId": "0xabc123...",
+  "orderId": "order-001",
+  "status": "CANCELLED",
+  "txHash": "0xdef789...",
+  "releaseTxHash": "0xcancel123...",
+  "amount": "10500000000000000000",
+  "tokenSymbol": "SUT",
+  "cancelledAt": "2024-01-26T12:36:00.000Z"
 }
 ```
 
 ## 이벤트 핸들러 예시
 
 ```typescript
-async function handleWebhook(event: any) {
-  const { event: eventType, data } = event;
+async function handleWebhook(payload: any) {
+  const { status, orderId, paymentId } = payload;
 
-  switch (eventType) {
-    case 'payment.created':
-      await updateOrderStatus(data.orderId, 'PENDING_PAYMENT');
+  switch (status) {
+    case 'ESCROWED':
+      await updateOrderStatus(orderId, 'PAID_ESCROW');
+      // 여기서 주문 완료 처리하거나 FINALIZED 대기
       break;
-
-    case 'payment.escrowed':
-      await updateOrderStatus(data.orderId, 'PAID_ESCROW');
-      // 여기서 주문 완료 처리하거나 payment.finalized 대기
+    case 'FINALIZED':
+      await completeOrder(orderId);
       break;
-
-    case 'payment.finalized':
-      await completeOrder(data.orderId);
-      await sendNotification(data.payerAddress, '결제 완료');
+    case 'CANCELLED':
+      await cancelOrder(orderId);
       break;
-
-    case 'payment.cancelled':
-      await cancelOrder(data.orderId);
-      break;
-
-    case 'payment.failed':
-      await updateOrderStatus(data.orderId, 'PAYMENT_FAILED');
-      break;
-
-    case 'payment.expired':
-      await cancelOrder(data.orderId);
-      break;
-
-    default:
-      console.log('Unknown event:', eventType);
   }
 }
 ```
+
+## 재시도 정책
+
+Webhook은 최대 3회 재시도되며, 재시도 간격은 10초, 30초, 90초입니다. 엔드포인트가 HTTP 2xx 상태 코드를 반환하면 전송 성공으로 처리됩니다.
 
 ## 결제 결과 검증
 

@@ -41,7 +41,7 @@ curl "https://gateway.dev.solonetwork.io/api/v1/merchant/payments/0xabc123..." \
 | --------------- | -------- | -------------------------------------------------------------------------------------------------------------------------- |
 | `paymentId`     | `string` | 결제 고유 식별자 (bytes32 해시)                                                                                            |
 | `orderId`       | `string` | 가맹점 주문 ID                                                                                                             |
-| `status`        | `string` | CREATED, ESCROWED, FINALIZE_SUBMITTED, FINALIZED, CANCEL_SUBMITTED, CANCELLED, REFUND_SUBMITTED, REFUNDED, EXPIRED, FAILED |
+| `status`        | `string` | CREATED, ESCROWED, FINALIZE_SUBMITTED, FINALIZED, CANCEL_SUBMITTED, CANCELLED, EXPIRED, FAILED |
 | `amount`        | `string` | wei 단위 금액                                                                                                              |
 | `tokenSymbol`   | `string` | 토큰 심볼                                                                                                                  |
 | `tokenDecimals` | `number` | 토큰 소수점                                                                                                                |
@@ -50,34 +50,6 @@ curl "https://gateway.dev.solonetwork.io/api/v1/merchant/payments/0xabc123..." \
 | `confirmedAt`   | `string` | 결제 확정 시각                                                                                                             |
 | `expiresAt`     | `string` | 결제 만료 시각                                                                                                             |
 
-## Subgraph를 통한 온체인 조회
-
-Subgraph를 통해 온체인 결제 이벤트를 직접 조회할 수도 있습니다.
-
-```graphql
-query PaymentHistory($payer: Bytes!) {
-  paymentReceivedEvents(
-    where: { payer: $payer }
-    orderBy: blockTimestamp
-    orderDirection: desc
-    first: 10
-  ) {
-    id
-    paymentId
-    payer
-    token
-    amount
-    transactionHash
-    blockTimestamp
-  }
-}
-```
-
-::: tip Subgraph 사용
-대량의 히스토리 조회나 복잡한 필터링이 필요한 경우 Subgraph를 사용하세요.
-:::
-
 ## 다음 단계
 
-- [환불](/ko/payments/refunds) - 결제 환불 처리
 - [에러 코드](/ko/api/errors) - 에러 처리

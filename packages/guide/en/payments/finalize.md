@@ -14,7 +14,7 @@ After a payment reaches **ESCROWED** status, the merchant must choose: **finaliz
 
 ## When to Call
 
-- After you receive the **payment.escrowed** webhook, or
+- After you receive the **ESCROWED** webhook, or
 - After **GET /payments/:id** returns `status: "ESCROWED"`
 
 Then call **POST /payments/:id/finalize** to release funds to your wallet, or **POST /payments/:id/cancel** to return funds to the buyer.
@@ -47,7 +47,7 @@ curl -X POST https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123.../fina
 }
 ```
 
-The response `data.status` is the **relay submission state** (`submitted` or `pending`), not the payment status. The payment status in the database becomes **FINALIZE_SUBMITTED**; after the on-chain transaction confirms it becomes **FINALIZED** and you receive the **payment.finalized** webhook. Poll **GET /payments/:id** until `status === "FINALIZED"` to confirm.
+The response `data.status` is the **relay submission state** (`submitted` or `pending`), not the payment status. The payment status in the database becomes **FINALIZE_SUBMITTED**; after the on-chain transaction confirms it becomes **FINALIZED** and you receive the **FINALIZED** webhook. Poll **GET /payments/:id** until `status === "FINALIZED"` to confirm.
 
 ::: tip Escrow Deadline (default: 5 minutes)
 Finalize must be called within the escrow deadline (default 300 seconds = 5 minutes). The countdown starts from the on-chain escrow moment (when the `pay()` transaction is confirmed). After the deadline, the API returns `ESCROW_EXPIRED` and the contract allows anyone to cancel on-chain (permissionless).
@@ -74,7 +74,7 @@ No request body. Same pattern as finalize. After the escrow deadline, anyone may
 }
 ```
 
-As with finalize, `data.status` is the relay submission state. The payment status becomes **CANCEL_SUBMITTED** then **CANCELLED** after on-chain confirmation; you then receive the **payment.cancelled** webhook.
+As with finalize, `data.status` is the relay submission state. The payment status becomes **CANCEL_SUBMITTED** then **CANCELLED** after on-chain confirmation; you then receive the **CANCELLED** webhook.
 
 ## Error Codes
 
@@ -92,5 +92,5 @@ See [Error Codes](/en/api/errors) for full details.
 ## Next Steps
 
 - [Payment Status](/en/payments/status) - All status values and flow
-- [Webhook Events](/en/webhooks/events) - payment.escrowed, payment.finalized, payment.cancelled
+- [Webhook Events](/en/webhooks/events) - ESCROWED, FINALIZED, CANCELLED
 - [API Reference](/en/api/) - Full endpoint spec

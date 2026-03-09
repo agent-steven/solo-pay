@@ -28,7 +28,7 @@ Every SoloPay payment is processed in the following 5 steps.
          ↓
 
 [5] SoloPay → Merchant Server
-    Send payment.escrowed / payment.finalized / payment.cancelled / payment.failed / payment.expired Webhook event
+    Send ESCROWED / FINALIZED / CANCELLED Webhook event
 ```
 
 After payment is **ESCROWED**, the merchant server can call **POST /payments/:id/finalize** (or **POST /payments/:id/cancel**) to release funds to the merchant wallet or return them to the buyer. See [Finalize & Cancel](/en/payments/finalize).
@@ -42,21 +42,16 @@ After payment is **ESCROWED**, the merchant server can call **POST /payments/:id
 | **3. Relayer**              | SoloPay Server | Verify signature → submit on-chain TX                            |
 | **4. Contract**             | Blockchain     | `pay()` → token escrowed                                         |
 | **5. Webhook**              | SoloPay Server | Sends events to your Webhook URL (see rows below)                |
-| **5a.** `payment.created`   | SoloPay Server | Right after creation. Optional: track pending                    |
-| **5b.** `payment.escrowed`  | SoloPay Server | User payment confirmed on-chain. Call **finalize** or **cancel** |
-| **5c.** `payment.finalized` | SoloPay Server | Your finalize TX confirmed. Complete order                       |
-| **5d.** `payment.cancelled` | SoloPay Server | Your cancel TX confirmed. Close order (funds returned to buyer)  |
-| **5e.** `payment.failed`    | SoloPay Server | Relay or TX failed. No escrow → retry or cancel                  |
-| **5f.** `payment.expired`   | SoloPay Server | Not completed in time. No escrow → new payment if needed         |
+| **5a.** `ESCROWED`  | SoloPay Server | User payment confirmed on-chain. Call **finalize** or **cancel** |
+| **5b.** `FINALIZED` | SoloPay Server | Your finalize TX confirmed. Complete order                       |
+| **5c.** `CANCELLED` | SoloPay Server | Your cancel TX confirmed. Close order (funds returned to buyer)  |
 
 **What happens next:**
 
-- **Success:** You get `payment.escrowed` → you call **POST /payments/:id/finalize** → you get `payment.finalized` (funds with you).
-- **Cancel (return escrow to buyer):** You get `payment.escrowed` → you call **POST /payments/:id/cancel** → you get `payment.cancelled` (funds back to buyer; payment never finalized). This is not the Refund API.
-- **Refund (after finalized):** After a payment is **finalized**, you can request a refund via **POST /refunds** (status → REFUND_SUBMITTED → REFUNDED). See [Refunds](/en/payments/refunds).
-- **No escrow:** You get `payment.failed` or `payment.expired` (payment never completed; no funds moved).
+- **Success:** You get `ESCROWED` → you call **POST /payments/:id/finalize** → you get `FINALIZED` (funds with you).
+- **Cancel (return escrow to buyer):** You get `ESCROWED` → you call **POST /payments/:id/cancel** → you get `CANCELLED` (funds back to buyer; payment never finalized).
 
-Details: [Webhook Events](/en/webhooks/events) · [Finalize & Cancel](/en/payments/finalize) · [Refunds](/en/payments/refunds).
+Details: [Webhook Events](/en/webhooks/events) · [Finalize & Cancel](/en/payments/finalize).
 
 ## 2.2 Gasless & Relayer System
 

@@ -1,143 +1,86 @@
 # Event Details
 
-## payment.created
-
-```json
-{
-  "event": "payment.created",
-  "timestamp": "2024-01-26T12:30:00Z",
-  "data": {
-    "paymentId": "0xabc123...",
-    "status": "CREATED",
-    "amount": "10500000000000000000",
-    "tokenAddress": "0xE4C687167705Abf55d709395f92e254bdF5825a2",
-    "tokenSymbol": "SUT",
-    "orderId": "order-001",
-    "expiresAt": "2024-01-26T12:35:00Z",
-    "createdAt": "2024-01-26T12:30:00Z"
-  }
-}
-```
-
-## payment.escrowed
+## ESCROWED
 
 Payment escrowed on-chain; user has paid and funds are held in escrow. Merchant can finalize (release to merchant) or cancel (return to buyer).
 
 ```json
 {
-  "event": "payment.escrowed",
-  "timestamp": "2024-01-26T12:35:00Z",
-  "data": {
-    "paymentId": "0xabc123...",
-    "status": "ESCROWED",
-    "amount": "10500000000000000000",
-    "tokenSymbol": "SUT",
-    "payerAddress": "0x1234567890abcdef...",
-    "txHash": "0xdef789...",
-    "orderId": "order-001",
-    "escrowedAt": "2024-01-26T12:35:00Z"
-  }
+  "paymentId": "0xabc123...",
+  "orderId": "order-001",
+  "status": "ESCROWED",
+  "txHash": "0xdef789...",
+  "amount": "10500000000000000000",
+  "tokenSymbol": "SUT",
+  "escrowedAt": "2024-01-26T12:35:00.000Z"
 }
 ```
 
-## payment.finalized
+## FINALIZED
 
 Funds released to merchant. Terminal success state for the finalize flow.
 
 ```json
 {
-  "event": "payment.finalized",
-  "timestamp": "2024-01-26T12:36:00Z",
-  "data": {
-    "paymentId": "0xabc123...",
-    "status": "FINALIZED",
-    "amount": "10500000000000000000",
-    "tokenSymbol": "SUT",
-    "payerAddress": "0x1234567890abcdef...",
-    "txHash": "0xdef789...",
-    "orderId": "order-001",
-    "finalizedAt": "2024-01-26T12:36:00Z"
-  }
+  "paymentId": "0xabc123...",
+  "orderId": "order-001",
+  "status": "FINALIZED",
+  "txHash": "0xdef789...",
+  "releaseTxHash": "0xrelease123...",
+  "amount": "10500000000000000000",
+  "tokenSymbol": "SUT",
+  "finalizedAt": "2024-01-26T12:36:00.000Z"
 }
 ```
 
-## payment.cancelled
+## CANCELLED
 
 Escrowed payment was cancelled; funds returned to buyer.
 
 ```json
 {
-  "event": "payment.cancelled",
-  "timestamp": "2024-01-26T12:36:00Z",
-  "data": {
-    "paymentId": "0xabc123...",
-    "status": "CANCELLED",
-    "orderId": "order-001",
-    "cancelledAt": "2024-01-26T12:36:00Z"
-  }
+  "paymentId": "0xabc123...",
+  "orderId": "order-001",
+  "status": "CANCELLED",
+  "txHash": "0xdef789...",
+  "releaseTxHash": "0xcancel123...",
+  "amount": "10500000000000000000",
+  "tokenSymbol": "SUT",
+  "cancelledAt": "2024-01-26T12:36:00.000Z"
 }
 ```
 
-## payment.failed
+## Payload Fields
 
-```json
-{
-  "event": "payment.failed",
-  "timestamp": "2024-01-26T12:35:00Z",
-  "data": {
-    "paymentId": "0xabc123...",
-    "status": "FAILED",
-    "amount": "10500000000000000000",
-    "tokenAddress": "0xE4C687167705Abf55d709395f92e254bdF5825a2",
-    "payerAddress": "0x1234567890abcdef...",
-    "txHash": "0xdef789...",
-    "orderId": "order-001",
-    "failureReason": "Transaction reverted"
-  }
-}
-```
-
-## payment.expired
-
-```json
-{
-  "event": "payment.expired",
-  "timestamp": "2024-01-26T12:35:00Z",
-  "data": {
-    "paymentId": "0xabc123...",
-    "status": "EXPIRED",
-    "orderId": "order-001",
-    "expiredAt": "2024-01-26T12:35:00Z"
-  }
-}
-```
+| Field          | Type     | Description                                                        |
+| -------------- | -------- | ------------------------------------------------------------------ |
+| `paymentId`    | `string` | Unique payment identifier (bytes32 hash)                           |
+| `orderId`      | `string` | Merchant order ID (null if not provided)                           |
+| `status`       | `string` | Payment status at the time of the event                            |
+| `txHash`       | `string` | Escrow (pay) transaction hash                                      |
+| `releaseTxHash`| `string` | Finalize or cancel transaction hash (finalized/cancelled only)     |
+| `amount`       | `string` | Amount in wei (string for precision)                               |
+| `tokenSymbol`  | `string` | Token symbol (e.g., USDC, SUT)                                     |
+| `escrowedAt`   | `string` | ISO-8601 timestamp (escrowed event only)                           |
+| `finalizedAt`  | `string` | ISO-8601 timestamp (finalized event only)                          |
+| `cancelledAt`  | `string` | ISO-8601 timestamp (cancelled event only)                          |
 
 ## Event Handler Example
 
 ```typescript
-async function handleWebhook(event: any) {
-  const { event: eventType, data } = event;
+async function handleWebhook(payload: any) {
+  const { status, orderId, paymentId } = payload;
 
-  switch (eventType) {
-    case 'payment.created':
-      await updateOrderStatus(data.orderId, 'PENDING_PAYMENT');
+  switch (status) {
+    case 'ESCROWED':
+      await updateOrderStatus(orderId, 'PAID_ESCROW');
+      // Optionally complete order here, or wait for FINALIZED
       break;
-    case 'payment.escrowed':
-      await updateOrderStatus(data.orderId, 'PAID_ESCROW');
-      // Optionally complete order here, or wait for payment.finalized
+    case 'FINALIZED':
+      await completeOrder(orderId);
       break;
-    case 'payment.finalized':
-      await completeOrder(data.orderId);
-      await sendNotification(data.payerAddress, 'Payment complete');
-      break;
-    case 'payment.cancelled':
-      await cancelOrder(data.orderId);
-      break;
-    case 'payment.failed':
-      await updateOrderStatus(data.orderId, 'PAYMENT_FAILED');
-      break;
-    case 'payment.expired':
-      await cancelOrder(data.orderId);
+    case 'CANCELLED':
+      await cancelOrder(orderId);
       break;
   }
 }

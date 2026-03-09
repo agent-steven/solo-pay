@@ -75,18 +75,18 @@ Register a Webhook URL with your account admin to receive HTTP POST notification
 
 Key events:
 
-- `payment.escrowed` — User payment completed, held in escrow
-- `payment.finalized` — Funds released to merchant wallet
+- `ESCROWED` — User payment completed, held in escrow
+- `FINALIZED` — Funds released to merchant wallet
 
 ```json
 {
-  "event": "payment.escrowed",
-  "data": {
-    "paymentId": "0xabc123...",
-    "status": "ESCROWED",
-    "amount": "10500000000000000000",
-    "orderId": "order-001"
-  }
+  "paymentId": "0xabc123...",
+  "orderId": "order-001",
+  "status": "ESCROWED",
+  "txHash": "0xdef789...",
+  "amount": "10500000000000000000",
+  "tokenSymbol": "SUT",
+  "escrowedAt": "2024-01-26T12:35:00.000Z"
 }
 ```
 
@@ -134,7 +134,7 @@ Even after calling finalize, the blockchain transaction can fail due to network 
 
 After calling finalize, the status transitions from `FINALIZE_SUBMITTED` to `FINALIZED`. Confirm `FINALIZED` using one of the following methods.
 
-- **Webhook** — On receiving the `payment.finalized` event, call `GET /payments/:id` to re-confirm `FINALIZED` status
+- **Webhook** — On receiving the `FINALIZED` event, call `GET /payments/:id` to re-confirm `FINALIZED` status
 - **API Polling** — Periodically call `GET /payments/:id` and confirm `status === 'FINALIZED'`
 
 ```bash

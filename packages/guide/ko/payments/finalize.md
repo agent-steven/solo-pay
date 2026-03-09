@@ -14,7 +14,7 @@
 
 ## 호출 시점
 
-- **payment.escrowed** 웹훅을 받은 후, 또는
+- **ESCROWED** 웹훅을 받은 후, 또는
 - **GET /payments/:id** 응답에서 `status: "ESCROWED"`인 경우
 
 이후 **POST /payments/:id/finalize**로 자금을 본인 지갑으로 해제하거나, **POST /payments/:id/cancel**로 구매자에게 환불합니다.
@@ -47,7 +47,7 @@ curl -X POST https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123.../fina
 }
 ```
 
-응답의 `data.status`는 **릴레이 제출 상태**(`submitted` 또는 `pending`)이며 결제 상태가 아닙니다. 결제 상태는 DB에서 **FINALIZE_SUBMITTED**가 되고, 온체인 트랜잭션 확정 후 **FINALIZED**가 되며 **payment.finalized** 웹훅이 전달됩니다. **GET /payments/:id**로 폴링하여 `status === "FINALIZED"`가 될 때까지 확인하세요.
+응답의 `data.status`는 **릴레이 제출 상태**(`submitted` 또는 `pending`)이며 결제 상태가 아닙니다. 결제 상태는 DB에서 **FINALIZE_SUBMITTED**가 되고, 온체인 트랜잭션 확정 후 **FINALIZED**가 되며 **FINALIZED** 웹훅이 전달됩니다. **GET /payments/:id**로 폴링하여 `status === "FINALIZED"`가 될 때까지 확인하세요.
 
 ::: tip 에스크로 기한 (기본 5분)
 확정(finalize)은 에스크로 기한(기본 300초 = 5분) 내에 호출해야 합니다. 이 기한은 온체인 에스크로 시점(`pay()` 트랜잭션 확정)부터 카운트됩니다. 기한이 지나면 API는 `ESCROW_EXPIRED`를 반환하고, 컨트랙트에서는 누구나 온체인에서 취소(권한 없이)할 수 있습니다.
@@ -74,7 +74,7 @@ curl -X POST https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123.../fina
 }
 ```
 
-finalize와 마찬가지로 `data.status`는 릴레이 제출 상태입니다. 결제 상태는 **CANCEL_SUBMITTED**가 된 뒤 온체인 확정 시 **CANCELLED**가 되며 **payment.cancelled** 웹훅이 전달됩니다.
+finalize와 마찬가지로 `data.status`는 릴레이 제출 상태입니다. 결제 상태는 **CANCEL_SUBMITTED**가 된 뒤 온체인 확정 시 **CANCELLED**가 되며 **CANCELLED** 웹훅이 전달됩니다.
 
 ## 에러 코드
 
@@ -92,5 +92,5 @@ finalize와 마찬가지로 `data.status`는 릴레이 제출 상태입니다. �
 ## 다음 단계
 
 - [결제 상태](/ko/payments/status) - 상태 값 및 흐름
-- [웹훅 이벤트](/ko/webhooks/events) - payment.escrowed, payment.finalized, payment.cancelled
+- [웹훅 이벤트](/ko/webhooks/events) - ESCROWED, FINALIZED, CANCELLED
 - [API Reference](/ko/api/) - 전체 엔드포인트 명세

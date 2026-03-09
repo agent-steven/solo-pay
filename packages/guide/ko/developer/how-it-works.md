@@ -28,7 +28,7 @@ SoloPay의 전체 결제 파이프라인과 가스리스 아키텍처를 설명�
          ↓
 
 [5] SoloPay → 가맹점 서버
-    payment.escrowed / payment.finalized / payment.cancelled / payment.failed / payment.expired Webhook 이벤트 전송
+    ESCROWED / FINALIZED / CANCELLED Webhook 이벤트 전송
 ```
 
 결제가 **ESCROWED**가 된 후, 가맹점 서버에서 **POST /payments/:id/finalize**(또는 **POST /payments/:id/cancel**)를 호출하여 자금을 상점 지갑으로 해제하거나 구매자에게 환불할 수 있습니다. [결제 확정 및 취소](/ko/payments/finalize)를 참조하세요.
@@ -41,22 +41,17 @@ SoloPay의 전체 결제 파이프라인과 가스리스 아키텍처를 설명�
 | **2. 서명**                 | 사용자 지갑  | EIP-712 서명만 (TX 없음, 가스 없음)                               |
 | **3. 릴레이어**             | SoloPay 서버 | 서명 검증 → 온체인 TX 전송                                        |
 | **4. 컨트랙트**             | 블록체인     | `pay()` → 토큰 에스크로                                           |
-| **5. Webhook**              | SoloPay 서버 | 가맹점 Webhook URL로 이벤트 전송 (아래 5a–5f 참고)                |
-| **5a.** `payment.created`   | SoloPay 서버 | 결제 생성 직후. 선택: 대기 결제 추적                              |
-| **5b.** `payment.escrowed`  | SoloPay 서버 | 사용자 결제 온체인 확인 후. **finalize** 또는 **cancel** 호출     |
-| **5c.** `payment.finalized` | SoloPay 서버 | 가맹점 확정 TX 확인 후. 주문 완료 처리                            |
-| **5d.** `payment.cancelled` | SoloPay 서버 | 가맹점 취소(cancel) TX 확인 후. 주문 취소 처리 (자금 구매자 반환) |
-| **5e.** `payment.failed`    | SoloPay 서버 | 릴레이 또는 TX 실패. 에스크로 없음 → 재시도 또는 취소             |
-| **5f.** `payment.expired`   | SoloPay 서버 | 시간 내 미완료. 에스크로 없음 → 필요 시 새 결제 생성              |
+| **5. Webhook**              | SoloPay 서버 | 가맹점 Webhook URL로 이벤트 전송 (아래 5a–5c 참고)                |
+| **5a.** `ESCROWED`  | SoloPay 서버 | 사용자 결제 온체인 확인 후. **finalize** 또는 **cancel** 호출     |
+| **5b.** `FINALIZED` | SoloPay 서버 | 가맹점 확정 TX 확인 후. 주문 완료 처리                            |
+| **5c.** `CANCELLED` | SoloPay 서버 | 가맹점 취소(cancel) TX 확인 후. 주문 취소 처리 (자금 구매자 반환) |
 
 **다음에 일어나는 일:**
 
-- **성공:** `payment.escrowed` 수신 → **POST /payments/:id/finalize** 호출 → `payment.finalized` 수신 (자금 가맹점 지갑).
-- **취소(Cancel, 에스크로 해제):** `payment.escrowed` 수신 → **POST /payments/:id/cancel** 호출 → `payment.cancelled` 수신 (자금 구매자 반환; 확정 전). 환불(Refund) API와 다름.
-- **환불(Refund, 확정 후):** 결제가 **finalized**된 뒤 **POST /refunds**로 환불 요청 가능 (상태 → REFUND_SUBMITTED → REFUNDED). [환불](/ko/payments/refunds) 참조.
-- **에스크로 없음:** `payment.failed` 또는 `payment.expired` 수신 (결제 미완료; 자금 이동 없음).
+- **성공:** `ESCROWED` 수신 → **POST /payments/:id/finalize** 호출 → `FINALIZED` 수신 (자금 가맹점 지갑).
+- **취소(Cancel, 에스크로 해제):** `ESCROWED` 수신 → **POST /payments/:id/cancel** 호출 → `CANCELLED` 수신 (자금 구매자 반환; 확정 전).
 
-자세한 내용: [이벤트 상세](/ko/webhooks/events) · [결제 확정 및 취소](/ko/payments/finalize) · [환불](/ko/payments/refunds).
+자세한 내용: [이벤트 상세](/ko/webhooks/events) · [결제 확정 및 취소](/ko/payments/finalize).
 
 ## 2.2 가스리스(Gasless) 및 릴레이어(Relayer) 시스템
 

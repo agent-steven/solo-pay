@@ -21,35 +21,45 @@ curl https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123... \
   "success": true,
   "data": {
     "paymentId": "0xabc123...",
+    "orderId": "order-001",
     "status": "ESCROWED",
-    "amount": "10500000000000000000",
+    "chainId": 80002,
+    "serverSignature": "0x...",
     "tokenAddress": "0xE4C687167705Abf55d709395f92e254bdF5825a2",
     "tokenSymbol": "SUT",
-    "payerAddress": "0x...",
-    "treasuryAddress": "0xMerchantWallet...",
-    "transactionHash": "0xdef789...",
-    "releaseTxHash": null,
+    "tokenDecimals": 18,
+    "tokenPermitSupported": true,
+    "gatewayAddress": "0x...",
+    "forwarderAddress": "0x...",
+    "amount": "10500000000000000000",
+    "recipientAddress": "0xMerchantWallet...",
+    "merchantId": "0x...",
     "deadline": "1706281200",
     "escrowDuration": "300",
+    "successUrl": "https://example.com/success",
+    "failUrl": "https://example.com/fail",
+    "expiresAt": "2024-01-26T12:35:00.000Z",
+    "txHash": "0xdef789...",
+    "releaseTxHash": null,
+    "payerAddress": "0x...",
     "createdAt": "2024-01-26T12:30:00Z",
-    "updatedAt": "2024-01-26T12:35:42Z",
-    "payment_hash": "0xabc123...",
-    "network_id": 80002,
-    "token_symbol": "SUT"
+    "currency": "USD",
+    "fiatAmount": 10.5,
+    "tokenPrice": 1.0
   }
 }
 ```
 
-- **transactionHash** — 에스크로(결제) 트랜잭션 해시.
+- **txHash** — 에스크로(결제) 트랜잭션 해시. 사용자가 결제를 완료하여 ESCROWED 이후 상태일 때 존재합니다.
 - **releaseTxHash** — 확정 또는 취소 트랜잭션 해시. 상태가 FINALIZE_SUBMITTED, FINALIZED, CANCEL_SUBMITTED, CANCELLED일 때 존재합니다.
-- **escrowDuration** — 에스크로 유지 시간(초). API는 에스크로 기한의 정확한 일시(ISO)를 반환하지 않으며, 이 값으로 결제 에스크로 후 상점이 확정할 수 있는 기간을 알 수 있습니다.
+- **serverSignature** — 비종료 상태에 대한 새로운 EIP-712 서버 서명. 종료 상태(FINALIZED, CANCELLED, EXPIRED, FAILED)에서는 비어 있습니다.
+- **escrowDuration** — 에스크로 유지 시간(초). 결제가 에스크로된 후 이 기간이 경과하기 전에 상점이 확정(finalize)을 호출해야 합니다.
 
 ## 상태 흐름
 
 ```
 CREATED ──► ESCROWED ──► FINALIZE_SUBMITTED ──► FINALIZED
-                    └──► CANCEL_SUBMITTED   ──► CANCELLED ──► REFUND_SUBMITTED ──► REFUNDED
-
+                    └──► CANCEL_SUBMITTED   ──► CANCELLED
 CREATED ──► EXPIRED
 CREATED ──► FAILED
 ```
@@ -59,13 +69,11 @@ CREATED ──► FAILED
 | 상태                 | 설명                              | 다음 액션                                                              |
 | -------------------- | --------------------------------- | ---------------------------------------------------------------------- |
 | `CREATED`            | 결제 생성됨, 온체인 트랜잭션 대기 | 사용자가 결제 진행                                                     |
-| `ESCROWED`           | 결제 에스크로됨 (온체인)          | 상점: [결제 확정 및 취소](/ko/payments/finalize) 호출로 자금 해제/환불 |
-| `FINALIZE_SUBMITTED` | 확정 트랜잭션 제출됨              | FINALIZED 될 때까지 대기 (폴링 또는 웹훅)                              |
+| `ESCROWED`           | 결제 에스크로됨 (온체인)          | 상점: 확정(Finalize) 또는 취소(Cancel) 호출                            |
+| `FINALIZE_SUBMITTED` | 확정 트랜잭션 제출됨              | FINALIZED 될 때까지 대기                                               |
 | `FINALIZED`          | 자금이 상점으로 해제됨            | 없음 (종료)                                                            |
 | `CANCEL_SUBMITTED`   | 취소 트랜잭션 제출됨              | CANCELLED 될 때까지 대기                                               |
 | `CANCELLED`          | 자금이 구매자에게 환불됨          | 없음 (종료)                                                            |
-| `REFUND_SUBMITTED`   | 환불 트랜잭션 제출됨              | REFUNDED 될 때까지 대기                                                |
-| `REFUNDED`           | 환불 완료                         | 없음 (종료)                                                            |
 | `FAILED`             | 트랜잭션 실패                     | 새 결제 생성                                                           |
 | `EXPIRED`            | 만료 (5분 초과)                   | 새 결제 생성                                                           |
 
