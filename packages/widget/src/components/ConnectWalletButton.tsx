@@ -4,20 +4,21 @@ import { useCallback, useMemo } from 'react';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { useAppKit } from '@reown/appkit/react';
 import { useLocale } from '../context/LocaleContext';
+import { APPKIT_WALLET_IDS } from '../appkit-config';
 
-/** Shared base styles for wallet connect buttons. */
-export const WALLET_BUTTON_BASE =
+const WALLET_BUTTON_BASE =
   'w-full rounded-xl px-6 py-3 sm:py-4 text-sm sm:text-lg font-semibold text-white shadow-sm disabled:opacity-50 transition-colors';
 
-export const WALLET_STYLES = {
+const WALLET_STYLES = {
   metaMask: 'bg-[#BA5700] hover:bg-[#A34D00] active:bg-[#8C4200]',
   trustWallet: 'bg-[#3375BB] hover:bg-[#2a5f99] active:bg-[#1e4a7a]',
 } as const;
 
 /**
  * Connect step: MetaMask + Trust Wallet buttons.
- * Both use wagmi connectors (backed by AppKit WagmiAdapter / WalletConnect).
- * onConnectorClick: called when user clicks a button (e.g. to clear "change wallet" intent).
+ * Uses EIP-6963 injected connectors when the extension is installed.
+ * Falls back to WalletConnect QR when extension is not detected.
+ * No MetaMask SDK -- only injected providers + WalletConnect.
  */
 export function ConnectWalletButton({
   className,
@@ -29,22 +30,22 @@ export function ConnectWalletButton({
   const { t } = useLocale();
   const { open } = useAppKit();
   const { isConnected } = useAccount();
-  const { connect, connectors, isPending, variables: connectVars } = useConnect();
+  const { connectAsync, connectors, isPending } = useConnect();
   const { disconnectAsync } = useDisconnect();
 
+  // EIP-6963 connectors (RDNS-based IDs). No MetaMask SDK.
   const metaMaskConnector = useMemo(
-    () => connectors.find((c) => c.id === 'metaMaskSDK' || c.id === 'metaMask'),
-    [connectors]
+    () =>
+      connectors.find((c) => c.id === 'io.metamask') ??
+      connectors.find((c) => c.id === 'io.metamask.flask'),
+    [connectors],
   );
   const trustWalletConnector = useMemo(
-    () => connectors.find((c) => c.id === 'trustWallet'),
-    [connectors]
+    () =>
+      connectors.find((c) => c.id === 'com.trustwallet.app') ??
+      connectors.find((c) => c.id === 'trustWallet'),
+    [connectors],
   );
-
-  const pendingConnectorId = (connectVars?.connector as { id?: string } | undefined)?.id;
-  const isMetaMaskPending =
-    isPending && (pendingConnectorId === 'metaMask' || pendingConnectorId === 'metaMaskSDK');
-  const isTrustPending = isPending && pendingConnectorId === 'trustWallet';
 
   const connectWith = useCallback(
     async (connector: NonNullable<typeof metaMaskConnector>) => {
@@ -56,28 +57,41 @@ export function ConnectWalletButton({
           // ignore
         }
       }
-      connect({ connector });
+      try {
+        await connectAsync({ connector });
+      } catch (err) {
+        console.warn('Wallet connection failed:', err);
+      }
     },
-    [onConnectorClick, isConnected, disconnectAsync, connect]
+    [onConnectorClick, isConnected, disconnectAsync, connectAsync],
+  );
+
+  const openWalletConnect = useCallback(
+    (walletId: string, walletName: string) => {
+      onConnectorClick?.();
+      (open as (opts: Record<string, unknown>) => void)({
+        view: 'ConnectingWalletConnect',
+        data: { wallet: { id: walletId, name: walletName } },
+      });
+    },
+    [onConnectorClick, open],
   );
 
   const handleMetaMask = useCallback(() => {
     if (metaMaskConnector) {
       connectWith(metaMaskConnector);
     } else {
-      onConnectorClick?.();
-      open({ view: 'Connect' });
+      openWalletConnect(APPKIT_WALLET_IDS[0], 'MetaMask');
     }
-  }, [metaMaskConnector, connectWith, onConnectorClick, open]);
+  }, [metaMaskConnector, connectWith, openWalletConnect]);
 
   const handleTrustWallet = useCallback(() => {
     if (trustWalletConnector) {
       connectWith(trustWalletConnector);
     } else {
-      onConnectorClick?.();
-      open({ view: 'Connect' });
+      openWalletConnect(APPKIT_WALLET_IDS[1], 'Trust Wallet');
     }
-  }, [trustWalletConnector, connectWith, onConnectorClick, open]);
+  }, [trustWalletConnector, connectWith, openWalletConnect]);
 
   return (
     <div className={['w-full', className].filter(Boolean).join(' ')}>
@@ -126,7 +140,7 @@ export function ConnectWalletButton({
           disabled={isPending}
           className={`${WALLET_BUTTON_BASE} ${WALLET_STYLES.metaMask}`}
         >
-          {isMetaMaskPending ? t('connect.connecting') : t('connect.metaMask')}
+          {t('connect.metaMask')}
         </button>
 
         <button
@@ -135,7 +149,7 @@ export function ConnectWalletButton({
           disabled={isPending}
           className={`${WALLET_BUTTON_BASE} ${WALLET_STYLES.trustWallet}`}
         >
-          {isTrustPending ? t('connect.connecting') : t('connect.trustWallet')}
+          {t('connect.trustWallet')}
         </button>
       </div>
     </div>

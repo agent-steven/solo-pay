@@ -6,7 +6,6 @@ import { WagmiProvider } from 'wagmi';
 import { mainnet } from '@reown/appkit/networks';
 import {
   createAppKitConfig,
-  fallbackConfig,
   appkitNetworks,
   getWcProjectId,
 } from '../appkit-wagmi';
@@ -22,13 +21,12 @@ function MyApp({ Component, pageProps }: AppProps) {
   const appKitInitialized = useRef(false);
 
   const { config, adapter } = useMemo(() => {
-    if (!projectId) return { config: fallbackConfig, adapter: null };
     const result = createAppKitConfig(projectId);
     return { config: result.config, adapter: result.adapter };
   }, []);
 
   useEffect(() => {
-    if (!adapter || !projectId || appKitInitialized.current) return;
+    if (appKitInitialized.current) return;
     appKitInitialized.current = true;
     import('@reown/appkit/react').then(({ createAppKit }) => {
       const meta = getMetadata();

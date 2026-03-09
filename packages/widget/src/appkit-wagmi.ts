@@ -1,7 +1,7 @@
 /**
  * Single wagmi config source for the widget.
- * - If NEXT_PUBLIC_WC_PROJECT_ID is set: AppKit (Reown/WalletConnect) adapter with MetaMask + Trust Wallet connectors.
- * - Otherwise: fallback wagmi config with injected connectors only.
+ * Uses AppKit (Reown/WalletConnect) adapter with injected + WalletConnect.
+ * Requires NEXT_PUBLIC_WC_PROJECT_ID environment variable.
  */
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
 import {
@@ -13,28 +13,21 @@ import {
   sepolia,
   defineChain as appkitDefineChain,
 } from '@reown/appkit/networks';
-import { http, fallback, createConfig } from 'wagmi';
-import { metaMask, injected } from 'wagmi/connectors';
-import {
-  arbitrum as wagmiArbitrum,
-  base as wagmiBase,
-  mainnet as wagmiMainnet,
-  optimism as wagmiOptimism,
-  polygon as wagmiPolygon,
-  polygonAmoy as wagmiPolygonAmoy,
-  sepolia as wagmiSepolia,
-} from 'wagmi/chains';
-import { defineChain as viemDefineChain } from 'viem';
-import type { EIP1193Provider } from 'viem';
+import { http, fallback } from 'wagmi';
+import { injected } from 'wagmi/connectors';
 import { getMetadata } from './appkit-config';
-import { getTrustWalletProvider } from './lib/wallet-providers';
 import type { Config } from 'wagmi';
 
 // ─── Shared helpers ──────────────────────────────────────────────────────────
 
-export function getWcProjectId(): string | undefined {
+export function getWcProjectId(): string {
   const id = process.env.NEXT_PUBLIC_WC_PROJECT_ID;
-  return id && id.length > 0 ? id : undefined;
+  if (!id || id.length === 0) {
+    throw new Error(
+      'NEXT_PUBLIC_WC_PROJECT_ID is required. Get one at https://cloud.reown.com'
+    );
+  }
+  return id;
 }
 
 // ─── Shared RPC URLs ─────────────────────────────────────────────────────────
@@ -86,62 +79,6 @@ export const appkitNetworks = [
   sepolia,
 ];
 
-// ─── Trust Wallet connector (shared between fallback and AppKit configs) ──────
-
-function trustWalletTarget() {
-  if (typeof window === 'undefined') return undefined;
-  const provider = getTrustWalletProvider();
-  if (!provider) return undefined;
-  return { id: 'trustWallet', name: 'Trust Wallet', provider: provider as EIP1193Provider };
-}
-
-const trustWalletConnector = injected({
-  target: trustWalletTarget,
-  unstable_shimAsyncInject: 3_500,
-});
-
-// ─── Fallback wagmi config (no WalletConnect) ────────────────────────────────
-
-const wagmiLocalhost = viemDefineChain({
-  id: 31337,
-  name: 'Localhost',
-  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-  rpcUrls: { default: { http: [RPC.localhost] } },
-});
-
-// Override Polygon Amoy chain definition with public RPC URL.
-// The default from wagmi/chains uses rpc.walletconnect.org which wallets reject
-// as "Invalid URL" when adding a custom network via wallet_addEthereumChain.
-const wagmiPolygonAmoyOverride = viemDefineChain({
-  ...wagmiPolygonAmoy,
-  rpcUrls: { default: { http: [RPC.polygonAmoy] } },
-});
-
-export const fallbackConfig = createConfig({
-  connectors: [injected(), trustWalletConnector, metaMask({ enableAnalytics: false })],
-  chains: [
-    wagmiLocalhost,
-    wagmiMainnet,
-    wagmiPolygon,
-    wagmiPolygonAmoyOverride,
-    wagmiOptimism,
-    wagmiArbitrum,
-    wagmiBase,
-    wagmiSepolia,
-  ],
-  transports: {
-    [wagmiLocalhost.id]: http(RPC.localhost),
-    [wagmiMainnet.id]: http(RPC.mainnet),
-    [wagmiPolygon.id]: http(RPC.polygon),
-    [wagmiPolygonAmoyOverride.id]: fallback([http(RPC.polygonAmoy), http(RPC.polygonAmoyFallback)]),
-    [wagmiOptimism.id]: http(RPC.optimism),
-    [wagmiArbitrum.id]: http(RPC.arbitrum),
-    [wagmiBase.id]: http(RPC.base),
-    [wagmiSepolia.id]: http(RPC.sepolia),
-  },
-  ssr: true,
-});
-
 // ─── AppKit adapter factory ───────────────────────────────────────────────────
 
 export type AppKitConfigResult = { adapter: WagmiAdapter; config: Config };
@@ -166,11 +103,7 @@ export function createAppKitConfig(projectId: string): AppKitConfigResult {
     networks: appkitNetworks as WagmiAdapterConfig['networks'],
     transports: appkitTransports,
     ssr: true,
-    connectors: [
-      metaMask({ enableAnalytics: false }),
-      injected({ target: trustWalletTarget, unstable_shimAsyncInject: 3_500 }),
-      injected(),
-    ],
+    connectors: [injected()],
     metadata: {
       name: dynamicMetadata.name,
       description: dynamicMetadata.description,
