@@ -23,7 +23,12 @@ import type { Config } from 'wagmi';
 export function getWcProjectId(): string {
   const id = process.env.NEXT_PUBLIC_WC_PROJECT_ID;
   if (!id || id.length === 0) {
-    throw new Error('NEXT_PUBLIC_WC_PROJECT_ID is required. Get one at https://cloud.reown.com');
+    // Warn instead of throw — Next.js evaluates this at build/SSR time when env vars may not be injected yet.
+    // At runtime in the browser the var will be present via next.config.
+    if (typeof window !== 'undefined') {
+      console.error('NEXT_PUBLIC_WC_PROJECT_ID is required. Get one at https://cloud.reown.com');
+    }
+    return '';
   }
   return id;
 }

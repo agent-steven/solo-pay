@@ -22,7 +22,7 @@ function MyApp({ Component, pageProps }: AppProps) {
   }, []);
 
   useEffect(() => {
-    if (appKitInitialized.current) return;
+    if (!projectId || appKitInitialized.current) return;
     appKitInitialized.current = true;
     import('@reown/appkit/react').then(({ createAppKit }) => {
       const meta = getMetadata();
