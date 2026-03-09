@@ -346,7 +346,8 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
           }
         }
 
-        const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+        const paymentExpirySeconds = Number(process.env.PAYMENT_EXPIRY_SECONDS) || 300;
+        const expiresAt = new Date(Date.now() + paymentExpirySeconds * 1000);
         const escrowDeadline = new Date(Date.now() + Number(escrowDuration) * 1000);
         await paymentService.create({
           payment_hash: paymentHash,

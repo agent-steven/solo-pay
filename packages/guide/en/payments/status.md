@@ -8,8 +8,8 @@ Query the current status of a payment.
 ## REST API
 
 ```bash
-curl https://pay-api.staging.sut.com/api/v1/payments/0xabc123... \
-  -H "x-public-key: pk_test_xxxxx"
+curl https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123... \
+  -H "x-public-key: pk_xxxxx"
 ```
 
 ## Response
@@ -67,10 +67,10 @@ CREATED ──► FAILED
 | `REFUND_SUBMITTED`   | Refund transaction submitted                   | Wait for REFUNDED                                                           |
 | `REFUNDED`           | Refund completed                               | None (terminal)                                                             |
 | `FAILED`             | Transaction failed                             | Create new payment                                                          |
-| `EXPIRED`            | Expired (30 minutes exceeded)                  | Create new payment                                                          |
+| `EXPIRED`            | Expired (5 minutes exceeded)                   | Create new payment                                                          |
 
 ::: tip On-chain Sync
-GET /payments/:id syncs blockchain and database status in real-time. For a successful payment, status is **ESCROWED** (user paid, funds in escrow) or **FINALIZED** (funds released to merchant).
+GET /payments/:id syncs blockchain and database status in real-time. For a successful payment, status is **ESCROWED** (user paid, finalize required). After finalize, status becomes **FINALIZED** (funds released to merchant).
 :::
 
 ## Next Steps

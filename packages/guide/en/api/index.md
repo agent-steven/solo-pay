@@ -4,17 +4,17 @@ Full SoloPay REST API specification.
 
 ## Base URL
 
-| Environment | URL                                      |
-| ----------- | ---------------------------------------- |
-| Production  | `https://pay-api.sut.com/api/v1`         |
-| Staging     | `https://pay-api.staging.sut.com/api/v1` |
-| Development | `http://localhost:3001/api/v1`           |
+| Environment | URL                                         |
+| ----------- | ------------------------------------------- |
+| Production  | `https://gateway.solonetwork.io/api/v1`     |
+| Staging     | `https://gateway.dev.solonetwork.io/api/v1` |
+| Development | `http://localhost:3001/api/v1`              |
 
 ## Authentication
 
 | Method     | Header         | Endpoints                                                                                                                             |
 | ---------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Public Key | `x-public-key` | POST /payments, GET /payments/:id, POST/GET /payments/:id/relay                                                                       |
+| Public Key | `x-public-key` | POST /payments, GET /payments/:id, POST /payments/:id/relay, GET /payments/:id/relay                                                  |
 | API Key    | `x-api-key`    | GET /merchant/\*, POST /merchant/payment-methods, POST /payments/:id/finalize, POST /payments/:id/cancel, POST /refunds, GET /refunds |
 | None       | -              | GET /chains, GET /chains/tokens                                                                                                       |
 
@@ -59,7 +59,11 @@ Create a payment. **Auth**: `x-public-key` + `Origin`
     "escrowDuration": "300",
     "successUrl": "https://example.com/success",
     "failUrl": "https://example.com/fail",
-    "expiresAt": "2024-01-26T13:00:00.000Z"
+    "expiresAt": "2024-01-26T12:35:00.000Z",
+    "tokenPermitSupported": true,
+    "currency": "USD",
+    "fiatAmount": 10.5,
+    "tokenPrice": 1.0
   }
 }
 ```
@@ -70,7 +74,7 @@ Create a payment. **Auth**: `x-public-key` + `Origin`
 
 Get payment status. **Auth**: `x-public-key`
 
-**Status values:** CREATED, ESCROWED, FINALIZE_SUBMITTED, FINALIZED, CANCEL_SUBMITTED, CANCELLED, REFUND_SUBMITTED, REFUNDED, EXPIRED, FAILED. Success = ESCROWED or FINALIZED.
+**Status values:** CREATED, ESCROWED, FINALIZE_SUBMITTED, FINALIZED, CANCEL_SUBMITTED, CANCELLED, REFUND_SUBMITTED, REFUNDED, EXPIRED, FAILED. Payment success = ESCROWED (in escrow, finalize required), confirmed = FINALIZED.
 
 **Response (200)**
 
@@ -208,7 +212,7 @@ Get merchant info. **Auth**: `x-api-key`
       "chain_id": 80002,
       "chain": { "id": 1, "network_id": 80002, "name": "Polygon Amoy", "is_testnet": true },
       "webhook_url": null,
-      "public_key": "pk_test_xxx",
+      "public_key": "pk_xxx",
       "is_enabled": true,
       "payment_methods": [...]
     },

@@ -25,6 +25,30 @@
   font-weight: 700;
 }
 
+/* Sidebar: standalone top-level items bold like group headers */
+.VPSidebarItem.level-0:not(:has(> .item)) .VPSidebarItem.level-1 > .item > .link > .text {
+  font-weight: 700;
+}
+
+/* Sidebar: indent items inside groups for hierarchy (group header = 32px, items = 52px) */
+.VPSidebarItem.level-0:has(> .item) .VPSidebarItem.level-1.is-link > .item > .link {
+  padding-left: 20px;
+}
+
+/* Sidebar: group title styling for distinction */
+.VPSidebarItem.level-0 > .item > .text {
+  font-weight: 600;
+  font-size: 0.85em;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--vp-c-text-2);
+}
+
+/* Sidebar: keep group header blue when any child is active (override scoped style) */
+.VPSidebarItem.level-0.has-active > .item > .link > h2 {
+  color: var(--vp-c-brand-1) !important;
+}
+
 /* Subtitle (first paragraph under H1) slightly larger for clarity */
 .vp-doc h1 + p {
   font-size: 1.125em;

@@ -13,7 +13,8 @@
     "tokenAddress": "0xE4C687167705Abf55d709395f92e254bdF5825a2",
     "tokenSymbol": "SUT",
     "orderId": "order-001",
-    "expiresAt": "2024-01-26T13:00:00Z"
+    "expiresAt": "2024-01-26T12:35:00Z",
+    "createdAt": "2024-01-26T12:30:00Z"
   }
 }
 ```
@@ -82,9 +83,14 @@ Escrowed payment was cancelled; funds returned to buyer.
 ```json
 {
   "event": "payment.failed",
+  "timestamp": "2024-01-26T12:35:00Z",
   "data": {
     "paymentId": "0xabc123...",
     "status": "FAILED",
+    "amount": "10500000000000000000",
+    "tokenAddress": "0xE4C687167705Abf55d709395f92e254bdF5825a2",
+    "payerAddress": "0x1234567890abcdef...",
+    "txHash": "0xdef789...",
     "orderId": "order-001",
     "failureReason": "Transaction reverted"
   }
@@ -96,11 +102,12 @@ Escrowed payment was cancelled; funds returned to buyer.
 ```json
 {
   "event": "payment.expired",
+  "timestamp": "2024-01-26T12:35:00Z",
   "data": {
     "paymentId": "0xabc123...",
     "status": "EXPIRED",
     "orderId": "order-001",
-    "expiredAt": "2024-01-26T13:00:00Z"
+    "expiredAt": "2024-01-26T12:35:00Z"
   }
 }
 ```

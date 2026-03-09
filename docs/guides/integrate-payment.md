@@ -119,7 +119,7 @@ const gaslessResult = await client.submitGasless({
     to: gatewayAddress,
     value: '0',
     gas: '200000',
-    deadline: Math.floor(Date.now() / 1000) + 3600,
+    deadline: Math.floor(Date.now() / 1000) + 600, // 10 minutes
     data: '0x...',
     signature: '0x...', // EIP-712 signature
   },

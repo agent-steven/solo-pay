@@ -165,14 +165,14 @@ CREATED ──► EXPIRED
 CREATED ──► FAILED
 ```
 
-| Status      | Description                                                    |
-| ----------- | -------------------------------------------------------------- |
-| `CREATED`   | Payment created, awaiting on-chain transaction                 |
-| `ESCROWED`  | User paid; funds held in escrow (merchant can finalize/cancel) |
-| `FINALIZED` | Funds released to merchant                                     |
-| `CANCELLED` | Funds returned to buyer                                        |
-| `FAILED`    | Transaction failed or signature validation failed              |
-| `EXPIRED`   | Payment expired (30 minutes exceeded)                          |
+| Status      | Description                                                                         |
+| ----------- | ----------------------------------------------------------------------------------- |
+| `CREATED`   | Payment created, awaiting on-chain transaction                                      |
+| `ESCROWED`  | User paid; funds held in escrow (merchant can finalize/cancel within default 5 min) |
+| `FINALIZED` | Funds released to merchant                                                          |
+| `CANCELLED` | Funds returned to buyer                                                             |
+| `FAILED`    | Transaction failed or signature validation failed                                   |
+| `EXPIRED`   | Payment expired (5 minutes exceeded)                                                |
 
 ### Relay Status (Gasless only)
 
