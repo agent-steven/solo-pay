@@ -79,7 +79,7 @@ describe('webhook-queue.service', () => {
       expect(body.txHash).toBe('0xtx');
       expect(body.amount).toBe('1000000');
       expect(body.tokenSymbol).toBe('USDC');
-      expect(body.confirmedAt).toBe('2024-01-26T12:00:00.000Z');
+      expect(body.escrowedAt).toBe('2024-01-26T12:00:00.000Z');
     });
 
     it('uses null for orderId when payment.order_id is null', () => {
@@ -88,10 +88,10 @@ describe('webhook-queue.service', () => {
       expect(body.orderId).toBeNull();
     });
 
-    it('returns undefined confirmedAt when confirmed_at is null', () => {
+    it('returns undefined escrowedAt when confirmed_at is null', () => {
       const payment = { ...basePayment, confirmed_at: null };
       const body = buildPaymentConfirmedBody(payment);
-      expect(body.confirmedAt).toBeUndefined();
+      expect(body.escrowedAt).toBeUndefined();
     });
   });
 });
