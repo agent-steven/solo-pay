@@ -288,6 +288,87 @@ describe('WidgetLauncher', () => {
       expect(redirected.searchParams.get('status')).toBe('closed');
     });
 
+    it('should receive payment_init when popup source matches', () => {
+      launcher.open(makeRequest());
+
+      // payment_init sent from the SAME popup reference (normal case)
+      dispatchWidgetMessage(mockPopup, { type: 'payment_init', paymentId: 'pay-match' });
+
+      (mockPopup as { closed: boolean }).closed = true;
+      vi.advanceTimersByTime(300 + 150);
+
+      expect(new URL(window.location.href).searchParams.get('paymentId')).toBe('pay-match');
+    });
+
+    it('should ignore payment_init when popup source does NOT match (different window ref)', () => {
+      launcher.open(makeRequest());
+
+      // payment_init sent from a DIFFERENT window (simulates source mismatch)
+      const differentPopup = createMockPopup();
+      dispatchWidgetMessage(differentPopup, { type: 'payment_init', paymentId: 'pay-wrong' });
+
+      (mockPopup as { closed: boolean }).closed = true;
+      vi.advanceTimersByTime(300 + 150);
+
+      // paymentId should NOT be in the URL — payment_init was ignored
+      expect(new URL(window.location.href).searchParams.get('paymentId')).toBeNull();
+    });
+
+    it('should ignore payment_init from wrong origin', () => {
+      launcher.open(makeRequest());
+
+      // payment_init with correct source but wrong origin
+      dispatchWidgetMessage(mockPopup, { type: 'payment_init', paymentId: 'pay-evil' }, 'https://evil.com');
+
+      (mockPopup as { closed: boolean }).closed = true;
+      vi.advanceTimersByTime(300 + 150);
+
+      expect(new URL(window.location.href).searchParams.get('paymentId')).toBeNull();
+    });
+
+    it('should receive payment_init when widgetUrl has path (origin still matches)', () => {
+      // widgetUrl with path — origin should still match
+      const launcherWithPath = new WidgetLauncher({
+        publicKey: PUBLIC_KEY,
+        widgetUrl: WIDGET_URL + '/payment/checkout',
+      });
+
+      vi.stubGlobal('open', vi.fn(() => mockPopup));
+      launcherWithPath.open(makeRequest());
+
+      // postMessage origin = widget origin (no path)
+      dispatchWidgetMessage(mockPopup, { type: 'payment_init', paymentId: 'pay-path' });
+
+      (mockPopup as { closed: boolean }).closed = true;
+      vi.advanceTimersByTime(300 + 150);
+
+      expect(new URL(window.location.href).searchParams.get('paymentId')).toBe('pay-path');
+    });
+
+    it('should use latest paymentId when multiple payment_init received', () => {
+      launcher.open(makeRequest());
+
+      dispatchWidgetMessage(mockPopup, { type: 'payment_init', paymentId: 'pay-first' });
+      dispatchWidgetMessage(mockPopup, { type: 'payment_init', paymentId: 'pay-second' });
+
+      (mockPopup as { closed: boolean }).closed = true;
+      vi.advanceTimersByTime(300 + 150);
+
+      expect(new URL(window.location.href).searchParams.get('paymentId')).toBe('pay-second');
+    });
+
+    it('should receive payment_init even when popup closes immediately after', () => {
+      launcher.open(makeRequest());
+
+      // payment_init arrives, then popup closes in same tick
+      dispatchWidgetMessage(mockPopup, { type: 'payment_init', paymentId: 'pay-quick' });
+      (mockPopup as { closed: boolean }).closed = true;
+
+      vi.advanceTimersByTime(300 + 150);
+
+      expect(new URL(window.location.href).searchParams.get('paymentId')).toBe('pay-quick');
+    });
+
     it('should not double-fire onClose', () => {
       const onClose = vi.fn();
       launcher.open(makeRequest(), { onClose });
