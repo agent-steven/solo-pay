@@ -433,7 +433,7 @@ contract PaymentGatewayV1 is
    * @dev Only callable by owner
    * @param newImplementation Address of the new implementation contract
    */
-  function _authorizeUpgrade(address newImplementation) internal override onlyOwner {
+  function _authorizeUpgrade(address newImplementation) internal view override onlyOwner {
     require(newImplementation.code.length > 0, "PG: not a contract");
   }
 }
