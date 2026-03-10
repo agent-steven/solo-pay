@@ -212,15 +212,7 @@ describe('Permit Payment Flow', () => {
       // Payment should revert because permit is expired and no prior approval exists
       // _tryPermit silently fails, then safeTransferFrom reverts due to no allowance
       await expect(
-        gateway.pay(
-          paymentId,
-          tokenAddress,
-          amount,
-          recipientAddress,
-          merchantId,
-          deadline,
-          permit
-        )
+        gateway.pay(paymentId, tokenAddress, amount, recipientAddress, merchantId, deadline, permit)
       ).rejects.toThrow();
     });
 

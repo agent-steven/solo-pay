@@ -9,12 +9,7 @@ import {
   parseUnits,
   PaymentGatewayABI,
 } from '../helpers/blockchain';
-import {
-  generatePaymentId,
-  merchantKeyToId,
-  getDeadline,
-  ZERO_PERMIT,
-} from '../helpers/signature';
+import { generatePaymentId, merchantKeyToId, getDeadline, ZERO_PERMIT } from '../helpers/signature';
 import { HARDHAT_ACCOUNTS, CONTRACT_ADDRESSES } from '../setup/wallets';
 import { getToken } from '../fixtures/token';
 

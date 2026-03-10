@@ -347,14 +347,9 @@ describe('SDK Integration', () => {
       const statusResponse = await client.getPaymentStatus(paymentId);
       expect(statusResponse.success).toBe(true);
       expect(statusResponse.data?.paymentId).toBe(paymentId);
-      expect([
-        'CREATED',
-        'PAID',
-        'REFUND_SUBMITTED',
-        'REFUNDED',
-        'EXPIRED',
-        'FAILED',
-      ]).toContain(statusResponse.data?.status);
+      expect(['CREATED', 'PAID', 'REFUND_SUBMITTED', 'REFUNDED', 'EXPIRED', 'FAILED']).toContain(
+        statusResponse.data?.status
+      );
     });
   });
 

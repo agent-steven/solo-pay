@@ -10,12 +10,7 @@ import {
 } from '../helpers/blockchain';
 import { HARDHAT_ACCOUNTS, CONTRACT_ADDRESSES } from '../setup/wallets';
 import { getToken } from '../fixtures/token';
-import {
-  generatePaymentId,
-  merchantKeyToId,
-  getDeadline,
-  ZERO_PERMIT,
-} from '../helpers/signature';
+import { generatePaymentId, merchantKeyToId, getDeadline, ZERO_PERMIT } from '../helpers/signature';
 
 describe('Direct Payment Integration', () => {
   const token = getToken('mockUSDT');
@@ -161,15 +156,7 @@ describe('Direct Payment Integration', () => {
     const gateway = getContract(gatewayAddress, PaymentGatewayABI, wallet);
 
     await expect(
-      gateway.pay(
-        paymentId,
-        token.address,
-        0n,
-        recipientAddress,
-        merchantId,
-        deadline,
-        ZERO_PERMIT
-      )
+      gateway.pay(paymentId, token.address, 0n, recipientAddress, merchantId, deadline, ZERO_PERMIT)
     ).rejects.toThrow();
   });
 
