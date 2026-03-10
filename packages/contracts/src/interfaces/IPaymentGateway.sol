@@ -120,10 +120,7 @@ interface IPaymentGateway {
   /// @notice Refund a paid payment - full amount returned from merchant to payer
   /// @param originalPaymentId The paid payment ID
   /// @param permit Permit signature for gasless token approval
-  function refund(
-    bytes32 originalPaymentId,
-    PermitSignature calldata permit
-  ) external;
+  function refund(bytes32 originalPaymentId, PermitSignature calldata permit) external;
 
   // ============ Admin Functions ============
 
@@ -147,7 +144,10 @@ interface IPaymentGateway {
   /// @notice Batch set supported tokens
   /// @param tokenAddresses Array of token addresses
   /// @param supportedFlags Array of supported flags
-  function batchSetSupportedTokens(address[] calldata tokenAddresses, bool[] calldata supportedFlags) external;
+  function batchSetSupportedTokens(
+    address[] calldata tokenAddresses,
+    bool[] calldata supportedFlags
+  ) external;
 
   /// @notice Pause the contract
   function pause() external;

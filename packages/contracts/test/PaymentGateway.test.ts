@@ -85,15 +85,11 @@ describe('PaymentGatewayV1', function () {
     await forwarder.waitForDeployment();
 
     const PaymentGateway = await ethers.getContractFactory('PaymentGatewayV1');
-    const gateway = (await upgrades.deployProxy(
-      PaymentGateway,
-      [owner.address, treasury.address],
-      {
-        kind: 'uups',
-        initializer: 'initialize',
-        constructorArgs: [await forwarder.getAddress()],
-      }
-    )) as unknown as PaymentGatewayV1;
+    const gateway = (await upgrades.deployProxy(PaymentGateway, [owner.address, treasury.address], {
+      kind: 'uups',
+      initializer: 'initialize',
+      constructorArgs: [await forwarder.getAddress()],
+    })) as unknown as PaymentGatewayV1;
     await gateway.waitForDeployment();
 
     const merchantId = ethers.id('MERCHANT_001');
@@ -132,6 +128,7 @@ describe('PaymentGatewayV1', function () {
         amount,
         merchantRecipient.address,
         merchantId,
+        0n,
         ZERO_PERMIT
       );
 
@@ -191,6 +188,7 @@ describe('PaymentGatewayV1', function () {
             amount,
             merchantRecipient.address,
             merchantId,
+            0n,
             ZERO_PERMIT
           )
       )
@@ -247,6 +245,7 @@ describe('PaymentGatewayV1', function () {
           amount,
           merchantRecipient.address,
           merchantId,
+          0n,
           ZERO_PERMIT
         );
 
@@ -260,6 +259,7 @@ describe('PaymentGatewayV1', function () {
             amount,
             merchantRecipient.address,
             merchantId,
+            0n,
             ZERO_PERMIT
           )
       ).to.be.revertedWith('PG: already processed');
@@ -280,6 +280,7 @@ describe('PaymentGatewayV1', function () {
             0,
             merchantRecipient.address,
             merchantId,
+            0n,
             ZERO_PERMIT
           )
       ).to.be.revertedWith('PG: amount must be > 0');
@@ -300,6 +301,7 @@ describe('PaymentGatewayV1', function () {
             amount,
             merchantRecipient.address,
             merchantId,
+            0n,
             ZERO_PERMIT
           )
       ).to.be.revertedWith('PG: invalid token');
@@ -320,6 +322,7 @@ describe('PaymentGatewayV1', function () {
             amount,
             ethers.ZeroAddress,
             merchantId,
+            0n,
             ZERO_PERMIT
           )
       ).to.be.revertedWith('PG: invalid recipient');
@@ -348,6 +351,7 @@ describe('PaymentGatewayV1', function () {
             amount,
             merchantRecipient.address,
             merchantId,
+            0n,
             ZERO_PERMIT
           )
       ).to.be.revertedWithCustomError(token, 'ERC20InsufficientAllowance');
@@ -384,6 +388,7 @@ describe('PaymentGatewayV1', function () {
             amount,
             merchantRecipient.address,
             merchantId,
+            0n,
             ZERO_PERMIT
           )
       )
@@ -400,9 +405,7 @@ describe('PaymentGatewayV1', function () {
         );
 
       // Fee goes to treasury, rest to recipient
-      expect(await token.balanceOf(treasury.address)).to.equal(
-        treasuryBalanceBefore + expectedFee
-      );
+      expect(await token.balanceOf(treasury.address)).to.equal(treasuryBalanceBefore + expectedFee);
       expect(await token.balanceOf(merchantRecipient.address)).to.equal(
         recipientBalanceBefore + expectedRecipientAmount
       );
@@ -427,6 +430,7 @@ describe('PaymentGatewayV1', function () {
           amount,
           merchantRecipient.address,
           merchantId,
+          0n,
           ZERO_PERMIT
         );
 
@@ -455,6 +459,7 @@ describe('PaymentGatewayV1', function () {
           amount,
           merchantRecipient.address,
           merchantId,
+          0n,
           ZERO_PERMIT
         );
 
@@ -514,6 +519,7 @@ describe('PaymentGatewayV1', function () {
             amount,
             merchantRecipient.address,
             merchantId,
+            0n,
             ZERO_PERMIT
           )
       ).to.be.revertedWith('PG: token not supported');
@@ -531,6 +537,7 @@ describe('PaymentGatewayV1', function () {
             amount,
             merchantRecipient.address,
             merchantId,
+            0n,
             ZERO_PERMIT
           )
       ).to.emit(gateway, 'PaymentCompleted');
@@ -585,6 +592,7 @@ describe('PaymentGatewayV1', function () {
         amount,
         merchantRecipient.address,
         merchantId,
+        0n,
         ZERO_PERMIT,
       ]);
 
@@ -769,6 +777,7 @@ describe('PaymentGatewayV1', function () {
           amount,
           merchantRecipient.address,
           merchantId,
+          0n,
           ZERO_PERMIT
         );
 
@@ -903,6 +912,7 @@ describe('PaymentGatewayV1', function () {
             amount,
             merchantRecipient.address,
             merchantId,
+            0n,
             ZERO_PERMIT
           )
       ).to.be.revertedWithCustomError(gateway, 'EnforcedPause');
@@ -991,9 +1001,9 @@ describe('PaymentGatewayV1', function () {
     it('Should reject rescueETH when no ETH to rescue', async function () {
       const { gateway, owner, treasury } = await loadFixture(deployFixture);
 
-      await expect(
-        gateway.connect(owner).rescueETH(treasury.address)
-      ).to.be.revertedWith('PG: no ETH to rescue');
+      await expect(gateway.connect(owner).rescueETH(treasury.address)).to.be.revertedWith(
+        'PG: no ETH to rescue'
+      );
     });
 
     it('Should reject rescueETH to zero address', async function () {
@@ -1004,9 +1014,9 @@ describe('PaymentGatewayV1', function () {
         '0xDE0B6B3A7640000',
       ]);
 
-      await expect(
-        gateway.connect(owner).rescueETH(ethers.ZeroAddress)
-      ).to.be.revertedWith('PG: invalid recipient');
+      await expect(gateway.connect(owner).rescueETH(ethers.ZeroAddress)).to.be.revertedWith(
+        'PG: invalid recipient'
+      );
     });
   });
 
@@ -1059,8 +1069,7 @@ describe('PaymentGatewayV1', function () {
     });
 
     it('Should reject duplicate refund', async function () {
-      const { gateway, token, merchantRecipient, paymentId, amount } =
-        await makePaymentFixture();
+      const { gateway, token, merchantRecipient, paymentId, amount } = await makePaymentFixture();
 
       // Mint extra tokens to merchant for refund
       await token.mint(merchantRecipient.address, amount);
@@ -1079,9 +1088,9 @@ describe('PaymentGatewayV1', function () {
       const { gateway, payer, paymentId } = await makePaymentFixture();
 
       // Payer (not the merchant/recipient) tries to call refund
-      await expect(
-        gateway.connect(payer).refund(paymentId, ZERO_PERMIT)
-      ).to.be.revertedWith('PG: not recipient');
+      await expect(gateway.connect(payer).refund(paymentId, ZERO_PERMIT)).to.be.revertedWith(
+        'PG: not recipient'
+      );
     });
 
     it('Should reject refund when paused', async function () {
@@ -1129,6 +1138,7 @@ describe('PaymentGatewayV1', function () {
             amount,
             merchantRecipient.address,
             merchantId,
+            0n,
             permit
           )
       )
@@ -1177,6 +1187,7 @@ describe('PaymentGatewayV1', function () {
             amount,
             merchantRecipient.address,
             merchantId,
+            0n,
             permit
           )
       ).to.be.revertedWithCustomError(token, 'ERC20InsufficientAllowance');
@@ -1202,6 +1213,7 @@ describe('PaymentGatewayV1', function () {
             amount,
             merchantRecipient.address,
             merchantId,
+            0n,
             ZERO_PERMIT
           )
       ).to.emit(gateway, 'PaymentCompleted');
@@ -1226,6 +1238,7 @@ describe('PaymentGatewayV1', function () {
           amount,
           merchantRecipient.address,
           merchantId,
+          0n,
           ZERO_PERMIT
         );
 
@@ -1240,9 +1253,10 @@ describe('PaymentGatewayV1', function () {
       );
 
       // Process refund with permit (NO prior approve needed)
-      await expect(
-        gateway.connect(merchantRecipient).refund(paymentId, permit)
-      ).to.emit(gateway, 'RefundCompleted');
+      await expect(gateway.connect(merchantRecipient).refund(paymentId, permit)).to.emit(
+        gateway,
+        'RefundCompleted'
+      );
 
       expect(await gateway.isPaymentRefunded(paymentId)).to.equal(true);
     });

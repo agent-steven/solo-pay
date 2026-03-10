@@ -333,7 +333,11 @@ contract PaymentGatewayV1 is
    * @param to The address to send rescued tokens to
    * @param amount The amount of tokens to rescue
    */
-  function rescueERC20(address tokenAddress, address to, uint256 amount) external onlyOwner nonReentrant {
+  function rescueERC20(
+    address tokenAddress,
+    address to,
+    uint256 amount
+  ) external onlyOwner nonReentrant {
     require(to != address(0), "PG: invalid recipient");
     IERC20(tokenAddress).safeTransfer(to, amount);
     emit TokensRescued(tokenAddress, to, amount);
@@ -348,7 +352,7 @@ contract PaymentGatewayV1 is
     require(to != address(0), "PG: invalid recipient");
     uint256 balance = address(this).balance;
     require(balance > 0, "PG: no ETH to rescue");
-    (bool success, ) = to.call{value: balance}("");
+    (bool success, ) = to.call{ value: balance }("");
     require(success, "PG: ETH transfer failed");
     emit TokensRescued(address(0), to, balance);
   }

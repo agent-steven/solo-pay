@@ -47,10 +47,7 @@ const PaymentGatewayModule: ReturnType<
   const implementation = m.contract('PaymentGatewayV1', [forwarder]);
 
   // Encode initialization data (owner, treasury - forwarder is set in constructor)
-  const initData = m.encodeFunctionCall(implementation, 'initialize', [
-    owner,
-    treasury,
-  ]);
+  const initData = m.encodeFunctionCall(implementation, 'initialize', [owner, treasury]);
 
   // Deploy ERC1967Proxy
   const proxy = m.contract('ERC1967Proxy', [implementation, initData], {
