@@ -104,6 +104,7 @@ interface IPaymentGateway {
   /// @param amount Payment amount
   /// @param recipientAddress Merchant's wallet address
   /// @param merchantId Merchant identifier
+  /// @param deadline Payment expiration timestamp (0 to skip)
   /// @param permit ERC20 Permit signature (deadline=0 to skip)
   function pay(
     bytes32 paymentId,
@@ -111,6 +112,7 @@ interface IPaymentGateway {
     uint256 amount,
     address recipientAddress,
     bytes32 merchantId,
+    uint256 deadline,
     PermitSignature calldata permit
   ) external;
 

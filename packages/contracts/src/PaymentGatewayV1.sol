@@ -133,6 +133,7 @@ contract PaymentGatewayV1 is
    * @param amount Payment amount in token's smallest unit
    * @param recipientAddress Merchant's wallet address
    * @param merchantId Merchant identifier (bytes32)
+   * @param deadline Payment expiration timestamp (0 to skip)
    * @param permit ERC20 Permit signature (deadline=0 to skip)
    */
   function pay(
@@ -141,11 +142,12 @@ contract PaymentGatewayV1 is
     uint256 amount,
     address recipientAddress,
     bytes32 merchantId,
+    uint256 deadline,
     IPaymentGateway.PermitSignature calldata permit
   ) external nonReentrant whenNotPaused {
     address payerAddress = _msgSender();
 
-    _validatePayment(paymentId, tokenAddress, amount, recipientAddress);
+    _validatePayment(paymentId, tokenAddress, amount, recipientAddress, deadline);
     _tryPermit(tokenAddress, payerAddress, amount, permit);
 
     uint256 feeAmount = (amount * feeBps) / MAX_FEE_BPS;
@@ -189,13 +191,17 @@ contract PaymentGatewayV1 is
     bytes32 paymentId,
     address tokenAddress,
     uint256 amount,
-    address recipientAddress
+    address recipientAddress,
+    uint256 deadline
   ) internal view {
     require(treasuryAddress != address(0), "PG: treasury not set");
     require(payments[paymentId].status == PaymentStatus.None, "PG: already processed");
     require(amount > 0, "PG: amount must be > 0");
     require(tokenAddress != address(0), "PG: invalid token");
     require(recipientAddress != address(0), "PG: invalid recipient");
+    if (deadline > 0) {
+      require(block.timestamp <= deadline, "PG: payment expired");
+    }
     if (enforceTokenWhitelist) {
       require(supportedTokens[tokenAddress], "PG: token not supported");
     }
