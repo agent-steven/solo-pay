@@ -83,12 +83,13 @@ solopay.requestPayment(
 
 `amount`의 해석 방식은 `currency` 제공 여부에 따라 달라집니다.
 
-| `currency` | `amount` 해석 |
-|---|---|
+| `currency`                  | `amount` 해석                                         |
+| --------------------------- | ----------------------------------------------------- |
 | 제공 (예: `'USD'`, `'KRW'`) | **법정화폐 금액** — 실시간 시세로 토큰 수량 자동 변환 |
-| 생략 | **토큰 수량 직접 지정** — 변환 없이 그대로 사용 |
+| 생략                        | **토큰 수량 직접 지정** — 변환 없이 그대로 사용       |
 
 **예시 1: USD 기준 결제 (currency 제공)**
+
 ```typescript
 // amount: 25.5 USD → 실시간 USDT 시세로 변환
 solopay.requestPayment({
@@ -102,6 +103,7 @@ solopay.requestPayment({
 ```
 
 **예시 2: 토큰 수량 직접 지정 (currency 생략)**
+
 ```typescript
 // amount: 25.5 USDT 직접 지정 (변환 없음)
 solopay.requestPayment({

@@ -83,12 +83,13 @@ solopay.requestPayment(
 
 How `amount` is interpreted depends on whether `currency` is provided.
 
-| `currency` | `amount` interpretation |
-|---|---|
+| `currency`                        | `amount` interpretation                                                         |
+| --------------------------------- | ------------------------------------------------------------------------------- |
 | Provided (e.g., `'USD'`, `'KRW'`) | **Fiat amount** — automatically converted to token amount using real-time price |
-| Omitted | **Token amount directly** — used as-is, no conversion |
+| Omitted                           | **Token amount directly** — used as-is, no conversion                           |
 
 **Example 1: USD-based payment (currency provided)**
+
 ```typescript
 // amount: 25.5 USD → converted to token amount at real-time price
 solopay.requestPayment({
@@ -102,6 +103,7 @@ solopay.requestPayment({
 ```
 
 **Example 2: Token amount directly (currency omitted)**
+
 ```typescript
 // amount: 25.5 USDT directly (no conversion)
 solopay.requestPayment({
