@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { getPaymentMethods } from '@/app/actions/payment-methods';
 import { getMerchants } from '@/app/actions/merchants';
 import { getTokens } from '@/app/actions/tokens';

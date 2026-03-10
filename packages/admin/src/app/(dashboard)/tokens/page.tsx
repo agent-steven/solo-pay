@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { getTokens } from '@/app/actions/tokens';
 import { getChains } from '@/app/actions/chains';
 import TokensClient from './TokensClient';

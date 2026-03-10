@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { getMerchants } from '@/app/actions/merchants';
 import { getChains } from '@/app/actions/chains';
 import MerchantsClient from './MerchantsClient';

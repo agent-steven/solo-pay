@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { getChains } from '@/app/actions/chains';
 import ChainsClient from './ChainsClient';
 
