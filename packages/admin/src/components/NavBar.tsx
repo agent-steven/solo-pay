@@ -19,7 +19,9 @@ export default function NavBar() {
     <header className="bg-white border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-14">
         <div className="flex items-center gap-8">
-          <Link href="/payments" className="font-semibold text-gray-900 text-sm">SoloPay Admin</Link>
+          <Link href="/payments" className="font-semibold text-gray-900 text-sm">
+            SoloPay Admin
+          </Link>
           <nav className="flex gap-1">
             {navItems.map((item) => {
               const isActive = pathname.startsWith(item.href);

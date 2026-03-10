@@ -62,7 +62,8 @@ export async function createMerchant(formData: FormData) {
     revalidatePath('/merchants');
     return { merchant, apiKey: apiKey.raw, publicKey: publicKey.key };
   } catch (e) {
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') return { error: 'Merchant key already exists.' };
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002')
+      return { error: 'Merchant key already exists.' };
     throw e;
   }
 }

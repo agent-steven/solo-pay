@@ -31,7 +31,8 @@ export async function createToken(formData: FormData) {
     revalidatePath('/tokens');
     return { success: true };
   } catch (e) {
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') return { error: 'Token address already exists on this chain.' };
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002')
+      return { error: 'Token address already exists on this chain.' };
     throw e;
   }
 }

@@ -37,7 +37,8 @@ export async function createChain(formData: FormData) {
     revalidatePath('/chains');
     return { success: true };
   } catch (e) {
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') return { error: 'Network ID already exists.' };
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002')
+      return { error: 'Network ID already exists.' };
     throw e;
   }
 }

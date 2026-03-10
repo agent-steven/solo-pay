@@ -18,7 +18,11 @@ export default async function PaymentMethodsPage() {
     <PaymentMethodsClient
       paymentMethods={paymentMethods}
       merchants={merchants.map((merchant) => ({ id: merchant.id, name: merchant.name }))}
-      tokens={tokens.map((token) => ({ id: token.id, symbol: token.symbol, chain_id: token.chain_id }))}
+      tokens={tokens.map((token) => ({
+        id: token.id,
+        symbol: token.symbol,
+        chain_id: token.chain_id,
+      }))}
       chains={chains.map((chain) => ({ id: chain.id, name: chain.name }))}
     />
   );

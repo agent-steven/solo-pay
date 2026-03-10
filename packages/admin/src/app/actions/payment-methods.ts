@@ -25,7 +25,8 @@ export async function createPaymentMethod(formData: FormData) {
     revalidatePath('/payment-methods');
     return { success: true };
   } catch (e) {
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') return { error: 'This token is already added for that merchant.' };
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002')
+      return { error: 'This token is already added for that merchant.' };
     throw e;
   }
 }
