@@ -82,6 +82,15 @@ export const appkitNetworks = [
   sepolia,
 ];
 
+/**
+ * Chain definitions indexed by chain ID.
+ * Used by PaymentStep to call wallet_addEthereumChain with correct RPC URLs
+ * when the wallet doesn't have the target network configured.
+ */
+export const appkitNetworksByChainId = Object.fromEntries(
+  appkitNetworks.map((n) => [n.id, n])
+) as Record<number, (typeof appkitNetworks)[number]>;
+
 // ─── AppKit adapter factory ───────────────────────────────────────────────────
 
 export type AppKitConfigResult = { adapter: WagmiAdapter; config: Config };
