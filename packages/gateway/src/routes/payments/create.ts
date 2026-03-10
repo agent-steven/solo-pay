@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { parseUnits, keccak256, toHex, Hex, Address } from 'viem';
+import { parseUnits, keccak256, toHex, Address } from 'viem';
 import { Decimal } from '@solo-pay/database';
 import { randomBytes } from 'crypto';
 import { ZodError } from 'zod';
@@ -34,7 +34,6 @@ export async function createPaymentRoute(
   tokenService: TokenService,
   paymentMethodService: PaymentMethodService,
   paymentService: PaymentService,
-  signingServices?: Map<number, ServerSigningService>,
   currencyService?: CurrencyService,
   priceClient?: PriceClient
 ) {
@@ -56,7 +55,7 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
 
 **Currency conversion:** When \`currency\` is provided (e.g., USD, KRW), \`amount\` is treated as fiat amount and converted to token amount using price-service. Without \`currency\`, \`amount\` is the token amount (existing behavior).
 
-**Response:** paymentId, serverSignature, chainId, tokenAddress, gatewayAddress, amount (wei), tokenDecimals, tokenSymbol, successUrl, failUrl, expiresAt, recipientAddress, merchantId, forwarderAddress, currency, fiatAmount, tokenPrice.
+**Response:** paymentId, chainId, tokenAddress, gatewayAddress, amount (wei), tokenDecimals, tokenSymbol, successUrl, failUrl, expiresAt, recipientAddress, merchantId, forwarderAddress, currency, fiatAmount, tokenPrice.
         `,
         headers: {
           type: 'object',
@@ -113,10 +112,6 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
                 properties: {
                   paymentId: { type: 'string' },
                   orderId: { type: 'string', description: 'Merchant order ID' },
-                  serverSignature: {
-                    type: 'string',
-                    description: 'Server EIP-712 signature for payment authorization',
-                  },
                   chainId: { type: 'integer' },
                   tokenAddress: { type: 'string' },
                   gatewayAddress: { type: 'string' },
@@ -133,11 +128,8 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
                   merchantId: { type: 'string', description: 'Merchant ID (bytes32)' },
                   deadline: {
                     type: 'string',
-                    description: 'Deadline timestamp for server signature expiration',
-                  },
-                  escrowDuration: {
-                    type: 'string',
-                    description: 'Escrow duration in seconds (passed to contract pay())',
+                    description:
+                      'Payment expiration timestamp (unix seconds) for on-chain validation',
                   },
                   forwarderAddress: {
                     type: 'string',
@@ -192,7 +184,6 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
               merchant_key: string;
               chain_id: number;
               recipient_address: string | null;
-              escrow_duration: number | null;
             };
           }
         ).merchant;
@@ -321,7 +312,7 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
           });
         }
 
-        // Check for duplicate orderId BEFORE generating signature (avoid wasting resources)
+        // Check for duplicate orderId BEFORE creating payment
         const existingPayment = await paymentService.findByOrderId(validated.orderId, merchant.id);
         if (existingPayment) {
           return reply.code(409).send({
@@ -330,36 +321,9 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
           });
         }
 
-        // Generate server signature if signing service is available for this chain
-        const deadlineTtl = Number(process.env.PAYMENT_DEADLINE_SECONDS) || 3600;
-        const deadline = BigInt(Math.floor(Date.now() / 1000) + deadlineTtl);
-        const defaultEscrowDuration = Number(process.env.DEFAULT_ESCROW_DURATION) || 300;
-        const escrowDuration = BigInt(merchant.escrow_duration ?? defaultEscrowDuration);
-        let serverSignature: Hex | undefined;
-        const signingService = signingServices?.get(chainId);
-        if (signingService) {
-          try {
-            serverSignature = await signingService.signPaymentRequest(
-              paymentHash as Hex,
-              tokenAddress as Address,
-              amountInWei,
-              recipientAddress,
-              merchantId,
-              deadline,
-              escrowDuration
-            );
-          } catch (err) {
-            app.log.error({ err }, 'Failed to generate server signature');
-            return reply.code(500).send({
-              code: ErrorCodes.SIGNATURE_ERROR,
-              message: 'Failed to generate payment signature',
-            });
-          }
-        }
-
         const paymentExpirySeconds = Number(process.env.PAYMENT_EXPIRY_SECONDS) || 300;
         const expiresAt = new Date(Date.now() + paymentExpirySeconds * 1000);
-        const escrowDeadline = new Date(Date.now() + Number(escrowDuration) * 1000);
+        const deadline = Math.floor(expiresAt.getTime() / 1000);
         await paymentService.create({
           payment_hash: paymentHash,
           merchant_id: merchant.id,
@@ -376,7 +340,6 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
           currency_code: currencyCode,
           fiat_amount: fiatAmount !== undefined ? new Decimal(fiatAmount.toString()) : undefined,
           token_price: tokenPrice !== undefined ? new Decimal(tokenPrice.toString()) : undefined,
-          escrow_deadline: escrowDeadline,
         });
 
         return reply.code(201).send({
@@ -384,7 +347,6 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
           data: {
             paymentId: paymentHash,
             orderId: validated.orderId,
-            serverSignature: serverSignature ?? '',
             chainId,
             tokenAddress,
             gatewayAddress: contracts?.gateway ?? '',
@@ -397,7 +359,6 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
             recipientAddress,
             merchantId,
             deadline: deadline.toString(),
-            escrowDuration: escrowDuration.toString(),
             forwarderAddress: chain.forwarder_address ?? undefined,
             tokenPermitSupported: token.permit_enabled ?? false,
             currency: currencyCode,

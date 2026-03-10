@@ -8,13 +8,12 @@ When configured, Webhooks send HTTP POST requests to your URL on payment status 
 
 ## Event Types
 
-| status value | Description       | When                       |
-| ------------ | ----------------- | -------------------------- |
-| `ESCROWED`   | Payment escrowed  | User paid; funds in escrow |
-| `FINALIZED`  | Payment finalized | Funds released to merchant |
-| `CANCELLED`  | Payment cancelled | Funds returned to buyer    |
+| Event             | Status Value | Description                        | When                                   |
+| ----------------- | ------------ | ---------------------------------- | -------------------------------------- |
+| `payment.paid`    | `PAID`       | Payment confirmed on-chain         | Funds transferred directly to merchant |
+| `payment.invalid` | `INVALID`    | On-chain payment validation failed | Amount, token, or recipient mismatch   |
 
-On **ESCROWED**, verify the order details and call finalize. On **FINALIZED**, complete the order.
+On **PAID**, verify the order details and complete the order. On **INVALID**, flag the order for review.
 
 ## Payload Structure
 
@@ -24,12 +23,11 @@ Webhook payloads are sent as a flat JSON object (no wrapper). The `Content-Type`
 {
   "paymentId": "0xabc123...",
   "orderId": "order-001",
-  "status": "FINALIZED",
+  "status": "PAID",
   "txHash": "0xdef789...",
-  "releaseTxHash": "0xrelease123...",
   "amount": "10500000000000000000",
   "tokenSymbol": "SUT",
-  "finalizedAt": "2024-01-26T12:35:42.000Z"
+  "paidAt": "2024-01-26T12:35:42.000Z"
 }
 ```
 
@@ -41,53 +39,35 @@ Webhook payloads are sent as a flat JSON object (no wrapper). The `Content-Type`
 
 ## Per-Event Payload Details
 
-### ESCROWED
+### payment.paid
 
-Payment escrowed on-chain; user has paid and funds are held in escrow. Merchant can finalize (release to merchant) or cancel (return to buyer).
+Payment confirmed on-chain. Funds have been transferred directly to the merchant wallet. This is the terminal success state.
 
 ```json
 {
   "paymentId": "0xabc123...",
   "orderId": "order-001",
-  "status": "ESCROWED",
+  "status": "PAID",
   "txHash": "0xdef789...",
   "amount": "10500000000000000000",
   "tokenSymbol": "SUT",
-  "escrowedAt": "2024-01-26T12:35:00.000Z"
+  "paidAt": "2024-01-26T12:35:42.000Z"
 }
 ```
 
-### FINALIZED
+### payment.invalid
 
-Funds released to merchant. Terminal success state for the finalize flow.
-
-```json
-{
-  "paymentId": "0xabc123...",
-  "orderId": "order-001",
-  "status": "FINALIZED",
-  "txHash": "0xdef789...",
-  "releaseTxHash": "0xrelease123...",
-  "amount": "10500000000000000000",
-  "tokenSymbol": "SUT",
-  "finalizedAt": "2024-01-26T12:36:00.000Z"
-}
-```
-
-### CANCELLED
-
-Escrowed payment was cancelled; funds returned to buyer.
+Payment detected on-chain but validation failed. The on-chain transaction did not match the expected payment parameters (amount, token, or recipient mismatch).
 
 ```json
 {
   "paymentId": "0xabc123...",
   "orderId": "order-001",
-  "status": "CANCELLED",
+  "status": "INVALID",
   "txHash": "0xdef789...",
-  "releaseTxHash": "0xcancel123...",
   "amount": "10500000000000000000",
   "tokenSymbol": "SUT",
-  "cancelledAt": "2024-01-26T12:36:00.000Z"
+  "paidAt": "2024-01-26T12:35:42.000Z"
 }
 ```
 
@@ -98,15 +78,11 @@ async function handleWebhook(payload: any) {
   const { status, orderId, paymentId } = payload;
 
   switch (status) {
-    case 'ESCROWED':
-      await updateOrderStatus(orderId, 'PAID_ESCROW');
-      // Optionally complete order here, or wait for FINALIZED
-      break;
-    case 'FINALIZED':
+    case 'PAID':
       await completeOrder(orderId);
       break;
-    case 'CANCELLED':
-      await cancelOrder(orderId);
+    case 'INVALID':
+      await flagOrderForReview(orderId, paymentId);
       break;
   }
 }
@@ -135,11 +111,11 @@ curl https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123... \
 
 ### Verification Checklist
 
-- [ ] Confirm `status === 'ESCROWED'` (payment success)
-- [ ] Confirm `amount` matches order amount
+- [ ] Confirm `status === 'PAID'` (payment success)
+- [ ] Confirm `amount` matches the expected amount **in your order database** (the widget runs client-side and the amount could be tampered with)
 - [ ] Confirm `orderId` matches orderId stored in DB
 - [ ] Prevent duplicate processing for the same `paymentId`
-- [ ] Call finalize, then complete the order only after confirming `FINALIZED` status
+- [ ] Complete the order after confirming `PAID` status
 
 ### Idempotency
 
@@ -159,7 +135,8 @@ The merchant data model has a `webhook_url` field. Contact admin to configure it
 
 ## Next Steps
 
+- [Event Details](/en/webhooks/events) - Detailed event payload documentation
 - [Payment Status](/en/payments/status) - Check status via polling
-- [Finalize & Cancel](/en/payments/finalize) - Release or cancel after escrowed
+- [Refunds](/en/payments/refunds) - Request a refund for a completed payment
 - [API Reference](/en/api/) - Full API spec
 - [Error Codes](/en/api/errors) - Error handling

@@ -72,12 +72,11 @@ const result = await response.json();
 
 **Verification Checklist**
 
-- [ ] Confirm `status === 'ESCROWED'` (payment success)
-- [ ] Confirm `amount` matches order amount
+- [ ] Confirm `status === 'PAID'` (payment success)
+- [ ] Confirm `amount` matches the expected amount **in your order database** (the widget runs client-side and the amount could be tampered with)
 - [ ] Confirm `tokenAddress` matches the expected token
 - [ ] Confirm `orderId` matches the expected orderId
 - [ ] Prevent duplicate completion processing for the same `paymentId`
-- [ ] Call finalize from server, then complete the order only after confirming `FINALIZED` status
 
 ## Webhook Integration (Recommended)
 

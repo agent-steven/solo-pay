@@ -228,7 +228,7 @@ Submits a gasless (meta-transaction) payment using ERC-2771 forwarder.
           payment_id: payment.id,
         });
 
-        // Keep CREATED status after relay submit (transitions to ESCROWED on on-chain confirmation)
+        // Keep CREATED status after relay submit (transitions to PAID on on-chain confirmation)
 
         return reply.code(202).send({
           success: true,

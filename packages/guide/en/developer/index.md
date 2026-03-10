@@ -10,6 +10,6 @@ Technical documentation for integrating SoloPay into your service.
 
 ## Detailed Features
 
-- [Payments](/en/payments/) - Create, status, finalize/cancel, refunds
+- [Payments](/en/payments/) - Create, status, refunds
 - [Merchant](/en/merchant/) - Registration, API authentication, payment method management
 - [Webhooks](/en/webhooks/) - Event reception and signature verification

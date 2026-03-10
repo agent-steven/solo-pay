@@ -16,8 +16,6 @@ import type {
   UpdatePaymentMethodResponse,
   DeletePaymentMethodResponse,
   MerchantPaymentDetailResponse,
-  FinalizePaymentResponse,
-  CancelPaymentResponse,
   CreateRefundParams,
   CreateRefundResponse,
   RefundStatusResponse,
@@ -149,16 +147,6 @@ export class SoloPayClient {
   /** GET /merchant/payments/:id — Get merchant payment by payment hash */
   async getMerchantPaymentById(paymentId: string): Promise<MerchantPaymentDetailResponse> {
     return this.request<MerchantPaymentDetailResponse>('GET', `/merchant/payments/${paymentId}`);
-  }
-
-  /** POST /payments/:id/finalize — Finalize an escrowed payment */
-  async finalizePayment(paymentId: string): Promise<FinalizePaymentResponse> {
-    return this.request<FinalizePaymentResponse>('POST', `/payments/${paymentId}/finalize`);
-  }
-
-  /** POST /payments/:id/cancel — Cancel an escrowed payment */
-  async cancelPayment(paymentId: string): Promise<CancelPaymentResponse> {
-    return this.request<CancelPaymentResponse>('POST', `/payments/${paymentId}/cancel`);
   }
 
   // ==========================================================================

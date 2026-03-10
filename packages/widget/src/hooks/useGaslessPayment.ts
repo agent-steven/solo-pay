@@ -17,7 +17,7 @@ export type PaymentProgressState =
   | 'SIGNING_FORWARD'
   | 'RELAYING'
   | 'CONFIRMING'
-  | 'ESCROWED'
+  | 'PAID'
   | 'ERROR';
 
 export interface UseGaslessPaymentParams {
@@ -78,11 +78,7 @@ export function useGaslessPayment({
   const amount = paymentDetails?.amount ? BigInt(paymentDetails.amount) : undefined;
   const recipientAddress = paymentDetails?.recipientAddress as `0x${string}` | undefined;
   const merchantId = paymentDetails?.merchantId as `0x${string}` | undefined;
-  const payDeadline = paymentDetails?.deadline ? BigInt(paymentDetails.deadline) : undefined;
-  const escrowDuration = paymentDetails?.escrowDuration
-    ? BigInt(paymentDetails.escrowDuration)
-    : undefined;
-  const serverSignature = paymentDetails?.serverSignature as `0x${string}` | undefined;
+  const payDeadline = paymentDetails?.deadline ? BigInt(paymentDetails.deadline) : BigInt(0);
 
   // Check if gasless is supported
   const isGaslessSupported = !!forwarderAddress;
@@ -119,9 +115,7 @@ export function useGaslessPayment({
       !amount ||
       !recipientAddress ||
       !merchantId ||
-      !payDeadline ||
-      !escrowDuration ||
-      !serverSignature
+      !payDeadline
     ) {
       console.error('Missing gasless payment details');
       return;
@@ -180,8 +174,6 @@ export function useGaslessPayment({
           recipientAddress,
           merchantId,
           payDeadline,
-          escrowDuration,
-          serverSignature,
           permitData,
         ],
       });
@@ -256,7 +248,7 @@ export function useGaslessPayment({
 
       setRelayTxHash(relayResult.transactionHash ?? '');
       setIsRelayConfirming(false);
-      setProgressState('ESCROWED');
+      setProgressState('PAID');
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Gasless payment failed'));
       setIsPayingGasless(false);
@@ -273,8 +265,6 @@ export function useGaslessPayment({
     recipientAddress,
     merchantId,
     payDeadline,
-    escrowDuration,
-    serverSignature,
     paymentDetails?.chainId,
     publicKey,
     refetchNonce,

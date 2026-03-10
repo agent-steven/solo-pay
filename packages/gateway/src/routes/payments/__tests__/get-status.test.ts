@@ -129,7 +129,7 @@ describe('GET /payments/:id', () => {
       expect(body.data.tokenAddress).toBe('0x' + '4'.repeat(40));
       expect(body.data.amount).toBe('1000000');
       expect(body.data.recipientAddress).toBe('0x' + '1'.repeat(40));
-      expect(body.data.serverSignature).toBeDefined();
+      expect(body.data.deadline).toBeDefined();
     });
 
     it('should return tokenPermitSupported in response', async () => {
@@ -174,7 +174,7 @@ describe('GET /payments/:id', () => {
       expect(mockPaymentService.getTokenPermitSupported).toHaveBeenCalledWith(5);
     });
 
-    it('should update status to ESCROWED when on-chain status is escrowed', async () => {
+    it('should update status to PAID when on-chain status is paid', async () => {
       const paymentHash = '0x' + 'b'.repeat(64);
       const txHash = '0x' + 'c'.repeat(64);
       const mockPayment = {
@@ -200,14 +200,11 @@ describe('GET /payments/:id', () => {
       mockPaymentService.findByHash.mockResolvedValue(mockPayment);
       mockBlockchainService.isChainSupported.mockReturnValue(true);
       mockBlockchainService.getPaymentStatus.mockResolvedValue({
-        status: 'escrowed',
+        status: 'paid',
         transactionHash: txHash,
         amount: '2000000',
         payerAddress: '0x' + 'd'.repeat(40),
       });
-      mockPaymentService.updateStatusByHash.mockResolvedValue({});
-      mockPaymentService.updatePayerAddress.mockResolvedValue({});
-
       const response = await app.inject({
         method: 'GET',
         url: `/payments/${paymentHash}`,
@@ -216,13 +213,10 @@ describe('GET /payments/:id', () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.payload);
-      expect(body.data.status).toBe('ESCROWED');
-      expect(mockPaymentService.updateStatusByHash).toHaveBeenCalledWith(
-        paymentHash,
-        'ESCROWED',
-        txHash
-      );
-      expect(mockPaymentService.updatePayerAddress).toHaveBeenCalled();
+      expect(body.data.status).toBe('PAID');
+      // DB updates are handled exclusively by the webhook-manager
+      expect(mockPaymentService.updateStatusByHash).not.toHaveBeenCalled();
+      expect(mockPaymentService.updatePayerAddress).not.toHaveBeenCalled();
     });
   });
 

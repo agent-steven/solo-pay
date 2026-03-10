@@ -93,12 +93,12 @@ General invalid request error.
 
 ### INVALID_PAYMENT_STATUS
 
-Returned when a gasless (relay) request is sent for a payment that is already in a terminal state. Gasless is only allowed when payment status is **CREATED**.
+Returned when a gasless (relay) request is sent for a payment that is already in a non-CREATED state. Gasless is only allowed when payment status is **CREATED**.
 
 ```json
 {
   "code": "INVALID_PAYMENT_STATUS",
-  "message": "Payment is in terminal state (e.g. ESCROWED, FINALIZED, CANCELLED). Gasless requests only allowed when status is CREATED."
+  "message": "Payment is in terminal state (e.g. PAID, REFUNDED, EXPIRED). Gasless requests only allowed when status is CREATED."
 }
 ```
 
@@ -108,31 +108,18 @@ Returned when a gasless (relay) request is sent for a payment that is already in
 { "code": "PAYMENT_EXPIRED", "message": "Payment has expired" }
 ```
 
-### INVALID_STATUS (Finalize / Cancel)
+### INVALID_STATUS (Refund)
 
-Returned when calling **POST /payments/:id/finalize** or **POST /payments/:id/cancel** and the payment is not in **ESCROWED** status.
+Returned when calling **POST /refunds** and the payment is not in **PAID** status.
 
 ```json
 {
   "code": "INVALID_STATUS",
-  "message": "Payment must be ESCROWED to finalize. Current status: FINALIZED"
+  "message": "Payment must be PAID to request a refund. Current status: REFUNDED"
 }
 ```
 
-**Resolution**: Only finalize or cancel when `GET /payments/:id` returns `status === "ESCROWED"`.
-
-### ESCROW_EXPIRED
-
-Returned when calling **POST /payments/:id/finalize** after the escrow deadline has passed. The response body includes this code so your backend can detect and handle it (e.g. inform the user that only on-chain cancel is possible).
-
-```json
-{
-  "code": "ESCROW_EXPIRED",
-  "message": "Escrow deadline has expired"
-}
-```
-
-**Resolution**: After the escrow deadline, finalize via API is no longer allowed. Permissionless cancel is activated, allowing anyone to call cancel on-chain. Upon calling, funds are returned to the buyer.
+**Resolution**: Only request a refund when `GET /payments/:id` returns `status === "PAID"`.
 
 ### INVALID_SIGNATURE
 
@@ -213,10 +200,10 @@ Returned when the amount in the relay request does not match the payment amount 
 
 ### PAYMENT_NOT_FINALIZED
 
-Returned when requesting a refund for a payment that is not in FINALIZED status.
+Returned when requesting a refund for a payment that is not in PAID status.
 
 ```json
-{ "code": "PAYMENT_NOT_FINALIZED", "message": "Payment must be FINALIZED to request a refund" }
+{ "code": "PAYMENT_NOT_FINALIZED", "message": "Payment must be PAID to request a refund" }
 ```
 
 ---
@@ -285,9 +272,9 @@ Payment method already exists for this merchant and token.
 { "code": "PAYMENT_ALREADY_REFUNDED", "message": "Payment has already been refunded" }
 ```
 
-### CONFLICT (Finalize / Cancel)
+### CONFLICT (Refund)
 
-Returned when **POST /payments/:id/finalize** or **POST /payments/:id/cancel** is called while another request is already processing the same payment (e.g. duplicate submit or race).
+Returned when **POST /refunds** is called while another refund request is already processing the same payment.
 
 ```json
 {
@@ -296,7 +283,7 @@ Returned when **POST /payments/:id/finalize** or **POST /payments/:id/cancel** i
 }
 ```
 
-**Resolution**: Wait and poll **GET /payments/:id** until status is FINALIZED or CANCELLED; do not retry finalize/cancel immediately.
+**Resolution**: Wait and poll **GET /payments/:id** until status is REFUNDED; do not retry the refund immediately.
 
 ### REFUND_IN_PROGRESS
 
@@ -322,7 +309,7 @@ Returned when a refund is already in progress for this payment.
 
 ### CHAIN_CONFIG_ERROR
 
-Returned when the chain or relayer configuration is missing or invalid (e.g. when calling **POST /payments/:id/finalize** or **POST /payments/:id/cancel**).
+Returned when the chain or relayer configuration is missing or invalid.
 
 ```json
 { "code": "CHAIN_CONFIG_ERROR", "message": "Chain or relayer configuration error" }
@@ -346,7 +333,7 @@ Server failed to generate a signature.
 
 ### SIGNING_SERVICE_ERROR
 
-Returned when the server fails to generate the finalize or cancel signature (e.g. **POST /payments/:id/finalize**, **POST /payments/:id/cancel**).
+Returned when the server fails to generate a required signature.
 
 ```json
 { "code": "SIGNING_SERVICE_ERROR", "message": "Failed to generate signature" }
@@ -354,7 +341,7 @@ Returned when the server fails to generate the finalize or cancel signature (e.g
 
 ### RELAYER_ERROR
 
-Returned when the relayer fails to submit the finalize or cancel transaction to the blockchain.
+Returned when the relayer fails to submit a transaction to the blockchain.
 
 ```json
 { "code": "RELAYER_ERROR", "message": "Relayer failed to submit transaction" }

@@ -624,10 +624,10 @@ describe('BlockchainService - Blockchain interaction methods', () => {
       expect(result?.status).toBe('pending');
     });
 
-    it('should return escrowed status when payment is escrowed', async () => {
+    it('should return paid status when payment is paid', async () => {
       mockClient.readContract.mockImplementation(
         async ({ functionName }: { functionName: string }) => {
-          if (functionName === 'paymentStatus') return 1n;
+          if (functionName === 'getPaymentStatus') return 1n;
           if (functionName === 'symbol') return 'SUT';
           return null;
         }
@@ -642,7 +642,7 @@ describe('BlockchainService - Blockchain interaction methods', () => {
             recipientAddress: '0x0987654321098765432109876543210987654321',
             tokenAddress: '0xE4C687167705Abf55d709395f92e254bdF5825a2',
             amount: BigInt('1000000000000000000'),
-            escrowDeadline: BigInt(1234567890 + 86400),
+            fee: BigInt(0),
             timestamp: BigInt(1234567890),
           },
           blockHash: '0x' + 'b'.repeat(64),
@@ -656,7 +656,7 @@ describe('BlockchainService - Blockchain interaction methods', () => {
       const result = await service.getPaymentStatus(80002, '0x' + 'a'.repeat(64));
 
       expect(result).toBeDefined();
-      expect(result?.status).toBe('escrowed');
+      expect(result?.status).toBe('paid');
     });
 
     it('should return pending status when error occurs', async () => {
@@ -702,7 +702,7 @@ describe('BlockchainService - Blockchain interaction methods', () => {
             recipientAddress: '0x0987654321098765432109876543210987654321',
             tokenAddress: '0xE4C687167705Abf55d709395f92e254bdF5825a2',
             amount: BigInt('1000000000000000000'),
-            escrowDeadline: BigInt(1000 + 86400),
+            fee: BigInt(0),
             timestamp: BigInt(1000),
           },
           blockHash: '0x' + 'b'.repeat(64),
@@ -716,7 +716,7 @@ describe('BlockchainService - Blockchain interaction methods', () => {
             recipientAddress: '0x0987654321098765432109876543210987654321',
             tokenAddress: '0xE4C687167705Abf55d709395f92e254bdF5825a2',
             amount: BigInt('2000000000000000000'),
-            escrowDeadline: BigInt(2000 + 86400),
+            fee: BigInt(0),
             timestamp: BigInt(2000),
           },
           blockHash: '0x' + 'e'.repeat(64),

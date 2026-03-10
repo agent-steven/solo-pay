@@ -36,10 +36,10 @@ export async function createRefundRoute(
         tags: ['Refund'],
         summary: 'Create a new refund request',
         description: `
-Creates a refund request for a finalized payment.
+Creates a refund request for a paid payment.
 
 **Requirements:**
-- Payment must be in FINALIZED status
+- Payment must be in PAID status
 - Payment must belong to the authenticated merchant
 - Payment must have a payer_address stored
 - Payment must not be already refunded
@@ -126,10 +126,10 @@ Creates a refund request for a finalized payment.
         }
 
         // 3. Check payment status
-        if (payment.status !== 'FINALIZED') {
+        if (payment.status !== 'PAID') {
           return reply.code(400).send({
             code: ErrorCodes.PAYMENT_NOT_FINALIZED,
-            message: `Payment must be FINALIZED to refund. Current status: ${payment.status}`,
+            message: `Payment must be PAID to refund. Current status: ${payment.status}`,
           });
         }
 

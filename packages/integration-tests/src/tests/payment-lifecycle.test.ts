@@ -11,15 +11,12 @@ import {
 } from '../helpers/blockchain';
 import {
   signForwardRequest,
-  signPaymentRequest,
   encodePayFunctionData,
   generatePaymentId,
   merchantKeyToId,
   getDeadline,
   ZERO_PERMIT,
-  DEFAULT_ESCROW_DURATION,
   type ForwardRequest,
-  type PaymentParams,
 } from '../helpers/signature';
 import { HARDHAT_ACCOUNTS, CONTRACT_ADDRESSES } from '../setup/wallets';
 import { getToken } from '../fixtures/token';
@@ -28,7 +25,6 @@ describe('Payment Lifecycle Integration', () => {
   const token = getToken('mockUSDT');
   const payerPrivateKey = HARDHAT_ACCOUNTS.payer.privateKey;
   const relayerPrivateKey = HARDHAT_ACCOUNTS.relayer.privateKey;
-  const signerPrivateKey = HARDHAT_ACCOUNTS.signer.privateKey;
   const payerAddress = HARDHAT_ACCOUNTS.payer.address;
   // Recipient receives payments (Account #1 - matches init.sql)
   const recipientAddress = HARDHAT_ACCOUNTS.recipient.address;
@@ -52,7 +48,7 @@ describe('Payment Lifecycle Integration', () => {
   }
 
   describe('Direct Payment Lifecycle', () => {
-    it('should transition: NOT_PROCESSED -> ESCROWED (direct)', async () => {
+    it('should transition: NOT_PROCESSED -> PAID (direct)', async () => {
       const paymentId = generatePaymentId(`LIFECYCLE_DIRECT_${Date.now()}`);
       const amount = parseUnits('10', token.decimals);
 
@@ -61,18 +57,7 @@ describe('Payment Lifecycle Integration', () => {
       const beforeProcessed = await gateway.isPaymentProcessed(paymentId);
       expect(beforeProcessed).toBe(false);
 
-      // Create server signature
       const deadline = getDeadline(1);
-      const paymentParams: PaymentParams = {
-        paymentId,
-        tokenAddress: token.address,
-        amount,
-        recipientAddress: recipientAddress,
-        merchantId,
-        deadline,
-        escrowDuration: DEFAULT_ESCROW_DURATION,
-      };
-      const serverSignature = await signPaymentRequest(paymentParams, signerPrivateKey);
 
       await approveToken(token.address, gatewayAddress, amount, payerPrivateKey);
 
@@ -85,8 +70,6 @@ describe('Payment Lifecycle Integration', () => {
         recipientAddress,
         merchantId,
         deadline,
-        DEFAULT_ESCROW_DURATION,
-        serverSignature,
         ZERO_PERMIT
       );
       await tx.wait();
@@ -97,7 +80,7 @@ describe('Payment Lifecycle Integration', () => {
   });
 
   describe('Gasless Payment Lifecycle', () => {
-    it('should transition: NOT_PROCESSED -> ESCROWED (gasless)', async () => {
+    it('should transition: NOT_PROCESSED -> PAID (gasless)', async () => {
       const paymentId = generatePaymentId(`LIFECYCLE_GASLESS_${Date.now()}`);
       const amount = parseUnits('10', token.decimals);
 
@@ -106,18 +89,7 @@ describe('Payment Lifecycle Integration', () => {
       const beforeProcessed = await gateway.isPaymentProcessed(paymentId);
       expect(beforeProcessed).toBe(false);
 
-      // Create server signature
       const paymentDeadline = getDeadline(1);
-      const paymentParams: PaymentParams = {
-        paymentId,
-        tokenAddress: token.address,
-        amount,
-        recipientAddress: recipientAddress,
-        merchantId,
-        deadline: paymentDeadline,
-        escrowDuration: DEFAULT_ESCROW_DURATION,
-      };
-      const serverSignature = await signPaymentRequest(paymentParams, signerPrivateKey);
 
       await approveToken(token.address, gatewayAddress, amount, payerPrivateKey);
 
@@ -127,9 +99,7 @@ describe('Payment Lifecycle Integration', () => {
         amount,
         recipientAddress,
         merchantId,
-        paymentDeadline,
-        DEFAULT_ESCROW_DURATION,
-        serverSignature
+        paymentDeadline
       );
       const nonce = await getNonce(payerAddress);
       const deadline = getDeadline(1);
@@ -172,18 +142,7 @@ describe('Payment Lifecycle Integration', () => {
       const paymentId = generatePaymentId(`FINALITY_${Date.now()}`);
       const amount = parseUnits('10', token.decimals);
 
-      // Create server signature
       const deadline = getDeadline(1);
-      const paymentParams: PaymentParams = {
-        paymentId,
-        tokenAddress: token.address,
-        amount,
-        recipientAddress: recipientAddress,
-        merchantId,
-        deadline,
-        escrowDuration: DEFAULT_ESCROW_DURATION,
-      };
-      const serverSignature = await signPaymentRequest(paymentParams, signerPrivateKey);
 
       await approveToken(token.address, gatewayAddress, amount * 2n, payerPrivateKey);
 
@@ -197,8 +156,6 @@ describe('Payment Lifecycle Integration', () => {
         recipientAddress,
         merchantId,
         deadline,
-        DEFAULT_ESCROW_DURATION,
-        serverSignature,
         ZERO_PERMIT
       );
       await tx.wait();
@@ -211,8 +168,6 @@ describe('Payment Lifecycle Integration', () => {
           recipientAddress,
           merchantId,
           deadline,
-          DEFAULT_ESCROW_DURATION,
-          serverSignature,
           ZERO_PERMIT
         )
       ).rejects.toThrow();
@@ -231,16 +186,6 @@ describe('Payment Lifecycle Integration', () => {
 
       for (const paymentId of paymentIds) {
         const deadline = getDeadline(1);
-        const paymentParams: PaymentParams = {
-          paymentId,
-          tokenAddress: token.address,
-          amount,
-          recipientAddress: recipientAddress,
-          merchantId,
-          deadline,
-          escrowDuration: DEFAULT_ESCROW_DURATION,
-        };
-        const serverSignature = await signPaymentRequest(paymentParams, signerPrivateKey);
 
         const wallet = getWallet(payerPrivateKey);
         const gateway = getContract(gatewayAddress, PaymentGatewayABI, wallet);
@@ -251,8 +196,6 @@ describe('Payment Lifecycle Integration', () => {
           recipientAddress,
           merchantId,
           deadline,
-          DEFAULT_ESCROW_DURATION,
-          serverSignature,
           ZERO_PERMIT
         );
         await tx.wait();

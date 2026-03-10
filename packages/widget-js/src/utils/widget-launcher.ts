@@ -87,7 +87,7 @@ export class WidgetLauncher {
     this.closePopup();
     // Build fallback failUrl for when popup is closed without postMessage
     // (e.g. browser X button). Use status=closed (not fail) because the
-    // payment may have been escrowed on-chain before the user closed.
+    // payment may have been paid on-chain before the user closed.
     // Merchant should check actual payment status via gateway API.
     try {
       const u = new URL(request.failUrl);

@@ -28,7 +28,7 @@ SoloPay API는 엔드포인트 종류에 따라 두 가지 인증 방식을 사�
 
 - 백엔드(서버 사이드)에서만 사용합니다.
 - 접두사: `sk_...`
-- 가맹점 정보 조회(`GET /merchant`), 결제 내역 조회(`GET /merchant/payments`), 결제 확정(`POST /payments/:id/finalize`), 결제 취소(`POST /payments/:id/cancel`), 환불(`POST /refunds`)에 사용됩니다.
+- 가맹점 정보 조회(`GET /merchant`), 결제 내역 조회(`GET /merchant/payments`), 환불(`POST /refunds`)에 사용됩니다.
 - 절대 프론트엔드 코드에 노출하지 마세요.
 
 ::: danger API Key 보안

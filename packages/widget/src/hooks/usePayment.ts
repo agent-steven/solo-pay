@@ -69,11 +69,7 @@ export function usePayment({ paymentDetails }: UsePaymentParams): UsePaymentRetu
   const amount = paymentDetails?.amount ? BigInt(paymentDetails.amount) : undefined;
   const recipientAddress = paymentDetails?.recipientAddress as `0x${string}` | undefined;
   const merchantId = paymentDetails?.merchantId as `0x${string}` | undefined;
-  const deadline = paymentDetails?.deadline ? BigInt(paymentDetails.deadline) : undefined;
-  const escrowDuration = paymentDetails?.escrowDuration
-    ? BigInt(paymentDetails.escrowDuration)
-    : undefined;
-  const serverSignature = paymentDetails?.serverSignature as `0x${string}` | undefined;
+  const deadline = paymentDetails?.deadline ? BigInt(paymentDetails.deadline) : BigInt(0);
 
   // EIP-2612 Permit support
   const {
@@ -93,7 +89,7 @@ export function usePayment({ paymentDetails }: UsePaymentParams): UsePaymentRetu
   const { data: isProcessed, refetch: refetchProcessed } = useReadContract({
     address: gatewayAddress,
     abi: PAYMENT_GATEWAY_ABI,
-    functionName: 'processedPayments',
+    functionName: 'isPaymentProcessed',
     args: paymentId ? [paymentId] : undefined,
     chainId: paymentDetails?.chainId,
     query: {
@@ -124,9 +120,7 @@ export function usePayment({ paymentDetails }: UsePaymentParams): UsePaymentRetu
         !amount ||
         !recipientAddress ||
         !merchantId ||
-        !deadline ||
-        !escrowDuration ||
-        !serverSignature
+        !deadline
       ) {
         console.error('Missing payment details');
         return;
@@ -148,8 +142,6 @@ export function usePayment({ paymentDetails }: UsePaymentParams): UsePaymentRetu
           recipientAddress,
           merchantId,
           deadline,
-          escrowDuration,
-          serverSignature,
           permit as { deadline: bigint; v: number; r: `0x${string}`; s: `0x${string}` },
         ],
         chainId: paymentDetails?.chainId,
@@ -164,8 +156,6 @@ export function usePayment({ paymentDetails }: UsePaymentParams): UsePaymentRetu
       recipientAddress,
       merchantId,
       deadline,
-      escrowDuration,
-      serverSignature,
       paymentDetails?.chainId,
       writeContract,
     ]

@@ -13,11 +13,9 @@ import {
 import { HARDHAT_ACCOUNTS, CONTRACT_ADDRESSES, TEST_CHAIN_ID } from '../setup/wallets';
 import { getToken } from '../fixtures/token';
 import {
-  signPaymentRequest,
   signForwardRequest,
   getDeadline,
   generatePaymentId,
-  type PaymentParams,
   type ForwardRequest,
 } from '../helpers/signature';
 import { createTestClient, TEST_MERCHANT, makeCreatePaymentParams } from '../helpers/sdk';
@@ -45,7 +43,6 @@ describe('Permit Payment Flow', () => {
   const token = getToken('test');
   const payerPrivateKey = HARDHAT_ACCOUNTS.payer.privateKey;
   const payerAddress = HARDHAT_ACCOUNTS.payer.address;
-  const signerPrivateKey = HARDHAT_ACCOUNTS.signer.privateKey;
   const recipientAddress = HARDHAT_ACCOUNTS.recipient.address;
   const gatewayAddress = CONTRACT_ADDRESSES.paymentGateway;
   const tokenAddress = CONTRACT_ADDRESSES.mockToken;
@@ -163,20 +160,7 @@ describe('Permit Payment Flow', () => {
       const paymentId = generatePaymentId(orderId);
 
       const deadline = getDeadline(1);
-      const paymentParams: PaymentParams = {
-        paymentId,
-        tokenAddress,
-        amount,
-        recipientAddress,
-        merchantId: '0x' + '00'.repeat(32),
-        deadline,
-        escrowDuration: 86400n,
-      };
-
-      // Compute merchantId same as gateway does
-      paymentParams.merchantId = solidityPackedKeccak256(['string'], ['merchant_demo_001']);
-
-      const serverSignature = await signPaymentRequest(paymentParams, signerPrivateKey);
+      const merchantId = solidityPackedKeccak256(['string'], ['merchant_demo_001']);
 
       // Sign permit instead of calling approve
       const permitDeadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
@@ -193,10 +177,8 @@ describe('Permit Payment Flow', () => {
         tokenAddress,
         amount,
         recipientAddress,
-        paymentParams.merchantId,
+        merchantId,
         deadline,
-        86400n,
-        serverSignature,
         permit
       );
       await tx.wait();
@@ -220,19 +202,6 @@ describe('Permit Payment Flow', () => {
       const merchantId = solidityPackedKeccak256(['string'], ['merchant_demo_001']);
       const deadline = getDeadline(1);
 
-      const serverSignature = await signPaymentRequest(
-        {
-          paymentId,
-          tokenAddress,
-          amount,
-          recipientAddress,
-          merchantId,
-          deadline,
-          escrowDuration: 86400n,
-        },
-        signerPrivateKey
-      );
-
       // Sign permit with expired deadline (1 second in the past)
       const expiredDeadline = BigInt(Math.floor(Date.now() / 1000) - 1);
       const permit = await signPermit(payerPrivateKey, gatewayAddress, amount, expiredDeadline);
@@ -250,8 +219,6 @@ describe('Permit Payment Flow', () => {
           recipientAddress,
           merchantId,
           deadline,
-          86400n,
-          serverSignature,
           permit
         )
       ).rejects.toThrow();
@@ -267,19 +234,6 @@ describe('Permit Payment Flow', () => {
       const merchantId = solidityPackedKeccak256(['string'], ['merchant_demo_001']);
       const deadline = getDeadline(1);
 
-      const serverSignature = await signPaymentRequest(
-        {
-          paymentId,
-          tokenAddress,
-          amount,
-          recipientAddress,
-          merchantId,
-          deadline,
-          escrowDuration: 86400n,
-        },
-        signerPrivateKey
-      );
-
       // Sign permit with a different private key (recipient instead of payer)
       const permitDeadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
       const wrongPermit = await signPermit(
@@ -292,7 +246,7 @@ describe('Permit Payment Flow', () => {
       const wallet = getWallet(payerPrivateKey);
       const gateway = getContract(gatewayAddress, PaymentGatewayABI, wallet);
 
-      // Permit signed by wrong address → _tryPermit silently fails → safeTransferFrom reverts
+      // Permit signed by wrong address -> _tryPermit silently fails -> safeTransferFrom reverts
       await expect(
         gateway.pay(
           paymentId,
@@ -301,8 +255,6 @@ describe('Permit Payment Flow', () => {
           recipientAddress,
           merchantId,
           deadline,
-          86400n,
-          serverSignature,
           wrongPermit
         )
       ).rejects.toThrow();
@@ -343,8 +295,6 @@ describe('Permit Payment Flow', () => {
         createResponse.data.recipientAddress,
         createResponse.data.merchantId,
         BigInt(createResponse.data.deadline),
-        BigInt(createResponse.data.escrowDuration),
-        createResponse.data.serverSignature,
         permit
       );
       await tx.wait();
@@ -365,19 +315,6 @@ describe('Permit Payment Flow', () => {
       const merchantId = solidityPackedKeccak256(['string'], ['merchant_demo_001']);
       const deadline = getDeadline(1);
 
-      const serverSignature = await signPaymentRequest(
-        {
-          paymentId,
-          tokenAddress,
-          amount,
-          recipientAddress,
-          merchantId,
-          deadline,
-          escrowDuration: 86400n,
-        },
-        signerPrivateKey
-      );
-
       // Sign permit
       const permitDeadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
       const permit = await signPermit(payerPrivateKey, gatewayAddress, amount, permitDeadline);
@@ -391,8 +328,6 @@ describe('Permit Payment Flow', () => {
         recipientAddress,
         merchantId,
         deadline,
-        86400n,
-        serverSignature,
         permit,
       ]);
 
