@@ -69,7 +69,7 @@ export class WidgetLauncher {
     if (mobile) {
       this.openRedirect(url);
     } else {
-      this.openPopup(url, request.failUrl);
+      this.openPopup(url, request);
     }
   }
 
@@ -82,10 +82,21 @@ export class WidgetLauncher {
    * Open widget in a popup window.
    * Uses a unique window name and explicit size/position so the browser opens a window rather than a tab.
    */
-  private openPopup(url: string, failUrl: string): void {
+  private openPopup(url: string, request: PaymentRequest): void {
     this.log('Opening popup:', url);
     this.closePopup();
-    this.pendingFailUrl = failUrl;
+    // Build fallback failUrl for when popup is closed without postMessage
+    // (e.g. browser X button). Use status=closed (not fail) because the
+    // payment may have been escrowed on-chain before the user closed.
+    // Merchant should check actual payment status via gateway API.
+    try {
+      const u = new URL(request.failUrl);
+      u.searchParams.set('orderId', request.orderId);
+      u.searchParams.set('status', 'closed');
+      this.pendingFailUrl = u.toString();
+    } catch {
+      this.pendingFailUrl = request.failUrl;
+    }
 
     const left = Math.round(window.screenX + (window.outerWidth - POPUP_WIDTH) / 2);
     const top = Math.round(window.screenY + (window.outerHeight - POPUP_HEIGHT) / 2);
@@ -109,12 +120,25 @@ export class WidgetLauncher {
       if (event.source !== popupRef) return;
       if (event.origin !== widgetOrigin) return;
       const data = event.data;
-      if (
-        !data ||
-        typeof data !== 'object' ||
-        (data.type !== 'payment_complete' && data.type !== 'wallet_connected')
-      )
+      if (!data || typeof data !== 'object') return;
+
+      // Widget sends paymentId as soon as payment is created/fetched.
+      // Append it to pendingFailUrl so fallback close includes it.
+      if (data.type === 'payment_init' && typeof data.paymentId === 'string') {
+        this.log('Payment initialized:', data.paymentId);
+        if (this.pendingFailUrl) {
+          try {
+            const u = new URL(this.pendingFailUrl);
+            u.searchParams.set('paymentId', data.paymentId);
+            this.pendingFailUrl = u.toString();
+          } catch {
+            /* ignore */
+          }
+        }
         return;
+      }
+
+      if (data.type !== 'payment_complete' && data.type !== 'wallet_connected') return;
 
       handled = true;
       this.log('Widget message:', data.type, data.status ?? '');

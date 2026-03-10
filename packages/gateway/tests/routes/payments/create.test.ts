@@ -8,6 +8,8 @@ import { ChainService, ChainWithTokens } from '../../../src/services/chain.servi
 import { TokenService } from '../../../src/services/token.service';
 import { PaymentMethodService } from '../../../src/services/payment-method.service';
 import { PaymentService } from '../../../src/services/payment.service';
+import { CurrencyService } from '../../../src/services/currency.service';
+import { PriceClient } from '../../../src/services/price-client.service';
 import { API_V1_BASE_PATH } from '../../../src/constants';
 
 const TEST_PUBLIC_KEY = 'pk_test_demo';
@@ -318,6 +320,62 @@ describe('POST /payments', () => {
       expect(body.code).toBe('VALIDATION_ERROR');
     });
 
+    it('소수 둘째자리까지의 금액은 정상 처리되어야 함', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: `${API_V1_BASE_PATH}/payments`,
+        headers: { 'x-public-key': TEST_PUBLIC_KEY, origin: TEST_ORIGIN },
+        payload: {
+          orderId: 'order-decimal-ok',
+          amount: 10.12,
+          tokenAddress: '0xE4C687167705Abf55d709395f92e254bdF5825a2',
+          successUrl: 'https://example.com/success',
+          failUrl: 'https://example.com/fail',
+        },
+      });
+
+      expect(response.statusCode).toBe(201);
+      const body = JSON.parse(response.body);
+      expect(body.data.amount).toBe('10120000000000000000');
+    });
+
+    it('소수 셋째자리 이상 금액은 400을 반환해야 함', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: `${API_V1_BASE_PATH}/payments`,
+        headers: { 'x-public-key': TEST_PUBLIC_KEY, origin: TEST_ORIGIN },
+        payload: {
+          orderId: 'order-decimal-bad',
+          amount: 10.123,
+          tokenAddress: '0xE4C687167705Abf55d709395f92e254bdF5825a2',
+          successUrl: 'https://example.com/success',
+          failUrl: 'https://example.com/fail',
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.body);
+      expect(body.code).toBe('VALIDATION_ERROR');
+      expect(body.message).toContain('2 decimal places');
+    });
+
+    it('정수 금액은 소수점 검증 없이 정상 처리되어야 함', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: `${API_V1_BASE_PATH}/payments`,
+        headers: { 'x-public-key': TEST_PUBLIC_KEY, origin: TEST_ORIGIN },
+        payload: {
+          orderId: 'order-integer',
+          amount: 100,
+          tokenAddress: '0xE4C687167705Abf55d709395f92e254bdF5825a2',
+          successUrl: 'https://example.com/success',
+          failUrl: 'https://example.com/fail',
+        },
+      });
+
+      expect(response.statusCode).toBe(201);
+    });
+
     it('음수 금액일 때 400 상태 코드를 반환해야 함', async () => {
       const invalidPayment = {
         orderId: 'order-001',
@@ -443,6 +501,114 @@ describe('POST /payments', () => {
       expect(response.statusCode).toBe(201);
       const body = JSON.parse(response.body);
       expect(body.data.amount).toBe('100000000000000000000');
+    });
+
+    it('currency 사용 시 토큰 수량이 소수 둘째자리로 절삭되어야 함', async () => {
+      const mockCurrencyService = {
+        findByCode: vi.fn().mockResolvedValue({ code: 'USD' }),
+      } as unknown as CurrencyService;
+      const mockPriceClient = {
+        getTokenPrice: vi.fn().mockResolvedValue({ price: 3 }),
+      } as unknown as PriceClient;
+
+      const currencyApp = Fastify({
+        logger: false,
+        ajv: { customOptions: { keywords: ['example'] } },
+      });
+      await currencyApp.register(cors);
+
+      await currencyApp.register(
+        async (scope) => {
+          await createPaymentRoute(
+            scope,
+            blockchainService,
+            merchantService as MerchantService,
+            chainService as ChainService,
+            tokenService as TokenService,
+            paymentMethodService as PaymentMethodService,
+            paymentService as PaymentService,
+            undefined,
+            mockCurrencyService,
+            mockPriceClient
+          );
+        },
+        { prefix: API_V1_BASE_PATH }
+      );
+
+      // 10 USD / 3 = 3.3333... → 절삭 → 3.33
+      const response = await currencyApp.inject({
+        method: 'POST',
+        url: `${API_V1_BASE_PATH}/payments`,
+        headers: { 'x-public-key': TEST_PUBLIC_KEY, origin: TEST_ORIGIN },
+        payload: {
+          orderId: 'order-currency-truncate',
+          amount: 10,
+          tokenAddress: '0xE4C687167705Abf55d709395f92e254bdF5825a2',
+          successUrl: 'https://example.com/success',
+          failUrl: 'https://example.com/fail',
+          currency: 'USD',
+        },
+      });
+
+      expect(response.statusCode).toBe(201);
+      const body = JSON.parse(response.body);
+      // 3.33 * 10^18 = 3330000000000000000
+      expect(body.data.amount).toBe('3330000000000000000');
+      await currencyApp.close();
+    });
+
+    it('currency 사용 시 변환 결과가 0이면 최소 0.01이 적용되어야 함', async () => {
+      const mockCurrencyService = {
+        findByCode: vi.fn().mockResolvedValue({ code: 'KRW' }),
+      } as unknown as CurrencyService;
+      const mockPriceClient = {
+        getTokenPrice: vi.fn().mockResolvedValue({ price: 1500 }),
+      } as unknown as PriceClient;
+
+      const currencyApp = Fastify({
+        logger: false,
+        ajv: { customOptions: { keywords: ['example'] } },
+      });
+      await currencyApp.register(cors);
+
+      await currencyApp.register(
+        async (scope) => {
+          await createPaymentRoute(
+            scope,
+            blockchainService,
+            merchantService as MerchantService,
+            chainService as ChainService,
+            tokenService as TokenService,
+            paymentMethodService as PaymentMethodService,
+            paymentService as PaymentService,
+            undefined,
+            mockCurrencyService,
+            mockPriceClient
+          );
+        },
+        { prefix: API_V1_BASE_PATH }
+      );
+
+      // 1 KRW / 1500 = 0.000667 → 절삭 → 0 → Math.max(0.01, 0) → 0.01
+      const response = await currencyApp.inject({
+        method: 'POST',
+        url: `${API_V1_BASE_PATH}/payments`,
+        headers: { 'x-public-key': TEST_PUBLIC_KEY, origin: TEST_ORIGIN },
+        payload: {
+          orderId: 'order-currency-min',
+          amount: 1,
+          tokenAddress: '0xE4C687167705Abf55d709395f92e254bdF5825a2',
+          successUrl: 'https://example.com/success',
+          failUrl: 'https://example.com/fail',
+          currency: 'KRW',
+        },
+      });
+
+      expect(response.statusCode).toBe(201);
+      const body = JSON.parse(response.body);
+      // 0.01 * 10^18 = 10000000000000000
+      expect(body.data.amount).toBe('10000000000000000');
+      await currencyApp.close();
     });
 
     it('same orderId twice returns 201 then 409 DUPLICATE_ORDER', async () => {

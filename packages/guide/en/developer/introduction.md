@@ -23,30 +23,30 @@ SoloPay's core feature is **Gasless Payment**. Users simply sign once in a walle
 
 | Chain        | Network ID | Type    |
 | ------------ | ---------- | ------- |
-| Polygon PoS  | 137        | Mainnet |
+| Polygon      | 137        | Mainnet |
 | Polygon Amoy | 80002      | Testnet |
 
 ### Service Endpoints
 
-SoloPay provides separate environments for development and production.
+SoloPay provides separate development and production environments. Both environments support Testnet (Amoy) and Mainnet (Polygon).
 
-**Development (Testnet)**
+**Development** — Updated without prior notice
 
-| Service           | URL                                 |
-| ----------------- | ----------------------------------- |
-| Payment API       | https://gateway.dev.solonetwork.io  |
-| Integration Guide | https://guide.dev.solonetwork.io    |
-| Payment Widget    | https://widget.dev.solonetwork.io   |
-| Sample Merchant   | https://merchant.dev.solonetwork.io |
+| Service           | URL                                        |
+| ----------------- | ------------------------------------------ |
+| Payment API       | https://gateway.dev.solonetwork.io         |
+| Integration Guide | https://guide.dev.solonetwork.io           |
+| Payment Widget    | https://widget.dev.solonetwork.io          |
+| Sample Merchant   | https://sample-merchant.dev.solonetwork.io |
 
-**Production (Mainnet)**
+**Production** — Updated with prior notice of changes
 
-| Service           | URL                             |
-| ----------------- | ------------------------------- |
-| Payment API       | https://gateway.solonetwork.io  |
-| Integration Guide | https://guide.solonetwork.io    |
-| Payment Widget    | https://widget.solonetwork.io   |
-| Sample Merchant   | https://merchant.solonetwork.io |
+| Service           | URL                                    |
+| ----------------- | -------------------------------------- |
+| Payment API       | https://gateway.solonetwork.io         |
+| Integration Guide | https://guide.solonetwork.io           |
+| Payment Widget    | https://widget.solonetwork.io          |
+| Sample Merchant   | https://sample-merchant.solonetwork.io |
 
 ::: warning Production Environment
 The production environment is not yet publicly available. Please use the development endpoints for integration and testing.
@@ -77,10 +77,10 @@ Contact the SoloPay operations team to register as a merchant. The following inf
 
 After merchant registration, you will receive two keys from the operations team.
 
-| Key Type       | Prefix                        | Purpose                             | Usage                |
-| -------------- | ----------------------------- | ----------------------------------- | -------------------- |
-| **API Key**    | `sk_...`                      | Admin/management operations (setup) | Never in client code |
-| **Public Key** | `pk_test_...` / `pk_live_...` | Payment creation, status queries    | Client-side (widget) |
+| Key Type       | Prefix   | Purpose                             | Usage                |
+| -------------- | -------- | ----------------------------------- | -------------------- |
+| **API Key**    | `sk_...` | Admin/management operations (setup) | Never in client code |
+| **Public Key** | `pk_...` | Payment creation, status queries    | Client-side (widget) |
 
 ::: danger API Key Security
 Never include API Keys starting with `sk_` in frontend code. The API Key is for admin/management setup only and is not required for client-side widget integration.

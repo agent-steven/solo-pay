@@ -29,10 +29,10 @@ If you need a custom flow instead of the widget, follow the steps below. All ste
 Call `POST /payments` with the `x-public-key` header. This can be called directly from the browser.
 
 ```typescript
-const response = await fetch('https://pay-api.staging.sut.com/api/v1/payments', {
+const response = await fetch('https://gateway.dev.solonetwork.io/api/v1/payments', {
   method: 'POST',
   headers: {
-    'x-public-key': 'pk_test_xxxxx',
+    'x-public-key': 'pk_xxxxx',
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
@@ -165,11 +165,11 @@ The `pay` function requires `deadline`, `escrowDuration`, and `serverSignature` 
 
 ```typescript
 const result = await fetch(
-  `https://pay-api.staging.sut.com/api/v1/payments/${payment.paymentId}/relay`,
+  `https://gateway.dev.solonetwork.io/api/v1/payments/${payment.paymentId}/relay`,
   {
     method: 'POST',
     headers: {
-      'x-public-key': 'pk_test_xxxxx',
+      'x-public-key': 'pk_xxxxx',
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -195,16 +195,19 @@ const result = await fetch(
 ```typescript
 // Relay status (by paymentId)
 const relayStatus = await fetch(
-  `https://pay-api.staging.sut.com/api/v1/payments/${paymentId}/relay`,
-  { headers: { 'x-public-key': 'pk_test_xxxxx' } }
+  `https://gateway.dev.solonetwork.io/api/v1/payments/${paymentId}/relay`,
+  { headers: { 'x-public-key': 'pk_xxxxx' } }
 ).then((r) => r.json());
 // relayStatus.data.status: 'QUEUED' | 'SUBMITTED' | 'CONFIRMED' | 'FAILED'
 
 // Payment status
-const paymentStatus = await fetch(`https://pay-api.staging.sut.com/api/v1/payments/${paymentId}`, {
-  headers: { 'x-public-key': 'pk_test_xxxxx' },
-}).then((r) => r.json());
-// paymentStatus.data.status: 'CREATED' | 'ESCROWED' | 'FINALIZE_SUBMITTED' | 'FINALIZED' | 'CANCEL_SUBMITTED' | 'CANCELLED' | 'REFUND_SUBMITTED' | 'REFUNDED' | 'EXPIRED' | 'FAILED'
+const paymentStatus = await fetch(
+  `https://gateway.dev.solonetwork.io/api/v1/payments/${paymentId}`,
+  {
+    headers: { 'x-public-key': 'pk_xxxxx' },
+  }
+).then((r) => r.json());
+// paymentStatus.data.status: 'CREATED' | 'ESCROWED' | 'FINALIZE_SUBMITTED' | 'FINALIZED' | 'CANCEL_SUBMITTED' | 'CANCELLED' | 'EXPIRED' | 'FAILED'
 ```
 
 ## Full Example (React + wagmi)
@@ -251,10 +254,10 @@ function GaslessPayment({ payment }) {
     });
 
     const result = await fetch(
-      `https://pay-api.staging.sut.com/api/v1/payments/${paymentId}/relay`,
+      `https://gateway.dev.solonetwork.io/api/v1/payments/${paymentId}/relay`,
       {
         method: 'POST',
-        headers: { 'x-public-key': 'pk_test_xxxxx', 'Content-Type': 'application/json' },
+        headers: { 'x-public-key': 'pk_xxxxx', 'Content-Type': 'application/json' },
         body: JSON.stringify({
           paymentId, forwarderAddress,
           forwardRequest: {

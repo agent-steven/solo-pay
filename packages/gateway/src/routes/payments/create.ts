@@ -270,6 +270,17 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
         let fiatAmount: number | undefined;
         let tokenPrice: number | undefined;
 
+        // When no currency, amount is the token amount directly — enforce 2 decimal places
+        if (!validated.currency) {
+          const decimalPart = validated.amount.toString().split('.')[1];
+          if (decimalPart && decimalPart.length > 2) {
+            return reply.code(400).send({
+              code: ErrorCodes.VALIDATION_ERROR,
+              message: 'amount must have at most 2 decimal places',
+            });
+          }
+        }
+
         if (validated.currency) {
           if (!currencyService || !priceClient) {
             return reply.code(500).send({
@@ -291,7 +302,7 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
           currencyCode = currency.code;
           fiatAmount = validated.amount;
           tokenPrice = priceData.price;
-          tokenAmount = fiatAmount / tokenPrice;
+          tokenAmount = Math.max(0.01, Math.floor((fiatAmount / tokenPrice) * 100) / 100);
         }
 
         const amountInWei = parseUnits(tokenAmount.toString(), tokenDecimals);
@@ -346,7 +357,8 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
           }
         }
 
-        const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+        const paymentExpirySeconds = Number(process.env.PAYMENT_EXPIRY_SECONDS) || 300;
+        const expiresAt = new Date(Date.now() + paymentExpirySeconds * 1000);
         const escrowDeadline = new Date(Date.now() + Number(escrowDuration) * 1000);
         await paymentService.create({
           payment_hash: paymentHash,

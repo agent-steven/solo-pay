@@ -28,7 +28,7 @@ npm install @solo-pay/widget-js
 import { SoloPay } from '@solo-pay/widget-js';
 
 const solopay = new SoloPay({
-  publicKey: 'pk_test_xxxxx', // Your issued Public Key
+  publicKey: 'pk_xxxxx', // Your issued Public Key
 });
 
 solopay.requestPayment({
@@ -64,23 +64,24 @@ URL parameters can be manipulated by the user. Always **verify payment status vi
 As soon as the `paymentId` is received from the callback URL, call the status API to verify payment. The `GET /payments/:id` endpoint uses the `x-public-key` header, which can be called from the browser.
 
 ```typescript
-const response = await fetch(`https://pay-api.staging.sut.com/api/v1/payments/0xabc123...`, {
-  headers: { 'x-public-key': 'pk_test_xxxxx' },
+const response = await fetch(`https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123...`, {
+  headers: { 'x-public-key': 'pk_xxxxx' },
 });
 const result = await response.json();
 ```
 
 **Verification Checklist**
 
-- [ ] Confirm `status === 'ESCROWED'` or `status === 'FINALIZED'`
+- [ ] Confirm `status === 'ESCROWED'` (payment success)
 - [ ] Confirm `amount` matches order amount
 - [ ] Confirm `tokenAddress` matches the expected token
 - [ ] Confirm `orderId` matches the expected orderId
 - [ ] Prevent duplicate completion processing for the same `paymentId`
+- [ ] Call finalize from server, then complete the order only after confirming `FINALIZED` status
 
 ## Webhook Integration (Recommended)
 
-The callback URL approach can fail if the user closes the browser. **Using it with Webhooks** allows reliable payment completion reception even when the user does not return to the success page.
+The callback URL approach is browser-redirect based and can be lost due to network issues. **Using it with Webhooks** allows reliable payment completion reception even when the user does not return to the success page.
 
 - [View Webhook Setup Guide](/en/webhooks/)
 

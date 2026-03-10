@@ -11,16 +11,17 @@ Webhook payload의 내용을 그대로 신뢰하지 마세요. 반드시 API를 
 :::
 
 ```bash
-curl https://pay-api.staging.sut.com/api/v1/payments/0xabc123... \
-  -H "x-public-key: pk_test_xxxxx"
+curl https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123... \
+  -H "x-public-key: pk_xxxxx"
 ```
 
 **검증 체크리스트**
 
-- [ ] `status === 'ESCROWED'` 또는 `status === 'FINALIZED'` 확인 (결제 성공)
+- [ ] `status === 'ESCROWED'` 확인 (결제 성공)
 - [ ] `amount`가 주문 금액과 일치 확인
 - [ ] `orderId`가 DB에 저장된 orderId와 일치 확인
 - [ ] 동일 `paymentId`의 중복 처리 방지
+- [ ] finalize 호출 후, `FINALIZED` 상태를 확인한 뒤 주문 완료 처리
 
 ## 멱등성 처리
 

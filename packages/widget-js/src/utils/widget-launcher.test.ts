@@ -10,6 +10,9 @@ const PUBLIC_KEY = 'pk_test_123';
 const FAIL_URL = 'https://merchant.example.com/fail';
 const SUCCESS_URL = 'https://merchant.example.com/success';
 
+/** Fallback failUrl built by widget-js (includes orderId + status from request). */
+const FALLBACK_FAIL_URL = `${FAIL_URL}?orderId=order-1&status=closed`;
+
 function makeRequest(overrides = {}) {
   return {
     orderId: 'order-1',
@@ -165,6 +168,22 @@ describe('WidgetLauncher', () => {
       expect(mockPopup.close).toHaveBeenCalled();
     });
 
+    it('should redirect to failUrl with status=closed from processing cancel', () => {
+      const onClose = vi.fn();
+      launcher.open(makeRequest(), { onClose });
+
+      const closedUrl = `${FAIL_URL}?paymentId=pay-1&orderId=order-1&status=closed`;
+      dispatchWidgetMessage(mockPopup, {
+        type: 'payment_complete',
+        status: 'fail',
+        failUrl: closedUrl,
+      });
+
+      expect(window.location.href).toBe(closedUrl);
+      expect(new URL(window.location.href).searchParams.get('status')).toBe('closed');
+      expect(onClose).toHaveBeenCalledOnce();
+    });
+
     it('should handle wallet_connected message type', () => {
       launcher.open(makeRequest());
 
@@ -236,7 +255,7 @@ describe('WidgetLauncher', () => {
   // Popup close detection (user closes browser X)
   // -----------------------------------------------------------------------
   describe('popup close detection (browser X button)', () => {
-    it('should call onClose and redirect to raw failUrl when popup closed without message', () => {
+    it('should call onClose and redirect to fallback failUrl with orderId when popup closed without message', () => {
       const onClose = vi.fn();
       launcher.open(makeRequest(), { onClose });
 
@@ -249,7 +268,112 @@ describe('WidgetLauncher', () => {
       vi.advanceTimersByTime(150);
 
       expect(onClose).toHaveBeenCalledOnce();
-      expect(window.location.href).toBe(FAIL_URL);
+      // Fallback includes orderId+status but not paymentId (unknown to widget-js)
+      expect(window.location.href).toBe(FALLBACK_FAIL_URL);
+    });
+
+    it('should include paymentId in fallback when payment_init was received', () => {
+      launcher.open(makeRequest());
+
+      // Widget notifies paymentId after creation
+      dispatchWidgetMessage(mockPopup, { type: 'payment_init', paymentId: 'pay-abc' });
+
+      // User closes popup via browser X
+      (mockPopup as { closed: boolean }).closed = true;
+      vi.advanceTimersByTime(300 + 150);
+
+      const redirected = new URL(window.location.href);
+      expect(redirected.searchParams.get('orderId')).toBe('order-1');
+      expect(redirected.searchParams.get('paymentId')).toBe('pay-abc');
+      expect(redirected.searchParams.get('status')).toBe('closed');
+    });
+
+    it('should receive payment_init when popup source matches', () => {
+      launcher.open(makeRequest());
+
+      // payment_init sent from the SAME popup reference (normal case)
+      dispatchWidgetMessage(mockPopup, { type: 'payment_init', paymentId: 'pay-match' });
+
+      (mockPopup as { closed: boolean }).closed = true;
+      vi.advanceTimersByTime(300 + 150);
+
+      expect(new URL(window.location.href).searchParams.get('paymentId')).toBe('pay-match');
+    });
+
+    it('should ignore payment_init when popup source does NOT match (different window ref)', () => {
+      launcher.open(makeRequest());
+
+      // payment_init sent from a DIFFERENT window (simulates source mismatch)
+      const differentPopup = createMockPopup();
+      dispatchWidgetMessage(differentPopup, { type: 'payment_init', paymentId: 'pay-wrong' });
+
+      (mockPopup as { closed: boolean }).closed = true;
+      vi.advanceTimersByTime(300 + 150);
+
+      // paymentId should NOT be in the URL — payment_init was ignored
+      expect(new URL(window.location.href).searchParams.get('paymentId')).toBeNull();
+    });
+
+    it('should ignore payment_init from wrong origin', () => {
+      launcher.open(makeRequest());
+
+      // payment_init with correct source but wrong origin
+      dispatchWidgetMessage(
+        mockPopup,
+        { type: 'payment_init', paymentId: 'pay-evil' },
+        'https://evil.com'
+      );
+
+      (mockPopup as { closed: boolean }).closed = true;
+      vi.advanceTimersByTime(300 + 150);
+
+      expect(new URL(window.location.href).searchParams.get('paymentId')).toBeNull();
+    });
+
+    it('should receive payment_init when widgetUrl has path (origin still matches)', () => {
+      // widgetUrl with path — origin should still match
+      const launcherWithPath = new WidgetLauncher({
+        publicKey: PUBLIC_KEY,
+        widgetUrl: WIDGET_URL + '/payment/checkout',
+      });
+
+      vi.stubGlobal(
+        'open',
+        vi.fn(() => mockPopup)
+      );
+      launcherWithPath.open(makeRequest());
+
+      // postMessage origin = widget origin (no path)
+      dispatchWidgetMessage(mockPopup, { type: 'payment_init', paymentId: 'pay-path' });
+
+      (mockPopup as { closed: boolean }).closed = true;
+      vi.advanceTimersByTime(300 + 150);
+
+      expect(new URL(window.location.href).searchParams.get('paymentId')).toBe('pay-path');
+    });
+
+    it('should use latest paymentId when multiple payment_init received', () => {
+      launcher.open(makeRequest());
+
+      dispatchWidgetMessage(mockPopup, { type: 'payment_init', paymentId: 'pay-first' });
+      dispatchWidgetMessage(mockPopup, { type: 'payment_init', paymentId: 'pay-second' });
+
+      (mockPopup as { closed: boolean }).closed = true;
+      vi.advanceTimersByTime(300 + 150);
+
+      expect(new URL(window.location.href).searchParams.get('paymentId')).toBe('pay-second');
+    });
+
+    it('should receive payment_init even when popup closes immediately after', () => {
+      launcher.open(makeRequest());
+
+      // payment_init arrives, then popup closes in same tick
+      dispatchWidgetMessage(mockPopup, { type: 'payment_init', paymentId: 'pay-quick' });
+      (mockPopup as { closed: boolean }).closed = true;
+
+      vi.advanceTimersByTime(300 + 150);
+
+      expect(new URL(window.location.href).searchParams.get('paymentId')).toBe('pay-quick');
     });
 
     it('should not double-fire onClose', () => {
@@ -296,15 +420,15 @@ describe('WidgetLauncher', () => {
       expect(onClose).toHaveBeenCalledOnce();
     });
 
-    it('should fall back to raw failUrl when no postMessage arrives within grace period', () => {
+    it('should fall back to failUrl with orderId when no postMessage arrives within grace period', () => {
       launcher.open(makeRequest());
 
       (mockPopup as { closed: boolean }).closed = true;
       vi.advanceTimersByTime(300); // Polling detects
       vi.advanceTimersByTime(150); // Grace period expires
 
-      // Raw failUrl (no paymentId/orderId params)
-      expect(window.location.href).toBe(FAIL_URL);
+      // Fallback includes orderId+status but not paymentId
+      expect(window.location.href).toBe(FALLBACK_FAIL_URL);
     });
 
     it('should use enriched URL on success during race condition', () => {

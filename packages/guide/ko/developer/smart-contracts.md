@@ -10,10 +10,10 @@ SoloPay 결제 시스템을 구성하는 스마트 컨트랙트의 주소 및 �
 
 ### Polygon Amoy (80002)
 
-| 컨트랙트             | 주소                                           |
-| -------------------- | ---------------------------------------------- |
-| **PaymentGateway**   | `GET /payments` 응답의 `gatewayAddress` 참조   |
-| **ERC2771Forwarder** | `GET /payments` 응답의 `forwarderAddress` 참조 |
+| 컨트랙트             | 주소                                            |
+| -------------------- | ----------------------------------------------- |
+| **PaymentGateway**   | `POST /payments` 응답의 `gatewayAddress` 참조   |
+| **ERC2771Forwarder** | `POST /payments` 응답의 `forwarderAddress` 참조 |
 
 ::: tip 왜 주소를 직접 하드코딩하지 않나요?
 컨트랙트 주소는 체인별/가맹점별로 다를 수 있으며, 업그레이드 시 변경될 수 있습니다. **결제 생성 API 응답**에 항상 최신 주소가 포함되므로, 해당 값을 신뢰하세요.

@@ -28,7 +28,7 @@ npm install @solo-pay/widget-js
 import { SoloPay } from '@solo-pay/widget-js';
 
 const solopay = new SoloPay({
-  publicKey: 'pk_test_xxxxx', // 발급받은 Public Key
+  publicKey: 'pk_xxxxx', // 발급받은 Public Key
 });
 
 solopay.requestPayment({
@@ -64,23 +64,24 @@ URL 파라미터는 사용자가 조작할 수 있습니다. 반드시 **API를 
 Callback URL에서 `paymentId`를 받은 즉시, 상태 조회 API를 호출하여 결제 상태를 검증합니다. `GET /payments/:id` 엔드포인트는 `x-public-key` 헤더를 사용하며 브라우저에서 직접 호출할 수 있습니다.
 
 ```typescript
-const response = await fetch(`https://pay-api.staging.sut.com/api/v1/payments/0xabc123...`, {
-  headers: { 'x-public-key': 'pk_test_xxxxx' },
+const response = await fetch(`https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123...`, {
+  headers: { 'x-public-key': 'pk_xxxxx' },
 });
 const result = await response.json();
 ```
 
 **검증 체크리스트**
 
-- [ ] `status === 'ESCROWED'` 또는 `status === 'FINALIZED'` 확인
+- [ ] `status === 'ESCROWED'` 확인 (결제 성공)
 - [ ] `amount`가 주문 금액과 일치 확인
 - [ ] `tokenAddress`가 기대한 토큰과 일치 확인
 - [ ] `orderId`가 기대한 orderId와 일치 확인
 - [ ] 동일 `paymentId`의 중복 완료 처리 방지
+- [ ] 서버에서 finalize 호출 후, `FINALIZED` 상태를 확인한 뒤 주문 완료 처리
 
 ## Webhook 연동 (권장)
 
-Callback URL 방식은 사용자가 브라우저를 닫으면 실패할 수 있습니다. **Webhook과 함께 사용**하면 사용자가 성공 페이지로 돌아오지 않아도 결제 완료를 안정적으로 수신할 수 있습니다.
+Callback URL 방식은 리다이렉트 기반이므로 네트워크 장애 등으로 유실될 수 있습니다. **Webhook과 함께 사용**하면 사용자가 성공 페이지로 돌아오지 않아도 결제 완료를 안정적으로 수신할 수 있습니다.
 
 - [Webhook 설정 가이드 보기](/ko/webhooks/)
 
