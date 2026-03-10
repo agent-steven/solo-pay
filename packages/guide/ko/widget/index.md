@@ -79,6 +79,45 @@ solopay.requestPayment(
 );
 ```
 
+## amount와 currency 동작 방식
+
+`amount`의 해석 방식은 `currency` 제공 여부에 따라 달라집니다.
+
+| `currency` | `amount` 해석 |
+|---|---|
+| 제공 (예: `'USD'`, `'KRW'`) | **법정화폐 금액** — 실시간 시세로 토큰 수량 자동 변환 |
+| 생략 | **토큰 수량 직접 지정** — 변환 없이 그대로 사용 |
+
+**예시 1: USD 기준 결제 (currency 제공)**
+```typescript
+// amount: 25.5 USD → 실시간 USDT 시세로 변환
+solopay.requestPayment({
+  orderId: 'order-001',
+  amount: '25.5',
+  currency: 'USD',
+  tokenAddress: '0xE4C687167705Abf55d709395f92e254bdF5825a2',
+  successUrl: 'https://myshop.com/payment/success',
+  failUrl: 'https://myshop.com/payment/fail',
+});
+```
+
+**예시 2: 토큰 수량 직접 지정 (currency 생략)**
+```typescript
+// amount: 25.5 USDT 직접 지정 (변환 없음)
+solopay.requestPayment({
+  orderId: 'order-001',
+  amount: '25.5',
+  // currency 생략 → amount가 토큰 수량으로 그대로 사용됨
+  tokenAddress: '0xE4C687167705Abf55d709395f92e254bdF5825a2',
+  successUrl: 'https://myshop.com/payment/success',
+  failUrl: 'https://myshop.com/payment/fail',
+});
+```
+
+::: tip currency를 생략하면?
+`currency`를 생략하면 `amount`가 **토큰 수량**으로 직접 처리됩니다. 예를 들어 USDT 토큰에 `amount: '25.5'`를 전달하면 정확히 25.5 USDT를 요청합니다. 환율 변환이 필요 없는 경우 사용합니다.
+:::
+
 ## 동작 방식
 
 - **PC 환경**: 팝업 창으로 위젯이 열립니다.

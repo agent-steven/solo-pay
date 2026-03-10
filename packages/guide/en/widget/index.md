@@ -79,6 +79,45 @@ solopay.requestPayment(
 );
 ```
 
+## amount and currency Behavior
+
+How `amount` is interpreted depends on whether `currency` is provided.
+
+| `currency` | `amount` interpretation |
+|---|---|
+| Provided (e.g., `'USD'`, `'KRW'`) | **Fiat amount** — automatically converted to token amount using real-time price |
+| Omitted | **Token amount directly** — used as-is, no conversion |
+
+**Example 1: USD-based payment (currency provided)**
+```typescript
+// amount: 25.5 USD → converted to token amount at real-time price
+solopay.requestPayment({
+  orderId: 'order-001',
+  amount: '25.5',
+  currency: 'USD',
+  tokenAddress: '0xE4C687167705Abf55d709395f92e254bdF5825a2',
+  successUrl: 'https://myshop.com/payment/success',
+  failUrl: 'https://myshop.com/payment/fail',
+});
+```
+
+**Example 2: Token amount directly (currency omitted)**
+```typescript
+// amount: 25.5 USDT directly (no conversion)
+solopay.requestPayment({
+  orderId: 'order-001',
+  amount: '25.5',
+  // currency omitted → amount is used as token amount directly
+  tokenAddress: '0xE4C687167705Abf55d709395f92e254bdF5825a2',
+  successUrl: 'https://myshop.com/payment/success',
+  failUrl: 'https://myshop.com/payment/fail',
+});
+```
+
+::: tip What happens when currency is omitted?
+When `currency` is omitted, `amount` is treated as the **token amount** directly. For example, passing `amount: '25.5'` with a USDT token requests exactly 25.5 USDT. Use this when no currency conversion is needed.
+:::
+
 ## How It Works
 
 - **Desktop**: The widget opens as a popup window.

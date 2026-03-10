@@ -25,7 +25,11 @@ export interface WidgetUrlParams {
   successUrl: string;
   /** Redirect URL on failure (required in creation mode) */
   failUrl: string;
-  /** Fiat currency code (optional, e.g., USD, KRW) */
+  /**
+   * Fiat currency code (optional, e.g., USD, KRW).
+   * When provided, `amount` is treated as fiat amount and converted to token amount using real-time price.
+   * When omitted, `amount` is treated as token amount directly (no conversion).
+   */
   currency?: string;
   /** If true, only connect wallet — no gateway API or payment flow */
   walletOnly?: boolean;
