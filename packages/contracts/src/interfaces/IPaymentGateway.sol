@@ -20,6 +20,7 @@ interface IPaymentGateway {
     address token;
     address recipient;
     uint256 amount;
+    uint256 deadline;
     bytes32 merchantId;
   }
 

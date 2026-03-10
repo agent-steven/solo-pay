@@ -160,6 +160,7 @@ contract PaymentGatewayV1 is
       token: tokenAddress,
       recipient: recipientAddress,
       amount: amount,
+      deadline: deadline,
       merchantId: merchantId
     });
 
@@ -186,6 +187,7 @@ contract PaymentGatewayV1 is
    * @param tokenAddress Token address
    * @param amount Payment amount
    * @param recipientAddress Recipient address
+   * @param deadline Payment expiration timestamp (0 to skip)
    */
   function _validatePayment(
     bytes32 paymentId,
