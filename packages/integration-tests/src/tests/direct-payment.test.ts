@@ -31,6 +31,11 @@ describe('Direct Payment Integration', () => {
     if (balance < parseUnits('1000', token.decimals)) {
       await mintTokens(token.address, payerAddress, parseUnits('10000', token.decimals));
     }
+
+    // Ensure fee is 0 at test start (may be non-zero from previous runs)
+    const deployerWallet = getWallet(HARDHAT_ACCOUNTS.deployer.privateKey);
+    const gatewayAsDeployer = getContract(gatewayAddress, PaymentGatewayABI, deployerWallet);
+    await (await gatewayAsDeployer.setFeeBps(0)).wait();
   });
 
   it('should complete a direct payment successfully with no fee', async () => {

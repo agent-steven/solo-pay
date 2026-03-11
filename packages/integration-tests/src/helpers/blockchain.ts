@@ -13,14 +13,8 @@ export const PaymentGatewayABI = PaymentGatewayArtifact.abi;
 export const MockERC20ABI = MockERC20Artifact.abi;
 export const ERC2771ForwarderABI = ERC2771ForwarderArtifact.abi;
 
-// Shared provider singleton to avoid nonce race conditions between wallet instances
-let sharedProvider: JsonRpcProvider | null = null;
-
 export function getProvider(): JsonRpcProvider {
-  if (!sharedProvider) {
-    sharedProvider = new JsonRpcProvider(RPC_URL);
-  }
-  return sharedProvider;
+  return new JsonRpcProvider(RPC_URL, undefined, { cacheTimeout: 0 });
 }
 
 export function getWallet(privateKey: string): Wallet {
