@@ -69,7 +69,7 @@ export default function MerchantsClient({ merchants, chains }: Props) {
     setIsPending(true);
     try {
       const result = await rotateApiKey(id);
-      setNewApiKey(result.apiKey);
+      setNewApiKey(result.apiKey ?? null);
     } finally {
       setIsPending(false);
     }
