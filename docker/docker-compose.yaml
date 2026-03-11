@@ -377,6 +377,29 @@ services:
     networks:
       - solo-pay-network
 
+  # Admin Dashboard (Next.js)
+  admin-dashboard:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.packages
+      target: admin-dashboard
+    image: 347765734000.dkr.ecr.ap-northeast-2.amazonaws.com/solo-pay/admin-dashboard:nightly
+    container_name: solo-pay-admin-dashboard
+    restart: always
+    ports:
+      - '3007:3007'
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: mysql://solopay:pass@mysql:3306/solopay
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-solopay}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-solopay}
+      ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET:-solopay-admin-secret}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - solo-pay-network
+
 networks:
   solo-pay-network:
     driver: bridge
