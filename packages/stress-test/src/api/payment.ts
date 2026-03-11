@@ -303,10 +303,9 @@ async function submitRelay(
 const CONFIRM_POLL_INTERVAL_MS = 3000;
 const CONFIRM_TIMEOUT_MS = 120_000;
 // Terminal statuses: payment flow is complete (no further action needed for stress test)
-// ESCROWED: payment successful and held in escrow (merchant can finalize later)
-// FINALIZED: payment finalized (escrow released to merchant)
-// CONFIRMED: payment confirmed (for backwards compatibility / direct payment without escrow)
-const TERMINAL_STATUSES = ['ESCROWED', 'FINALIZED', 'CONFIRMED', 'FAILED', 'EXPIRED'];
+// PAID: payment successful and funds transferred directly to merchant wallet
+// INVALID: payment detected but validation failed (amount/token/recipient mismatch)
+const TERMINAL_STATUSES = ['PAID', 'REFUNDED', 'FAILED', 'EXPIRED', 'INVALID'];
 
 interface PaymentStatusResponse {
   success: boolean;
@@ -318,7 +317,7 @@ interface PaymentStatusResponse {
 }
 
 /**
- * Poll GET /payments/:id until status reaches a terminal state (ESCROWED, FINALIZED, CONFIRMED, FAILED, EXPIRED)
+ * Poll GET /payments/:id until status reaches a terminal state (PAID, REFUNDED, FAILED, EXPIRED, INVALID)
  */
 async function pollPaymentStatus(
   config: NetworkConfig,
@@ -436,8 +435,8 @@ export async function executePayment(
     // Step 4: Poll for on-chain confirmation (wait for ESCROWED)
     const confirmResult = await pollPaymentStatus(config, payment.paymentId);
 
-    // ESCROWED is success for user payment flow (merchant will finalize later)
-    const successStatuses = ['ESCROWED', 'FINALIZED', 'CONFIRMED'];
+    // PAID is success - funds transferred directly to merchant wallet
+    const successStatuses = ['PAID'];
     const isSuccess = successStatuses.includes(confirmResult.status);
 
     result.steps.confirm = {
@@ -452,8 +451,7 @@ export async function executePayment(
       );
     }
 
-    // Success! ESCROWED means user payment is complete (tokens held in escrow).
-    // Merchant finalize is a separate flow tested elsewhere.
+    // Success! PAID means payment is complete (funds transferred to merchant).
     result.success = true;
   } catch (error) {
     result.error = error instanceof Error ? error.message : 'Unknown error';

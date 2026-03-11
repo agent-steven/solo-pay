@@ -128,7 +128,7 @@ Creates a refund request for a paid payment.
         // 3. Check payment status
         if (payment.status !== 'PAID') {
           return reply.code(400).send({
-            code: ErrorCodes.PAYMENT_NOT_FINALIZED,
+            code: ErrorCodes.PAYMENT_NOT_PAID,
             message: `Payment must be PAID to refund. Current status: ${payment.status}`,
           });
         }

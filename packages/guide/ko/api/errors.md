@@ -259,12 +259,12 @@ EIP-712 서명 검증에 실패했습니다.
 { "code": "AMOUNT_MISMATCH", "message": "Payment amount mismatch" }
 ```
 
-### PAYMENT_NOT_FINALIZED
+### PAYMENT_NOT_PAID
 
 PAID 상태가 아닌 결제에 대해 환불을 요청할 때 반환됩니다.
 
 ```json
-{ "code": "PAYMENT_NOT_FINALIZED", "message": "Payment must be PAID to request a refund" }
+{ "code": "PAYMENT_NOT_PAID", "message": "Payment must be PAID to request a refund" }
 ```
 
 ---

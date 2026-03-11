@@ -22,21 +22,7 @@ export interface PaymentStatus {
   amount: number;
   currency: 'USD' | 'EUR' | 'KRW';
   tokenAddress: string;
-  status:
-    | 'pending'
-    | 'confirmed'
-    | 'failed'
-    | 'completed'
-    | 'CREATED'
-    | 'ESCROWED'
-    | 'FINALIZE_SUBMITTED'
-    | 'FINALIZED'
-    | 'CANCEL_SUBMITTED'
-    | 'CANCELLED'
-    | 'REFUND_SUBMITTED'
-    | 'REFUNDED'
-    | 'EXPIRED'
-    | 'FAILED';
+  status: 'CREATED' | 'PAID' | 'REFUND_SUBMITTED' | 'REFUNDED' | 'EXPIRED' | 'FAILED' | 'INVALID';
   transactionHash?: string;
   blockNumber?: number;
   createdAt: string;
