@@ -1,9 +1,14 @@
+import { useRef } from 'react';
+import { motion } from 'framer-motion';
+import { useGSAP } from '@gsap/react';
+import gsap from 'gsap';
 import { useLocale } from '../../context/LocaleContext';
 import { type PaymentProgressState } from '../../hooks/useGaslessPayment';
+import { LetterGlitch, AsciiProgressBar, DotFlowLoader } from '../ui/processing-card';
+import { TechScrambleButton } from '../ui/tech-scramble-button';
 
 type StepStatus = 'waiting' | 'processing' | 'completed';
 
-/** Maps PaymentProgressState to i18n progress.* keys (INIT/CHECKING_ALLOWANCE → SIGNING_PERMIT) */
 const PROGRESS_KEYS: Record<
   PaymentProgressState,
   | 'progress.SIGNING_PERMIT'
@@ -26,79 +31,43 @@ const PROGRESS_KEYS: Record<
 interface PaymentProcessingProps {
   amount: string;
   token: string;
-  /** Current progress state from the payment hook */
   progressState?: PaymentProgressState;
-  /** Retry payment after error */
   onRetry?: () => void;
-  /** Cancel and redirect to failUrl */
   onCancel?: () => void;
-  /** Error message from payment */
   error?: string;
 }
 
-function StepRow({
-  label,
-  status,
-  isLast = false,
-}: {
-  label: string;
-  status: StepStatus;
-  isLast?: boolean;
-}) {
-  const isPending = status === 'processing' || status === 'completed';
+function getProgressPercentage(state: PaymentProgressState, hasError: boolean): number {
+  if (hasError) return 100;
+  switch (state) {
+    case 'INIT':
+    case 'CHECKING_ALLOWANCE':
+    case 'SIGNING_PERMIT':
+    case 'SIGNING_FORWARD':
+      return 33;
+    case 'RELAYING':
+      return 66;
+    case 'CONFIRMING':
+      return 80;
+    case 'PAID':
+      return 100;
+    case 'ERROR':
+      return 100;
+    default:
+      return 33;
+  }
+}
 
-  return (
-    <div
-      className={`relative flex items-start gap-4 transition-opacity duration-300 ${isPending ? 'opacity-100' : 'opacity-40'}`}
-    >
-      {!isLast && (
-        <div
-          className={`absolute left-3 top-7 bottom-[-8px] w-0.5 -translate-x-1/2 rounded-full ${
-            status === 'completed' ? 'bg-green-500' : 'bg-gray-200'
-          } transition-colors duration-500`}
-        />
-      )}
-
-      {/* Status Icon Indicator */}
-      <div className="relative z-10 w-6 h-6 flex items-center justify-center shrink-0 mt-0.5 bg-gray-50/80">
-        {status === 'completed' ? (
-          <div className="w-5 h-5 rounded-full bg-[#00C853] flex items-center justify-center shadow-sm">
-            <svg
-              className="w-3.5 h-3.5 text-white"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={3.5}
-              stroke="currentColor"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-            </svg>
-          </div>
-        ) : status === 'processing' ? (
-          <div className="relative flex items-center justify-center w-5 h-5">
-            <div className="absolute w-full h-full rounded-full bg-blue-400 animate-ping opacity-20"></div>
-            <div className="w-5 h-5 rounded-full border-[2.5px] border-blue-100 border-t-blue-500 animate-spin shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
-          </div>
-        ) : (
-          <div className="w-2.5 h-2.5 rounded-full bg-gray-300" />
-        )}
-      </div>
-
-      {/* Label Text */}
-      <div className="flex-1 pb-3 sm:pb-5">
-        <span
-          className={`text-sm sm:text-base transition-colors duration-300 ${
-            status === 'processing'
-              ? 'text-blue-700 font-bold'
-              : status === 'completed'
-                ? 'text-[#00B04A] font-bold'
-                : 'text-gray-500 font-medium'
-          }`}
-        >
-          {label}
-        </span>
-      </div>
-    </div>
-  );
+function getStepStatus(
+  state: PaymentProgressState,
+  targetStates: PaymentProgressState[],
+  pastStates: PaymentProgressState[],
+  error?: string
+): StepStatus {
+  if (error || state === 'ERROR') return 'completed';
+  if (targetStates.includes(state)) return 'processing';
+  if (pastStates.includes(state)) return 'completed';
+  return 'waiting';
 }
 
 export default function PaymentProcessing({
@@ -110,167 +79,192 @@ export default function PaymentProcessing({
   error,
 }: PaymentProcessingProps) {
   const { t } = useLocale();
-
-  // Helper to determine the percentage for the top progress bar (4 steps = 25% each)
-  const getProgressPercentage = (state: PaymentProgressState, hasError: boolean): number => {
-    if (hasError) return 100;
-
-    switch (state) {
-      // Step 1: Signing
-      case 'INIT':
-      case 'CHECKING_ALLOWANCE':
-      case 'SIGNING_PERMIT':
-      case 'SIGNING_FORWARD':
-        return 25;
-
-      // Step 2: Relaying
-      case 'RELAYING':
-        return 50;
-
-      // Step 3: Confirming
-      case 'CONFIRMING':
-        return 75;
-
-      // Step 4: Paid
-      case 'PAID':
-        return 100;
-
-      case 'ERROR':
-        return 100;
-      default:
-        return 25;
-    }
-  };
-
-  // Status computation for the 4 core payment steps
-  const getStepStatus = (
-    state: PaymentProgressState,
-    targetStates: PaymentProgressState[],
-    pastStates: PaymentProgressState[]
-  ): StepStatus => {
-    if (error || state === 'ERROR') return 'completed';
-    if (targetStates.includes(state)) return 'processing';
-    if (pastStates.includes(state)) return 'completed';
-    return 'waiting';
-  };
+  const paymentStatusRef = useRef<HTMLDivElement>(null);
 
   const signingStatus = getStepStatus(
     progressState,
     ['INIT', 'CHECKING_ALLOWANCE', 'SIGNING_PERMIT', 'SIGNING_FORWARD'],
-    ['RELAYING', 'CONFIRMING', 'PAID']
+    ['RELAYING', 'CONFIRMING', 'PAID'],
+    error
   );
-
-  const relayingStatus = getStepStatus(progressState, ['RELAYING'], ['CONFIRMING', 'PAID']);
-
-  const confirmingStatus = getStepStatus(progressState, ['CONFIRMING'], ['PAID']);
-
-  const paidStatus = getStepStatus(progressState, [], ['PAID']);
+  const relayingStatus = getStepStatus(progressState, ['RELAYING'], ['CONFIRMING', 'PAID'], error);
+  const confirmingStatus = getStepStatus(progressState, ['CONFIRMING'], ['PAID'], error);
 
   const percentage = getProgressPercentage(progressState, !!error);
+  const isSuccess = progressState === 'PAID' && !error;
 
-  const statusHintText = t(
-    PROGRESS_KEYS[error || progressState === 'ERROR' ? 'ERROR' : progressState]
+  // Animate status rows
+  const stepIndex =
+    signingStatus === 'processing'
+      ? 0
+      : relayingStatus === 'processing'
+        ? 1
+        : confirmingStatus === 'processing'
+          ? 2
+          : isSuccess
+            ? 2
+            : 0;
+
+  useGSAP(
+    () => {
+      if (!paymentStatusRef.current) return;
+      const rows = paymentStatusRef.current.querySelectorAll('.status-row');
+      rows.forEach((row, index) => {
+        if (index <= stepIndex) {
+          if (index === stepIndex) {
+            gsap.fromTo(
+              row,
+              { y: 10, opacity: 0, filter: 'blur(10px)' },
+              { y: 0, opacity: 1, filter: 'blur(0px)', duration: 0.5, ease: 'power2.out' }
+            );
+          } else {
+            gsap.set(row, { y: 0, opacity: 1, filter: 'blur(0px)' });
+          }
+        } else {
+          gsap.set(row, { y: 0, opacity: 0.3, filter: 'blur(0px)' });
+        }
+      });
+    },
+    { dependencies: [stepIndex], scope: paymentStatusRef }
   );
 
-  return (
-    <div className="w-full p-2 sm:p-6">
-      <div className="text-center mb-3 sm:mb-8">
-        <h1 className="text-base sm:text-lg font-bold text-gray-900">{t('processing.title')}</h1>
-        <p className="text-xs sm:text-sm text-gray-500 mt-0.5 sm:mt-1">
-          {t('processing.pleaseWait')}
-        </p>
-      </div>
-
-      {error ? (
-        <div className="bg-red-50 p-6 rounded-2xl flex flex-col items-center justify-center text-center">
-          <svg
-            className="w-12 h-12 text-red-500 mb-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+  if (error) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="flex flex-col items-center animate-shake"
+      >
+        <div className="w-16 h-16 bg-[var(--color-brand-error)]/10 text-[var(--color-brand-error)] rounded-full flex items-center justify-center mb-6 text-3xl">
+          &#10005;
+        </div>
+        <h2 className="relative z-10 text-2xl md:text-3xl bg-clip-text text-transparent bg-gradient-to-b from-[var(--color-brand-error)] to-red-950 text-center font-extrabold antialiased mb-2 tracking-tight">
+          {t('error.transactionFailed')}
+        </h2>
+        <p className="text-center text-sm text-[var(--color-brand-gray)] mb-4 sm:mb-8">{error}</p>
+        <div className="w-full space-y-3">
+          {onRetry && (
+            <TechScrambleButton
+              text={t('common.tryAgain').toUpperCase()}
+              onClick={onRetry}
+              delay={0.2}
+              containerClassName="w-full"
+              gradientClassName="via-red-500/60"
+              buttonClassName="bg-zinc-950 hover:bg-gradient-to-r hover:from-zinc-950 hover:to-red-950/40 text-red-500 hover:text-red-400"
             />
-          </svg>
-          <div className="text-red-700 font-medium mb-6">{error}</div>
-          <div className="flex gap-4">
-            {onCancel && (
-              <button
-                onClick={onCancel}
-                className="px-6 py-2 rounded-xl text-gray-600 font-medium bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
-              >
-                {t('common.cancel')}
-              </button>
-            )}
-            {onRetry && (
-              <button
-                onClick={onRetry}
-                className="px-6 py-2 rounded-xl text-white font-medium bg-red-600 hover:bg-red-700 transition-colors"
-              >
-                {t('common.tryAgain')}
-              </button>
-            )}
-          </div>
+          )}
+          {onCancel && (
+            <TechScrambleButton
+              text={t('common.cancel').toUpperCase()}
+              onClick={onCancel}
+              delay={0.3}
+              containerClassName="w-full"
+              gradientClassName="via-white/20 group-hover:via-zinc-800"
+              buttonClassName="bg-zinc-950 text-zinc-400 hover:text-white"
+            />
+          )}
         </div>
-      ) : (
-        <div className="flex flex-col">
-          {/* 1. Large Central Amount Display */}
-          <div className="mb-4 sm:mb-8">
-            <div className="flex items-baseline justify-center gap-2">
-              <span className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
-                {amount}
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      className="flex flex-col items-center"
+    >
+      <h2 className="relative z-10 text-2xl md:text-3xl bg-clip-text text-transparent bg-gradient-to-b from-white to-zinc-500 text-center font-extrabold antialiased mb-2 tracking-tight">
+        {t('processing.title')}
+      </h2>
+      <p className="text-center text-sm text-[var(--color-brand-gray)] mb-4 sm:mb-8">
+        {t('processing.pleaseWait')}
+      </p>
+
+      <div
+        ref={paymentStatusRef}
+        className="w-full relative rounded-none border border-zinc-700/50 bg-white/[0.02] overflow-hidden mb-4 sm:mb-8 flex flex-col shadow-2xl"
+      >
+        {/* ASCII glitch backdrop */}
+        <div className="absolute inset-0 opacity-[0.07] z-0 mix-blend-screen pointer-events-none">
+          <LetterGlitch glitchSpeed={60} characters="10!<>-_/[]" />
+        </div>
+        <div
+          className="absolute inset-0 z-0 pointer-events-none"
+          style={{
+            background:
+              'radial-gradient(ellipse 60% 60% at 50% 50%, rgba(255,255,255,0.03), transparent 80%)',
+          }}
+        />
+
+        <div className="relative z-10 flex flex-col w-full">
+          {/* Amount */}
+          <div className="p-5 flex flex-col items-center justify-center border-b border-dashed border-zinc-700/50">
+            <div className="text-[10px] font-mono text-[var(--color-brand-gray)] mb-3 uppercase tracking-[0.2em] opacity-80">
+              {t('processing.paymentAmount')}
+            </div>
+            <div className="flex items-center gap-4 w-full justify-center">
+              <span className="text-zinc-600 font-mono opacity-50">-</span>
+              <span className="font-mono text-xl font-bold tracking-tight text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">
+                {amount} {token}
               </span>
-              <span className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight">
-                {token}
-              </span>
+              <span className="text-zinc-600 font-mono opacity-50">+</span>
             </div>
           </div>
 
-          {/* 2. Thicker Top Progress Bar */}
-          <div className="w-full px-2 mb-3 sm:mb-4">
-            <div className="w-full h-4 sm:h-5 bg-gray-100 rounded-full overflow-hidden shadow-inner border border-gray-200">
-              <div
-                className={`h-full rounded-full transition-all duration-700 ease-out relative overflow-hidden bg-linear-to-r ${
-                  error ? 'from-red-500 to-red-600' : 'from-blue-500 to-indigo-600'
-                }`}
-                style={{ width: `${percentage}%` }}
-              >
-                {progressState !== 'PAID' && !error && (
-                  <div className="absolute inset-0 w-full h-full bg-linear-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
-                )}
-              </div>
-            </div>
+          {/* Progress Bar */}
+          <div className="p-4 flex items-center justify-center border-b border-dashed border-zinc-700/50">
+            <AsciiProgressBar progress={percentage} isSuccess={isSuccess} />
           </div>
 
-          {/* 3. Helper Hint Text */}
-          <div className="text-center min-h-[28px] mb-4 sm:mb-6">
+          {/* Status List */}
+          <div className="p-5 space-y-4">
             <div
-              className={`text-sm sm:text-base font-bold transition-colors duration-300 ${
-                error || progressState === 'ERROR' ? 'text-red-500' : 'text-blue-600 animate-pulse'
-              }`}
+              className={`status-row flex items-center gap-3 text-xs font-mono tracking-tight ${signingStatus === 'completed' ? 'text-[var(--color-brand-success)]' : signingStatus === 'processing' ? 'text-white drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]' : 'text-zinc-500'}`}
             >
-              {statusHintText}
+              <DotFlowLoader
+                status={
+                  signingStatus === 'completed'
+                    ? 'success'
+                    : signingStatus === 'processing'
+                      ? 'active'
+                      : 'waiting'
+                }
+              />
+              <span>[SYS] {t('step.signing')}...</span>
             </div>
-          </div>
-
-          {/* 4. Vertical Granular Payment Steps (Inside a Card) */}
-          <div className="bg-gray-50/80 border border-gray-100 rounded-2xl p-4 sm:p-6 shadow-sm mx-1">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 sm:mb-5">
-              {t('processing.paymentStatus')}
-            </h3>
-            <div className="space-y-1">
-              <StepRow label={t('step.signing')} status={signingStatus} />
-              <StepRow label={t('step.relaying')} status={relayingStatus} />
-              <StepRow label={t('step.confirming')} status={confirmingStatus} />
-              <StepRow label={t('step.paid')} status={paidStatus} isLast />
+            <div
+              className={`status-row flex items-center gap-3 text-xs font-mono tracking-tight ${relayingStatus === 'completed' ? 'text-[var(--color-brand-success)]' : relayingStatus === 'processing' ? 'text-white drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]' : 'text-zinc-500'}`}
+            >
+              <DotFlowLoader
+                status={
+                  relayingStatus === 'completed'
+                    ? 'success'
+                    : relayingStatus === 'processing'
+                      ? 'active'
+                      : 'waiting'
+                }
+              />
+              <span>[SYS] {t('step.relaying')}...</span>
+            </div>
+            <div
+              className={`status-row flex items-center gap-3 text-xs font-mono tracking-tight ${confirmingStatus === 'completed' ? 'text-[var(--color-brand-success)]' : confirmingStatus === 'processing' ? 'text-white drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]' : 'text-zinc-500'}`}
+            >
+              <DotFlowLoader
+                status={
+                  confirmingStatus === 'completed'
+                    ? 'success'
+                    : confirmingStatus === 'processing'
+                      ? 'active'
+                      : 'waiting'
+                }
+              />
+              <span>[SYS] {t('step.confirming')}...</span>
             </div>
           </div>
         </div>
-      )}
-    </div>
+      </div>
+    </motion.div>
   );
 }

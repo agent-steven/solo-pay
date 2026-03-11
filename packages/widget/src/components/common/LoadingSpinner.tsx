@@ -1,25 +1,16 @@
-import { useState, useEffect } from 'react';
-import { useLocale } from '../../context/LocaleContext';
+import { DotFlowLoader } from '../ui/processing-card';
 
 interface LoadingSpinnerProps {
   message?: string;
 }
 
 export default function LoadingSpinner({ message }: LoadingSpinnerProps) {
-  const { t } = useLocale();
-  const [delay, setDelay] = useState('0s');
-
-  useEffect(() => {
-    setDelay(`-${(Date.now() % 1000) / 1000}s`);
-  }, []);
-
   return (
-    <div className="text-center py-8">
-      <div
-        className="animate-spin w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"
-        style={{ animationDelay: delay }}
-      />
-      <p className="text-sm text-gray-600">{message ?? t('error.loadingPayment')}</p>
+    <div className="flex flex-col items-center justify-center py-12 gap-4">
+      <DotFlowLoader status="active" />
+      {message && (
+        <p className="text-sm text-[var(--color-brand-gray)] font-mono animate-pulse">{message}</p>
+      )}
     </div>
   );
 }
