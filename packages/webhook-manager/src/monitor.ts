@@ -16,6 +16,7 @@ interface MonitorJobData {
   amount: string;
   tokenSymbol: string;
   tokenAddress: string;
+  recipientAddress: string;
   orderId: string | null;
   webhookUrl: string | null;
   status: string;
@@ -173,9 +174,17 @@ export function startPaymentMonitor(options: MonitorOptions): { stop: () => Prom
       }
     }
 
-    // Recipient address (zero address check)
-    if (details.recipientAddress?.toLowerCase() === '0x0000000000000000000000000000000000000000') {
+    // Recipient address: must match merchant's wallet
+    if (!details.recipientAddress) {
+      return `invalid recipient: on-chain recipient is missing`;
+    }
+    if (details.recipientAddress.toLowerCase() === '0x0000000000000000000000000000000000000000') {
       return `invalid recipient: on-chain recipient is zero address`;
+    }
+    if (data.recipientAddress) {
+      if (details.recipientAddress.toLowerCase() !== data.recipientAddress.toLowerCase()) {
+        return `recipient mismatch: on-chain=${details.recipientAddress}, expected=${data.recipientAddress}`;
+      }
     }
 
     // Deadline: event timestamp vs DB expires_at
@@ -321,6 +330,27 @@ export function startPaymentMonitor(options: MonitorOptions): { stop: () => Prom
     return result;
   }
 
+  // ── Resolve merchant recipient addresses ────────────────────────────
+  async function resolveMerchantRecipients(
+    payments: { merchant_id: number }[]
+  ): Promise<Map<number, string>> {
+    const result = new Map<number, string>();
+    const uniqueIds = [...new Set(payments.map((p) => p.merchant_id))];
+    if (uniqueIds.length === 0) return result;
+
+    for (const merchantId of uniqueIds) {
+      const merchant = await prisma.merchant.findUnique({
+        where: { id: merchantId },
+        select: { id: true, recipient_address: true },
+      });
+      if (merchant?.recipient_address) {
+        result.set(merchant.id, merchant.recipient_address);
+      }
+    }
+
+    return result;
+  }
+
   // ── DB poller ────────────────────────────────────────────────────────
   async function pollDb(): Promise<void> {
     if (!running) return;
@@ -339,10 +369,14 @@ export function startPaymentMonitor(options: MonitorOptions): { stop: () => Prom
       });
 
       const tokenAddressMap = await resolveTokenAddresses(payments);
+      const merchantRecipientMap = await resolveMerchantRecipients(payments);
 
       for (const payment of payments) {
         const tokenAddress =
           tokenAddressMap.get(`${payment.network_id}:${payment.token_symbol}`) ?? '';
+        // Use snapshot from payment record; fall back to merchant table for older payments
+        const recipientAddress =
+          payment.recipient_address ?? merchantRecipientMap.get(payment.merchant_id) ?? '';
 
         // jobId includes status to avoid dedup conflicts across different status monitors
         await monitorQueue.add(
@@ -355,6 +389,7 @@ export function startPaymentMonitor(options: MonitorOptions): { stop: () => Prom
             amount: payment.amount.toString(),
             tokenSymbol: payment.token_symbol,
             tokenAddress,
+            recipientAddress,
             orderId: payment.order_id ?? null,
             webhookUrl: payment.webhook_url ?? null,
             status: payment.status,

@@ -337,6 +337,7 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
           success_url: validated.successUrl,
           fail_url: validated.failUrl,
           origin,
+          recipient_address: recipientAddress,
           currency_code: currencyCode,
           fiat_amount: fiatAmount !== undefined ? new Decimal(fiatAmount.toString()) : undefined,
           token_price: tokenPrice !== undefined ? new Decimal(tokenPrice.toString()) : undefined,
