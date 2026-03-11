@@ -13,22 +13,18 @@ export const PaymentGatewayABI = PaymentGatewayArtifact.abi;
 export const MockERC20ABI = MockERC20Artifact.abi;
 export const ERC2771ForwarderABI = ERC2771ForwarderArtifact.abi;
 
-/**
- * Create a new provider instance.
- * Note: Each call creates a new provider to avoid nonce caching issues
- * when running multiple tests sequentially.
- */
+// Shared provider singleton to avoid nonce race conditions between wallet instances
+let sharedProvider: JsonRpcProvider | null = null;
+
 export function getProvider(): JsonRpcProvider {
-  return new JsonRpcProvider(RPC_URL);
+  if (!sharedProvider) {
+    sharedProvider = new JsonRpcProvider(RPC_URL);
+  }
+  return sharedProvider;
 }
 
-/**
- * Create a wallet connected to a fresh provider.
- * This ensures each transaction gets the latest nonce from the network.
- */
 export function getWallet(privateKey: string): Wallet {
-  const provider = getProvider();
-  return new Wallet(privateKey, provider);
+  return new Wallet(privateKey, getProvider());
 }
 
 export function getContract(
