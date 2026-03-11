@@ -137,6 +137,9 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
   // Error for invalid payment configuration
   const [configError, setConfigError] = useState<string | null>(null);
 
+  // Delay advancing from wallet-connect so the user sees the success animation
+  const [connectAnimationDone, setConnectAnimationDone] = useState(false);
+
   // Wallet connection state from wagmi
   const { address, isConnected, chain, disconnect } = useWallet();
   const { connector } = useAccount();
@@ -272,12 +275,24 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
   const goToPaymentProcessing = () => setCurrentStep('payment-processing');
   const goToPaymentComplete = () => setCurrentStep('payment-complete');
 
+  // When wallet connects, wait 1.5s for the success animation before allowing advance
+  useEffect(() => {
+    if (currentStep !== 'wallet-connect') return;
+    if (!isConnected || !buttonConnectClicked || lockReconnect) return;
+
+    setConnectAnimationDone(false);
+    const timer = setTimeout(() => setConnectAnimationDone(true), 1500);
+    return () => clearTimeout(timer);
+  }, [isConnected, currentStep, buttonConnectClicked, lockReconnect]);
+
   // Auto-switch chain and advance when wallet connects
   useEffect(() => {
     if (currentStep !== 'wallet-connect') return;
     if (!isConnected || !address || !paymentDetails) return;
     // Guard: only advance after explicit user click — prevents AppKit auto-reconnect from skipping connect step
     if (!buttonConnectClicked || lockReconnect) return;
+    // Wait for the success animation to finish
+    if (!connectAnimationDone) return;
 
     const targetChainId = paymentDetails.chainId;
     const needsSwitch = chain?.id !== targetChainId;
@@ -351,6 +366,7 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
     currentStep,
     buttonConnectClicked,
     lockReconnect,
+    connectAnimationDone,
   ]);
 
   // Fallback: if still on wallet-connect after connecting (e.g. Trust Wallet chain/switch delay), advance after 4s
@@ -436,6 +452,7 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
   /** Show wallet picker and block auto-reconnect until user picks a wallet */
   const handleDisconnect = useCallback(() => {
     setLockReconnect(true);
+    setConnectAnimationDone(false);
     disconnect();
     goToWalletConnect();
   }, [disconnect]);
@@ -745,6 +762,10 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
     switch (currentStep) {
       case 'wallet-connect':
         if (isConnected && buttonConnectClicked && !lockReconnect) {
+          // Show ConnectWalletButton success animation before advancing
+          if (!connectAnimationDone) {
+            return <ConnectWalletButton onConnectorClick={clearWalletChangeIntent} />;
+          }
           return (
             <LoadingSpinner
               message={
