@@ -1,5 +1,5 @@
 {
-  "name": "@solo-pay/admin",
+  "name": "@solo-pay/admin-dashboard",
   "version": "0.1.0",
   "private": true,
   "scripts": {

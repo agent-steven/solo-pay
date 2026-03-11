@@ -117,45 +117,50 @@ export default function MerchantsClient({ merchants, chains }: Props) {
       </div>
 
       {(newApiKey || newPublicKey) && (
-        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-2">
-          <p className="text-sm font-medium text-amber-800">
-            Save these keys — they won&apos;t be shown again.
-          </p>
-          {newApiKey && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-amber-700 w-20 shrink-0">API Key</span>
-              <code className="flex-1 text-sm bg-white border border-amber-200 rounded px-3 py-1.5 font-mono text-amber-900 break-all">
-                {newApiKey}
-              </code>
-              <button
-                onClick={() => navigator.clipboard.writeText(newApiKey)}
-                className="px-3 py-1.5 text-xs border border-amber-300 rounded hover:bg-amber-100 text-amber-800 whitespace-nowrap"
-              >
-                Copy
-              </button>
-            </div>
-          )}
-          {newPublicKey && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-amber-700 w-20 shrink-0">Public Key</span>
-              <code className="flex-1 text-sm bg-white border border-amber-200 rounded px-3 py-1.5 font-mono text-amber-900 break-all">
-                {newPublicKey}
-              </code>
-              <button
-                onClick={() => navigator.clipboard.writeText(newPublicKey)}
-                className="px-3 py-1.5 text-xs border border-amber-300 rounded hover:bg-amber-100 text-amber-800 whitespace-nowrap"
-              >
-                Copy
-              </button>
-            </div>
-          )}
-          <div className="flex justify-end">
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-amber-800">
+              Save these keys — they won&apos;t be shown again.
+            </p>
             <button
-              onClick={() => { setNewApiKey(null); setNewPublicKey(null); }}
+              onClick={() => {
+                setNewApiKey(null);
+                setNewPublicKey(null);
+              }}
               className="px-3 py-1.5 text-xs border border-amber-300 rounded hover:bg-amber-100 text-amber-800"
             >
               Dismiss
             </button>
+          </div>
+          <div className="space-y-3">
+            {newApiKey && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-amber-700 w-20 shrink-0">API Key</span>
+                <code className="flex-1 text-sm bg-white border border-amber-200 rounded px-3 py-1.5 font-mono text-amber-900 break-all">
+                  {newApiKey}
+                </code>
+                <button
+                  onClick={() => navigator.clipboard.writeText(newApiKey)}
+                  className="px-3 py-1.5 text-xs border border-amber-300 rounded hover:bg-amber-100 text-amber-800 whitespace-nowrap"
+                >
+                  Copy
+                </button>
+              </div>
+            )}
+            {newPublicKey && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-amber-700 w-20 shrink-0">Public Key</span>
+                <code className="flex-1 text-sm bg-white border border-amber-200 rounded px-3 py-1.5 font-mono text-amber-900 break-all">
+                  {newPublicKey}
+                </code>
+                <button
+                  onClick={() => navigator.clipboard.writeText(newPublicKey)}
+                  className="px-3 py-1.5 text-xs border border-amber-300 rounded hover:bg-amber-100 text-amber-800 whitespace-nowrap"
+                >
+                  Copy
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -188,7 +193,7 @@ export default function MerchantsClient({ merchants, chains }: Props) {
                     <td className="px-4 py-3 font-mono text-xs text-gray-500 max-w-[160px] truncate">
                       {merchant.merchant_key}
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-gray-500 max-w-[180px] truncate">
+                    <td className="px-4 py-3 font-mono text-xs text-gray-500">
                       {merchant.public_key ?? '—'}
                     </td>
                     <td className="px-4 py-3 text-gray-600">

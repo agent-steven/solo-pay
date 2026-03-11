@@ -24,7 +24,7 @@ COPY packages/widget-js/package.json ./packages/widget-js/
 COPY packages/widget-react/package.json ./packages/widget-react/
 COPY packages/database/package.json ./packages/database/
 COPY packages/stress-test/package.json ./packages/stress-test/
-COPY packages/admin/package.json ./packages/admin/
+COPY packages/admin-dashboard/package.json ./packages/admin-dashboard/
 
 RUN pnpm install --frozen-lockfile
 
@@ -354,27 +354,27 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD curl -sf http://localhost:80 || exit 1
 CMD ["nginx", "-g", "daemon off;"]
 
-# === Admin Builder + Deploy ===
-FROM deps AS admin-builder
+# === Admin Dashboard Builder + Deploy ===
+FROM deps AS admin-dashboard-builder
 
 COPY eslint.config.ts ./
-COPY packages/admin ./packages/admin
-WORKDIR /app/packages/admin
+COPY packages/admin-dashboard ./packages/admin-dashboard
+WORKDIR /app/packages/admin-dashboard
 RUN pnpm build
 
 WORKDIR /app
-RUN pnpm --filter @solo-pay/admin --prod deploy --legacy /deploy/admin
-RUN cp -r /app/packages/admin/.next /deploy/admin/.next
-RUN cp -r /app/packages/admin/next.config.ts /deploy/admin/next.config.ts
-RUN cp -r /app/packages/database/dist /deploy/admin/node_modules/@solo-pay/database/dist
-RUN cp -r /app/packages/database/src/generated /deploy/admin/node_modules/@solo-pay/database/src/generated
+RUN pnpm --filter @solo-pay/admin-dashboard --prod deploy --legacy /deploy/admin-dashboard
+RUN cp -r /app/packages/admin-dashboard/.next /deploy/admin-dashboard/.next
+RUN cp -r /app/packages/admin-dashboard/next.config.ts /deploy/admin-dashboard/next.config.ts
+RUN cp -r /app/packages/database/dist /deploy/admin-dashboard/node_modules/@solo-pay/database/dist
+RUN cp -r /app/packages/database/src/generated /deploy/admin-dashboard/node_modules/@solo-pay/database/src/generated
 
-# === Admin Runtime ===
-FROM node:20-alpine AS admin
+# === Admin Dashboard Runtime ===
+FROM node:20-alpine AS admin-dashboard
 
 RUN apk add --no-cache curl
 WORKDIR /app
-COPY --from=admin-builder /deploy/admin .
+COPY --from=admin-dashboard-builder /deploy/admin-dashboard .
 
 ENV NODE_ENV=production
 EXPOSE 3007
