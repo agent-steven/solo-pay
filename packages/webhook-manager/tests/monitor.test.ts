@@ -260,6 +260,38 @@ describe('monitor worker', () => {
       );
     });
 
+    it('should mark as INVALID when expected recipient address is empty (bypass prevention)', async () => {
+      const details = makePaidDetails();
+      mockGetOnChainStatus.mockResolvedValue({
+        status: OnChainPaymentStatus.Paid,
+        details,
+      });
+
+      await processJob(makeJobData({ recipientAddress: '' }));
+
+      expect(mockPrisma.payment.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'INVALID' }),
+        })
+      );
+    });
+
+    it('should mark as INVALID when expected token address is empty (bypass prevention)', async () => {
+      const details = makePaidDetails();
+      mockGetOnChainStatus.mockResolvedValue({
+        status: OnChainPaymentStatus.Paid,
+        details,
+      });
+
+      await processJob(makeJobData({ tokenAddress: '' }));
+
+      expect(mockPrisma.payment.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'INVALID' }),
+        })
+      );
+    });
+
     it('should mark as INVALID when deadline exceeded', async () => {
       const pastExpiry = new Date(Date.now() - 60_000).toISOString();
       const details = makePaidDetails({

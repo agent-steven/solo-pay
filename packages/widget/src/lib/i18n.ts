@@ -7,7 +7,8 @@ export type Locale = 'en' | 'ko';
 
 export const SUPPORTED_LOCALES: Locale[] = ['en', 'ko'];
 
-export const DEFAULT_LOCALE: Locale = 'en';
+export const DEFAULT_LOCALE: Locale =
+  typeof navigator !== 'undefined' && navigator.language?.startsWith('ko') ? 'ko' : 'en';
 
 export type TranslationKeys = keyof typeof translations.en;
 

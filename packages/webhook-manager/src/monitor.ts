@@ -168,23 +168,28 @@ export function startPaymentMonitor(options: MonitorOptions): { stop: () => Prom
     }
 
     // Token address
-    if (details.tokenAddress && data.tokenAddress) {
-      if (details.tokenAddress.toLowerCase() !== data.tokenAddress.toLowerCase()) {
-        return `token mismatch: on-chain=${details.tokenAddress}, expected=${data.tokenAddress}`;
-      }
+    if (!data.tokenAddress) {
+      return `token validation failed: expected token address is missing`;
+    }
+    if (!details.tokenAddress) {
+      return `token validation failed: on-chain token address is missing`;
+    }
+    if (details.tokenAddress.toLowerCase() !== data.tokenAddress.toLowerCase()) {
+      return `token mismatch: on-chain=${details.tokenAddress}, expected=${data.tokenAddress}`;
     }
 
     // Recipient address: must match merchant's wallet
+    if (!data.recipientAddress) {
+      return `recipient validation failed: expected recipient address is missing`;
+    }
     if (!details.recipientAddress) {
       return `invalid recipient: on-chain recipient is missing`;
     }
     if (details.recipientAddress.toLowerCase() === '0x0000000000000000000000000000000000000000') {
       return `invalid recipient: on-chain recipient is zero address`;
     }
-    if (data.recipientAddress) {
-      if (details.recipientAddress.toLowerCase() !== data.recipientAddress.toLowerCase()) {
-        return `recipient mismatch: on-chain=${details.recipientAddress}, expected=${data.recipientAddress}`;
-      }
+    if (details.recipientAddress.toLowerCase() !== data.recipientAddress.toLowerCase()) {
+      return `recipient mismatch: on-chain=${details.recipientAddress}, expected=${data.recipientAddress}`;
     }
 
     // Deadline: event timestamp vs DB expires_at
