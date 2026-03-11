@@ -39,6 +39,16 @@ This page summarizes the essential points you must understand when integrating S
 - Match `orderId` and `tokenAddress` against your order data.
 - Confirm that the payment has not already been processed (prevent duplicate order completion).
 
+## How do refunds work?
+
+SoloPay does not currently provide an automated refund feature. If a refund is needed, **the merchant must handle it manually**.
+
+::: warning Refunds must be handled by the merchant
+SoloPay operates on a direct payment model — funds are transferred directly to the merchant wallet at the time of payment. If a refund is required, the merchant must send funds back to the buyer directly or handle it according to their own refund policy.
+
+An automated refund API is planned for a future release.
+:::
+
 ## Next steps
 
 - [Payment details](/en/payments/) - Full payment API reference
