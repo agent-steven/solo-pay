@@ -40,6 +40,10 @@ solopay.requestPayment({
 });
 ```
 
+::: warning amount decimal restriction
+`amount` allows a maximum of **2 decimal places** (e.g., `10.50` ✓, `10.123` ✗). Without `currency`, the value is used directly as the token amount. With `currency`, the fiat amount is converted to token units and truncated to 2 decimal places. The minimum token amount is `0.01`.
+:::
+
 For React projects, using the [`useWidget` hook from `@solo-pay/widget-react`](/en/widget/) is recommended.
 
 For Vanilla JS or other frameworks, you can use the CDN directly.

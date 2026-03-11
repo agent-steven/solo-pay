@@ -40,6 +40,10 @@ solopay.requestPayment({
 });
 ```
 
+::: warning amount 소수점 제한
+`amount`는 소수점 이하 최대 **2자리**까지만 허용됩니다 (예: `10.50` ✓, `10.123` ✗). `currency` 없이 전달하면 토큰 수량으로 직접 사용되며, `currency`가 있으면 법정화폐 금액에서 토큰 수량으로 변환 후 소수 둘째자리로 절삭됩니다. 최소 토큰 수량은 `0.01`입니다.
+:::
+
 React 프로젝트라면 [`@solo-pay/widget-react`의 `useWidget` 훅](/ko/widget/)을 사용하는 것을 권장합니다.
 
 Vanilla JS 또는 기타 프레임워크에서는 CDN으로 바로 사용할 수 있습니다.
