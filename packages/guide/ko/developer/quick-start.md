@@ -116,7 +116,7 @@ Public Key(`pk_xxxxx`)는 위젯 초기화 전용입니다. 서버 사이드 검
 **paymentId로 조회:**
 
 ```bash
-curl https://gateway.dev.solonetwork.io/merchant/payments/0xabc123... \
+curl "https://gateway.dev.solonetwork.io/merchant/payments/0xabc123..." \
   -H "x-api-key: sk_xxxxx"
 ```
 

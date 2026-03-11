@@ -116,7 +116,7 @@ The Public Key (`pk_xxxxx`) is only for widget initialization. Always use your *
 **Verify by paymentId:**
 
 ```bash
-curl https://gateway.dev.solonetwork.io/merchant/payments/0xabc123... \
+curl "https://gateway.dev.solonetwork.io/merchant/payments/0xabc123..." \
   -H "x-api-key: sk_xxxxx"
 ```
 
