@@ -103,11 +103,24 @@ See the [Webhook Guide](/en/webhooks/) for details.
 
 ## Step 4: Verify Payment Status (Required)
 
-Whether from Callback or Webhook, always verify the final status by calling the API from your server. Never trust URL parameters or Webhook payload directly.
+Whether from Callback or Webhook, always verify the final status by calling the **Merchant API** from your server. Never trust URL parameters or Webhook payload directly.
+
+::: warning Do not verify with Public Key
+The Public Key (`pk_xxxxx`) is only for widget initialization. Always use your **API Key** (`sk_xxxxx`) for server-side verification.
+:::
+
+**Verify by paymentId:**
 
 ```bash
-curl https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123... \
-  -H "x-public-key: pk_xxxxx"
+curl https://gateway.dev.solonetwork.io/merchant/payments/0xabc123... \
+  -H "x-api-key: sk_xxxxx"
+```
+
+**Verify by orderId** (if you don't have the `paymentId` yet):
+
+```bash
+curl "https://gateway.dev.solonetwork.io/merchant/payments?orderId=order-001" \
+  -H "x-api-key: sk_xxxxx"
 ```
 
 **Verification Checklist**

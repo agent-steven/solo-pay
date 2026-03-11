@@ -103,11 +103,24 @@ Webhook 상세는 [Webhook 가이드](/ko/webhooks/)를 참조하세요.
 
 ## Step 4: 결제 상태 검증 (필수)
 
-Callback이든 Webhook이든, `paymentId`를 수신하면 반드시 서버에서 API를 호출하여 최종 상태를 확인합니다. URL 파라미터나 Webhook payload를 그대로 신뢰하지 마세요.
+Callback이든 Webhook이든, `paymentId`를 수신하면 반드시 서버에서 **Merchant API**를 호출하여 최종 상태를 확인합니다. URL 파라미터나 Webhook payload를 그대로 신뢰하지 마세요.
+
+::: warning Public Key로 검증하면 안 됩니다
+Public Key(`pk_xxxxx`)는 위젯 초기화 전용입니다. 서버 사이드 검증에는 반드시 **API Key**(`sk_xxxxx`)를 사용하세요.
+:::
+
+**paymentId로 조회:**
 
 ```bash
-curl https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123... \
-  -H "x-public-key: pk_xxxxx"
+curl https://gateway.dev.solonetwork.io/merchant/payments/0xabc123... \
+  -H "x-api-key: sk_xxxxx"
+```
+
+**orderId로 조회** (`paymentId`를 모르는 경우):
+
+```bash
+curl "https://gateway.dev.solonetwork.io/merchant/payments?orderId=order-001" \
+  -H "x-api-key: sk_xxxxx"
 ```
 
 **검증 체크리스트**
