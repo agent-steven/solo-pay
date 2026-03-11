@@ -22,9 +22,8 @@ curl https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123... \
   "data": {
     "paymentId": "0xabc123...",
     "orderId": "order-001",
-    "status": "ESCROWED",
+    "status": "PAID",
     "chainId": 80002,
-    "serverSignature": "0x...",
     "tokenAddress": "0xE4C687167705Abf55d709395f92e254bdF5825a2",
     "tokenSymbol": "SUT",
     "tokenDecimals": 18,
@@ -35,12 +34,10 @@ curl https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123... \
     "recipientAddress": "0xMerchantWallet...",
     "merchantId": "0x...",
     "deadline": "1706281200",
-    "escrowDuration": "300",
     "successUrl": "https://example.com/success",
     "failUrl": "https://example.com/fail",
     "expiresAt": "2024-01-26T12:35:00.000Z",
     "txHash": "0xdef789...",
-    "releaseTxHash": null,
     "payerAddress": "0x...",
     "createdAt": "2024-01-26T12:30:00Z",
     "currency": "USD",
@@ -50,39 +47,37 @@ curl https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123... \
 }
 ```
 
-- **txHash** — Escrow (pay) transaction hash. Present once the user has paid and the payment is ESCROWED or later.
-- **releaseTxHash** — Finalize or cancel transaction hash. Present when status is FINALIZE_SUBMITTED, FINALIZED, CANCEL_SUBMITTED, or CANCELLED.
-- **serverSignature** — Fresh EIP-712 server signature for non-terminal statuses. Empty for terminal statuses (FINALIZED, CANCELLED, EXPIRED, FAILED).
-- **escrowDuration** — Escrow duration in seconds. The merchant must call finalize before this duration elapses after the payment is escrowed.
+- **txHash** -- Payment transaction hash. Present once the payment is confirmed on-chain (status is PAID or later).
+- **deadline** -- Unix timestamp deadline for the payment transaction. The payment must be submitted before this time.
 
 ## Status Flow
 
 ```
-CREATED ──► ESCROWED ──► FINALIZE_SUBMITTED ──► FINALIZED
-                    └──► CANCEL_SUBMITTED   ──► CANCELLED
+CREATED ──► PAID
+CREATED ──► INVALID
 CREATED ──► EXPIRED
 CREATED ──► FAILED
+PAID    ──► REFUND_SUBMITTED ──► REFUNDED (coming soon)
 ```
 
 ## Status Descriptions
 
-| Status               | Description                                    | Next Action                       |
-| -------------------- | ---------------------------------------------- | --------------------------------- |
-| `CREATED`            | Payment created, awaiting on-chain transaction | User initiates payment            |
-| `ESCROWED`           | Payment escrowed on-chain                      | Merchant: call Finalize or Cancel |
-| `FINALIZE_SUBMITTED` | Finalize transaction submitted                 | Wait for FINALIZED                |
-| `FINALIZED`          | Funds released to merchant                     | None (terminal)                   |
-| `CANCEL_SUBMITTED`   | Cancel transaction submitted                   | Wait for CANCELLED                |
-| `CANCELLED`          | Funds returned to buyer                        | None (terminal)                   |
-| `FAILED`             | Transaction failed                             | Create new payment                |
-| `EXPIRED`            | Expired (5 minutes exceeded)                   | Create new payment                |
+| Status             | Description                                                          | Next Action        |
+| ------------------ | -------------------------------------------------------------------- | ------------------ |
+| `CREATED`          | Payment created, awaiting on-chain transaction                       | User pays on-chain |
+| `PAID`             | Payment confirmed on-chain, funds sent to merchant                   | None (terminal)    |
+| `REFUND_SUBMITTED` | Refund request submitted (coming soon)                               | Wait for REFUNDED  |
+| `REFUNDED`         | Refund completed (coming soon)                                       | None (terminal)    |
+| `INVALID`          | On-chain payment validation failed (amount/token/recipient mismatch) | Contact support    |
+| `EXPIRED`          | Payment expired (5 minutes exceeded)                                 | Create new payment |
+| `FAILED`           | Transaction failed                                                   | Create new payment |
 
 ::: tip On-chain Sync
-GET /payments/:id syncs blockchain and database status in real-time. For a successful payment, status is **ESCROWED** (user paid, finalize required). After finalize, status becomes **FINALIZED** (funds released to merchant).
+GET /payments/:id syncs blockchain and database status in real-time. For a successful payment, the status transitions directly from **CREATED** to **PAID** once the on-chain transaction is confirmed. No additional merchant action is required to release funds.
 :::
 
 ## Next Steps
 
-- [Finalize & Cancel](/en/payments/finalize) - Release or cancel escrowed payments
+- [Refunds](/en/payments/refunds) - Request a refund for a completed payment
 - [How Payments Work](/en/developer/how-it-works) - Gasless architecture
 - [Error Codes](/en/api/errors) - Error handling

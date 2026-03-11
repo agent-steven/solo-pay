@@ -115,12 +115,11 @@ curl https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123... \
 
 **검증 체크리스트**
 
-- [ ] `status`가 `ESCROWED`인지 확인 (결제 성공)
-- [ ] `amount`가 주문 금액과 일치하는지 확인
-- [ ] `tokenAddress`가 기대한 토큰과 일치하는지 확인
-- [ ] `orderId`가 기대한 orderId와 일치하는지 확인
+- [ ] `status === 'PAID'` 확인 (결제 성공)
+- [ ] `amount`가 **자사 주문 DB에 저장된 기대 금액**과 일치 확인 (위젯은 클라이언트에서 실행되므로 금액이 변조될 수 있음)
+- [ ] `tokenAddress`가 기대한 토큰과 일치 확인
+- [ ] `orderId`가 기대한 orderId와 일치 확인
 - [ ] 동일 `paymentId`의 중복 완료 처리 방지
-- [ ] 서버에서 finalize 호출 후, `FINALIZED` 상태를 확인한 뒤 주문 완료 처리
 
 ## 한계 및 주의 사항
 

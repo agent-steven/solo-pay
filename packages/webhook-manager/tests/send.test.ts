@@ -4,11 +4,11 @@ import { sendWebhook } from '../src/send';
 const sampleBody = {
   paymentId: '0xabc',
   orderId: 'order-1',
-  status: 'FINALIZED',
+  status: 'PAID',
   txHash: '0xtx',
   amount: '1000000',
   tokenSymbol: 'USDC',
-  confirmedAt: '2024-01-26T12:00:00.000Z',
+  paidAt: '2024-01-26T12:00:00.000Z',
 };
 
 describe('sendWebhook', () => {

@@ -19,7 +19,6 @@ export interface CreatePaymentInput {
   currency_code?: string;
   fiat_amount?: Decimal;
   token_price?: Decimal;
-  escrow_deadline?: Date;
 }
 
 export class PaymentService {
@@ -49,7 +48,6 @@ export class PaymentService {
         currency_code: input.currency_code,
         fiat_amount: input.fiat_amount,
         token_price: input.token_price,
-        escrow_deadline: input.escrow_deadline,
       },
     });
 
@@ -121,10 +119,7 @@ export class PaymentService {
       where: { id },
       data: {
         status: newStatus,
-        ...(newStatus === 'FINALIZED' && { confirmed_at: new Date() }),
-        ...(newStatus === 'ESCROWED' && { confirmed_at: new Date() }),
-        ...(newStatus === 'FINALIZED' && { finalized_at: new Date() }),
-        ...(newStatus === 'CANCELLED' && { cancelled_at: new Date() }),
+        ...(newStatus === 'PAID' && { confirmed_at: new Date() }),
       },
     });
 
@@ -155,24 +150,14 @@ export class PaymentService {
       throw new Error('Payment not found');
     }
 
-    // Determine which tx_hash column to write:
-    // ESCROWED/PENDING → tx_hash (escrow tx), FINALIZED/CANCELLED → release_tx_hash
-    const isRelease = newStatus === 'FINALIZED' || newStatus === 'CANCELLED';
-    const txHashField = txHash
-      ? isRelease
-        ? { release_tx_hash: txHash }
-        : { tx_hash: txHash }
-      : {};
+    const txHashField = txHash ? { tx_hash: txHash } : {};
 
     const updatedPayment = await this.prisma.payment.update({
       where: { payment_hash: paymentHash },
       data: {
         status: newStatus,
         ...txHashField,
-        ...(newStatus === 'FINALIZED' && { confirmed_at: new Date() }),
-        ...(newStatus === 'ESCROWED' && { confirmed_at: new Date() }),
-        ...(newStatus === 'FINALIZED' && { finalized_at: new Date() }),
-        ...(newStatus === 'CANCELLED' && { cancelled_at: new Date() }),
+        ...(newStatus === 'PAID' && { confirmed_at: new Date() }),
       },
     });
 

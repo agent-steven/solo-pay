@@ -59,8 +59,6 @@ export interface PaymentDetails {
   paymentId: string;
   /** Merchant order ID */
   orderId: string;
-  /** Server EIP-712 signature for contract verification */
-  serverSignature: string;
   /** Blockchain network ID */
   chainId: number;
   /** ERC20 token contract address */
@@ -83,10 +81,8 @@ export interface PaymentDetails {
   recipientAddress: string;
   /** Merchant ID (bytes32) */
   merchantId: string;
-  /** Deadline timestamp for server signature expiration */
+  /** Payment expiration timestamp in unix seconds (for on-chain validation) */
   deadline: string;
-  /** Escrow duration in seconds (bigint as string from API) */
-  escrowDuration: string;
   /** ERC2771Forwarder contract address (for gasless payments) */
   forwarderAddress?: string;
   /** Whether the token supports EIP-2612 permit (from server, skips on-chain probing) */
@@ -98,17 +94,7 @@ export interface PaymentDetails {
   /** Token price at creation time */
   tokenPrice?: number;
   /** Payment status (blockchain is source of truth when on-chain state is available; from GET /payments/:id) */
-  status?:
-    | 'CREATED'
-    | 'ESCROWED'
-    | 'FINALIZE_SUBMITTED'
-    | 'FINALIZED'
-    | 'CANCEL_SUBMITTED'
-    | 'CANCELLED'
-    | 'REFUND_SUBMITTED'
-    | 'REFUNDED'
-    | 'EXPIRED'
-    | 'FAILED';
+  status?: 'CREATED' | 'PAID' | 'REFUND_SUBMITTED' | 'REFUNDED' | 'EXPIRED' | 'FAILED';
   /** Transaction hash */
   txHash?: string;
 }

@@ -15,13 +15,12 @@ Webhook을 설정하면 결제 상태가 변경될 때 지정한 URL로 HTTP POS
 
 ## 이벤트 타입
 
-| status 값   | 설명            | 발생 시점                  |
-| ----------- | --------------- | -------------------------- |
-| `ESCROWED`  | 결제 에스크로됨 | 사용자 결제 완료, 에스크로 |
-| `FINALIZED` | 결제 확정됨     | 자금 상점으로 확정         |
-| `CANCELLED` | 결제 취소됨     | 자금 구매자에게 환불       |
+| 이벤트            | status 값 | 설명                                     |
+| ----------------- | --------- | ---------------------------------------- |
+| `payment.paid`    | `PAID`    | 온체인 결제 확인, 자금이 상점으로 전송됨 |
+| `payment.invalid` | `INVALID` | 온체인 결제 감지되었으나 검증 실패       |
 
-**ESCROWED** 수신 시 주문 내용을 검증하고 finalize를 호출합니다. **FINALIZED** 수신 후 주문을 완료 처리합니다.
+**payment.paid** 수신 시 주문을 완료 처리합니다. **payment.invalid** 수신 시 해당 주문을 수동 검토 대상으로 표시합니다.
 
 ## Payload 구조
 
@@ -31,12 +30,11 @@ Webhook payload는 플랫 JSON 객체로 전송됩니다 (래퍼 없음). `Conte
 {
   "paymentId": "0xabc123...",
   "orderId": "order-001",
-  "status": "FINALIZED",
+  "status": "PAID",
   "txHash": "0xdef789...",
-  "releaseTxHash": "0xrelease123...",
   "amount": "10500000000000000000",
   "tokenSymbol": "SUT",
-  "finalizedAt": "2024-01-26T12:35:42.000Z"
+  "paidAt": "2024-01-26T12:35:42.000Z"
 }
 ```
 
@@ -48,53 +46,35 @@ Webhook payload는 플랫 JSON 객체로 전송됩니다 (래퍼 없음). `Conte
 
 ## 이벤트별 Payload 상세
 
-### ESCROWED
+### payment.paid
 
-결제가 에스크로된 상태입니다. 사용자가 결제를 완료했고 자금이 에스크로에 보관됩니다. 상점은 확정(자금 해제) 또는 취소(구매자 환불)를 선택할 수 있습니다.
+온체인 결제가 확인된 상태입니다. 사용자가 결제를 완료했고 자금이 상점으로 직접 전송되었습니다.
 
 ```json
 {
   "paymentId": "0xabc123...",
   "orderId": "order-001",
-  "status": "ESCROWED",
+  "status": "PAID",
   "txHash": "0xdef789...",
   "amount": "10500000000000000000",
   "tokenSymbol": "SUT",
-  "escrowedAt": "2024-01-26T12:35:00.000Z"
+  "paidAt": "2024-01-26T12:35:42.000Z"
 }
 ```
 
-### FINALIZED
+### payment.invalid
 
-자금이 상점으로 해제되었습니다. 확정 플로우의 최종 성공 상태입니다.
-
-```json
-{
-  "paymentId": "0xabc123...",
-  "orderId": "order-001",
-  "status": "FINALIZED",
-  "txHash": "0xdef789...",
-  "releaseTxHash": "0xrelease123...",
-  "amount": "10500000000000000000",
-  "tokenSymbol": "SUT",
-  "finalizedAt": "2024-01-26T12:36:00.000Z"
-}
-```
-
-### CANCELLED
-
-에스크로 결제가 취소되어 자금이 구매자에게 환불되었습니다.
+온체인에서 결제 트랜잭션이 감지되었으나, 검증에 실패한 상태입니다. 금액, 토큰, 수신자 주소 등이 기대 값과 일치하지 않을 때 발생합니다.
 
 ```json
 {
   "paymentId": "0xabc123...",
   "orderId": "order-001",
-  "status": "CANCELLED",
+  "status": "INVALID",
   "txHash": "0xdef789...",
-  "releaseTxHash": "0xcancel123...",
   "amount": "10500000000000000000",
   "tokenSymbol": "SUT",
-  "cancelledAt": "2024-01-26T12:36:00.000Z"
+  "paidAt": "2024-01-26T12:35:42.000Z"
 }
 ```
 
@@ -105,15 +85,11 @@ async function handleWebhook(payload: any) {
   const { status, orderId, paymentId } = payload;
 
   switch (status) {
-    case 'ESCROWED':
-      await updateOrderStatus(orderId, 'PAID_ESCROW');
-      // 여기서 주문 완료 처리하거나 FINALIZED 대기
-      break;
-    case 'FINALIZED':
+    case 'PAID':
       await completeOrder(orderId);
       break;
-    case 'CANCELLED':
-      await cancelOrder(orderId);
+    case 'INVALID':
+      await flagOrderForReview(orderId);
       break;
   }
 }
@@ -142,11 +118,10 @@ curl https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123... \
 
 ### 검증 체크리스트
 
-- [ ] `status === 'ESCROWED'` 확인 (결제 성공)
-- [ ] `amount`가 주문 금액과 일치 확인
+- [ ] `status === 'PAID'` 확인 (결제 성공)
+- [ ] `amount`가 **자사 주문 DB에 저장된 기대 금액**과 일치 확인 (위젯은 클라이언트에서 실행되므로 금액이 변조될 수 있음)
 - [ ] `orderId`가 DB에 저장된 orderId와 일치 확인
 - [ ] 동일 `paymentId`의 중복 처리 방지
-- [ ] finalize 호출 후, `FINALIZED` 상태를 확인한 뒤 주문 완료 처리
 
 ### 멱등성 처리
 
@@ -166,7 +141,8 @@ if (alreadyProcessed) {
 
 ## 다음 단계
 
+- [이벤트 상세](/ko/webhooks/events) - 각 이벤트 상세 정보
 - [결제 상태 조회](/ko/payments/status) - 폴링 방식으로 상태 확인
-- [결제 확정 및 취소](/ko/payments/finalize) - 에스크로 후 확정/취소
+- [환불](/ko/payments/refunds) - 결제 환불 처리
 - [API Reference](/ko/api/) - 전체 API 명세
 - [에러 코드](/ko/api/errors) - 에러 처리

@@ -266,7 +266,7 @@ describe('POST /payments', () => {
       expect(body.data.forwarderAddress).toBeDefined();
       expect(body.data.amount).toBe('100000000000000000000');
       expect(body.data.expiresAt).toBeDefined();
-      expect(body.data.serverSignature).toBeDefined();
+      expect(body.data.deadline).toBeDefined();
     });
 
     it('Hardhat 체인 (chainId 31337)으로 최소 필수 정보만으로 결제를 생성할 수 있어야 함', async () => {
@@ -527,7 +527,6 @@ describe('POST /payments', () => {
             tokenService as TokenService,
             paymentMethodService as PaymentMethodService,
             paymentService as PaymentService,
-            undefined,
             mockCurrencyService,
             mockPriceClient
           );
@@ -581,7 +580,6 @@ describe('POST /payments', () => {
             tokenService as TokenService,
             paymentMethodService as PaymentMethodService,
             paymentService as PaymentService,
-            undefined,
             mockCurrencyService,
             mockPriceClient
           );

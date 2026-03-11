@@ -129,9 +129,7 @@ export async function POST(request: NextRequest) {
         forwarderAddress: pd.forwarderAddress,
         recipientAddress: pd.recipientAddress,
         merchantId: pd.merchantId,
-        serverSignature: pd.serverSignature,
         deadline: pd.deadline,
-        escrowDuration: pd.escrowDuration,
       },
       { status: 201 }
     );

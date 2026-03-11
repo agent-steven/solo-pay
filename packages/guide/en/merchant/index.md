@@ -28,7 +28,7 @@ SoloPay API uses two authentication methods depending on the endpoint type. Afte
 
 - Used on the backend (server-side) only.
 - Prefix: `sk_...`
-- Used for merchant info queries (`GET /merchant`), payment history (`GET /merchant/payments`), payment finalization (`POST /payments/:id/finalize`), payment cancellation (`POST /payments/:id/cancel`), and refunds (`POST /refunds`).
+- Used for merchant info queries (`GET /merchant`), payment history (`GET /merchant/payments`), and refunds (`POST /refunds`).
 - Never expose in frontend code.
 
 ::: danger API Key Security

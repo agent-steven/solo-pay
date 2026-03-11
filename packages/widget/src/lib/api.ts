@@ -121,17 +121,7 @@ export async function createPaymentFromUrlParams(
 
 export interface PaymentStatusResponse extends PaymentDetails {
   paymentId: string;
-  status:
-    | 'CREATED'
-    | 'ESCROWED'
-    | 'FINALIZE_SUBMITTED'
-    | 'FINALIZED'
-    | 'CANCEL_SUBMITTED'
-    | 'CANCELLED'
-    | 'REFUND_SUBMITTED'
-    | 'REFUNDED'
-    | 'EXPIRED'
-    | 'FAILED';
+  status: 'CREATED' | 'PAID' | 'REFUND_SUBMITTED' | 'REFUNDED' | 'EXPIRED' | 'FAILED';
   txHash?: string;
   transactionHash?: string;
   confirmedAt?: string;
@@ -199,15 +189,11 @@ export async function pollPaymentStatus(
 
     onStatusChange?.(status);
 
-    if (status.status === 'FINALIZED') {
+    if (status.status === 'PAID') {
       return status;
     }
 
-    if (
-      status.status === 'FAILED' ||
-      status.status === 'EXPIRED' ||
-      status.status === 'CANCELLED'
-    ) {
+    if (status.status === 'FAILED' || status.status === 'EXPIRED') {
       throw new PaymentApiError(
         `PAYMENT_${status.status}`,
         `Payment ${status.status.toLowerCase()}`,

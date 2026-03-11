@@ -177,12 +177,11 @@ const result = await response.json();
 
 **검증 체크리스트**
 
-- [ ] `status === 'ESCROWED'` 확인 (결제 성공)
-- [ ] `amount`가 주문 금액과 일치 확인
+- [ ] `status === 'PAID'` 확인 (결제 성공)
+- [ ] `amount`가 **자사 주문 DB에 저장된 기대 금액**과 일치 확인 (위젯은 클라이언트에서 실행되므로 금액이 변조될 수 있음)
 - [ ] `tokenAddress`가 기대한 토큰과 일치 확인
 - [ ] `orderId`가 기대한 orderId와 일치 확인
 - [ ] 동일 `paymentId`의 중복 완료 처리 방지
-- [ ] 서버에서 finalize 호출 후, `FINALIZED` 상태를 확인한 뒤 주문 완료 처리
 
 ::: tip Webhook 연동 권장
 Callback은 브라우저 리다이렉트 기반이므로 네트워크 장애 등으로 유실될 수 있습니다. **Webhook과 함께 사용**하면 결제 완료를 안정적으로 수신할 수 있습니다. [Webhook 설정 가이드 보기](/ko/webhooks/)

@@ -3,10 +3,7 @@ import {
   createWebhookQueue,
   createWebhookWorker,
   WEBHOOK_QUEUE_NAME,
-  JOB_NAME_PAYMENT_CONFIRMED,
-  JOB_NAME_PAYMENT_ESCROWED,
-  JOB_NAME_PAYMENT_FINALIZED,
-  JOB_NAME_PAYMENT_CANCELLED,
+  JOB_NAME_PAYMENT_PAID,
 } from '../src/queue';
 
 const mockAdd = vi.fn().mockResolvedValue(undefined);
@@ -31,10 +28,9 @@ describe('createWebhookQueue', () => {
     mockClose.mockClear();
   });
 
-  it('exposes addPaymentEvent, addPaymentConfirmed and close', () => {
+  it('exposes addPaymentEvent and close', () => {
     const queue = createWebhookQueue(mockRedis);
     expect(typeof queue.addPaymentEvent).toBe('function');
-    expect(typeof queue.addPaymentConfirmed).toBe('function');
     expect(typeof queue.close).toBe('function');
   });
 
@@ -45,35 +41,15 @@ describe('createWebhookQueue', () => {
       body: {
         paymentId: '0xabc',
         orderId: 'order-1',
-        status: 'ESCROWED',
+        status: 'PAID',
         txHash: null,
         amount: '1000000',
         tokenSymbol: 'USDC',
-        escrowedAt: '2024-01-26T12:00:00.000Z',
+        paidAt: '2024-01-26T12:00:00.000Z',
       },
     };
-    await queue.addPaymentEvent(JOB_NAME_PAYMENT_ESCROWED, data);
-    expect(mockAdd).toHaveBeenCalledWith(JOB_NAME_PAYMENT_ESCROWED, data, expect.any(Object));
-  });
-
-  it('addPaymentConfirmed calls Queue.add with job name and data', async () => {
-    const queue = createWebhookQueue(mockRedis);
-    const data = {
-      url: 'https://merchant.example/webhook',
-      body: {
-        paymentId: '0xabc',
-        orderId: 'order-1',
-        status: 'FINALIZED',
-        txHash: '0xtx',
-        amount: '1000000',
-        tokenSymbol: 'USDC',
-        confirmedAt: '2024-01-26T12:00:00.000Z',
-      },
-    };
-    await queue.addPaymentConfirmed(data);
-    expect(mockAdd).toHaveBeenCalledWith(JOB_NAME_PAYMENT_CONFIRMED, data, expect.any(Object));
-    await queue.close();
-    expect(mockClose).toHaveBeenCalled();
+    await queue.addPaymentEvent(JOB_NAME_PAYMENT_PAID, data);
+    expect(mockAdd).toHaveBeenCalledWith(JOB_NAME_PAYMENT_PAID, data, expect.any(Object));
   });
 
   it('should handle multiple webhook jobs', async () => {
@@ -85,11 +61,11 @@ describe('createWebhookQueue', () => {
         body: {
           paymentId: '0x111',
           orderId: 'order-1',
-          status: 'CONFIRMED',
+          status: 'PAID',
           txHash: '0xtx1',
           amount: '1000000',
           tokenSymbol: 'USDC',
-          confirmedAt: '2024-01-26T12:00:00.000Z',
+          paidAt: '2024-01-26T12:00:00.000Z',
         },
       },
       {
@@ -97,17 +73,17 @@ describe('createWebhookQueue', () => {
         body: {
           paymentId: '0x222',
           orderId: 'order-2',
-          status: 'CONFIRMED',
+          status: 'PAID',
           txHash: '0xtx2',
           amount: '2000000',
           tokenSymbol: 'USDT',
-          confirmedAt: '2024-01-26T12:01:00.000Z',
+          paidAt: '2024-01-26T12:01:00.000Z',
         },
       },
     ];
 
     for (const job of jobs) {
-      await queue.addPaymentConfirmed(job);
+      await queue.addPaymentEvent(JOB_NAME_PAYMENT_PAID, job);
     }
 
     expect(mockAdd).toHaveBeenCalledTimes(2);
@@ -121,18 +97,18 @@ describe('createWebhookQueue', () => {
       body: {
         paymentId: '0xabc',
         orderId: 'order-1',
-        status: 'CONFIRMED',
+        status: 'PAID',
         txHash: '0xtx',
         amount: '1000000',
         tokenSymbol: 'USDC',
-        confirmedAt: '2024-01-26T12:00:00.000Z',
+        paidAt: '2024-01-26T12:00:00.000Z',
       },
     };
 
-    await queue.addPaymentConfirmed(data);
+    await queue.addPaymentEvent(JOB_NAME_PAYMENT_PAID, data);
 
     expect(mockAdd).toHaveBeenCalledWith(
-      JOB_NAME_PAYMENT_CONFIRMED,
+      JOB_NAME_PAYMENT_PAID,
       data,
       expect.objectContaining({ jobId: undefined })
     );
@@ -188,10 +164,7 @@ describe('createWebhookWorker', () => {
 describe('constants', () => {
   it('queue name and job names are defined', () => {
     expect(WEBHOOK_QUEUE_NAME).toBe('solo-pay-webhook');
-    expect(JOB_NAME_PAYMENT_CONFIRMED).toBe('payment.confirmed');
-    expect(JOB_NAME_PAYMENT_ESCROWED).toBe('payment.escrowed');
-    expect(JOB_NAME_PAYMENT_FINALIZED).toBe('payment.finalized');
-    expect(JOB_NAME_PAYMENT_CANCELLED).toBe('payment.cancelled');
+    expect(JOB_NAME_PAYMENT_PAID).toBe('payment.paid');
   });
 });
 
@@ -209,17 +182,17 @@ describe('webhook job data validation', () => {
       body: {
         paymentId: '0x' + 'a'.repeat(64),
         orderId: 'ORD-2024-001',
-        status: 'CONFIRMED',
+        status: 'PAID',
         txHash: '0x' + 'b'.repeat(64),
         amount: '1000000000000000000',
         tokenSymbol: 'USDC',
-        confirmedAt: new Date().toISOString(),
+        paidAt: new Date().toISOString(),
       },
     };
 
-    await queue.addPaymentConfirmed(validData);
+    await queue.addPaymentEvent(JOB_NAME_PAYMENT_PAID, validData);
 
-    expect(mockAdd).toHaveBeenCalledWith(JOB_NAME_PAYMENT_CONFIRMED, validData, expect.any(Object));
+    expect(mockAdd).toHaveBeenCalledWith(JOB_NAME_PAYMENT_PAID, validData, expect.any(Object));
   });
 
   it('should handle webhook data with special characters in orderId', async () => {
@@ -229,17 +202,17 @@ describe('webhook job data validation', () => {
       body: {
         paymentId: '0xabc123',
         orderId: 'ORDER-한글-日本語-emoji🎉',
-        status: 'CONFIRMED',
+        status: 'PAID',
         txHash: '0xtx123',
         amount: '500000',
         tokenSymbol: 'USDT',
-        confirmedAt: '2024-01-26T12:00:00.000Z',
+        paidAt: '2024-01-26T12:00:00.000Z',
       },
     };
 
-    await queue.addPaymentConfirmed(data);
+    await queue.addPaymentEvent(JOB_NAME_PAYMENT_PAID, data);
 
-    expect(mockAdd).toHaveBeenCalledWith(JOB_NAME_PAYMENT_CONFIRMED, data, expect.any(Object));
+    expect(mockAdd).toHaveBeenCalledWith(JOB_NAME_PAYMENT_PAID, data, expect.any(Object));
   });
 
   it('should handle large amounts', async () => {
@@ -249,15 +222,15 @@ describe('webhook job data validation', () => {
       body: {
         paymentId: '0xlargeamount',
         orderId: 'large-order',
-        status: 'CONFIRMED',
+        status: 'PAID',
         txHash: '0xtxlarge',
         amount: '999999999999999999999999999999',
         tokenSymbol: 'USDC',
-        confirmedAt: '2024-01-26T12:00:00.000Z',
+        paidAt: '2024-01-26T12:00:00.000Z',
       },
     };
 
-    await queue.addPaymentConfirmed(data);
+    await queue.addPaymentEvent(JOB_NAME_PAYMENT_PAID, data);
 
     expect(mockAdd).toHaveBeenCalled();
   });

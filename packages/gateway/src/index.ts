@@ -31,8 +31,6 @@ import { RefundService } from './services/refund.service';
 import { createRefundRoute } from './routes/refunds/create';
 import { getRefundStatusRoute } from './routes/refunds/status';
 import { getRefundListRoute } from './routes/refunds/list';
-import { finalizePaymentRoute } from './routes/payments/finalize';
-import { cancelPaymentRoute } from './routes/payments/cancel';
 
 const server = Fastify({
   logger: true,
@@ -147,7 +145,6 @@ const registerRoutes = async () => {
         tokenService,
         paymentMethodService,
         paymentService,
-        signingServices,
         currencyService,
         priceClient
       );
@@ -158,8 +155,7 @@ const registerRoutes = async () => {
         merchantService,
         chainService,
         tokenService,
-        paymentMethodService,
-        signingServices
+        paymentMethodService
       );
       await submitGaslessRoute(
         scope,
@@ -185,29 +181,13 @@ const registerRoutes = async () => {
         tokenService,
         chainService
       );
-      await merchantPaymentRoute(scope, blockchainService, merchantService, paymentService);
+      await merchantPaymentRoute(scope, merchantService, paymentService);
       await paymentMethodsRoute(
         scope,
         merchantService,
         paymentMethodService,
         tokenService,
         chainService
-      );
-      await finalizePaymentRoute(
-        scope,
-        merchantService,
-        paymentService,
-        blockchainService,
-        signingServices,
-        relayerServices
-      );
-      await cancelPaymentRoute(
-        scope,
-        merchantService,
-        paymentService,
-        blockchainService,
-        signingServices,
-        relayerServices
       );
       await createRefundRoute(
         scope,

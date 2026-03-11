@@ -108,8 +108,6 @@ export const PAYMENT_GATEWAY_ABI = [
       { name: 'recipientAddress', type: 'address' },
       { name: 'merchantId', type: 'bytes32' },
       { name: 'deadline', type: 'uint256' },
-      { name: 'escrowDuration', type: 'uint256' },
-      { name: 'serverSignature', type: 'bytes' },
       {
         name: 'permit',
         type: 'tuple',
@@ -126,7 +124,7 @@ export const PAYMENT_GATEWAY_ABI = [
   },
   {
     inputs: [{ name: 'paymentId', type: 'bytes32' }],
-    name: 'processedPayments',
+    name: 'isPaymentProcessed',
     outputs: [{ name: '', type: 'bool' }],
     stateMutability: 'view',
     type: 'function',
@@ -149,10 +147,12 @@ export const PAYMENT_GATEWAY_ABI = [
     anonymous: false,
     inputs: [
       { indexed: true, name: 'paymentId', type: 'bytes32' },
+      { indexed: true, name: 'merchantId', type: 'bytes32' },
       { indexed: true, name: 'payerAddress', type: 'address' },
-      { indexed: true, name: 'treasuryAddress', type: 'address' },
+      { indexed: false, name: 'recipientAddress', type: 'address' },
       { indexed: false, name: 'tokenAddress', type: 'address' },
       { indexed: false, name: 'amount', type: 'uint256' },
+      { indexed: false, name: 'fee', type: 'uint256' },
       { indexed: false, name: 'timestamp', type: 'uint256' },
     ],
     name: 'PaymentCompleted',

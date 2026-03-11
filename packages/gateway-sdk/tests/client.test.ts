@@ -99,7 +99,6 @@ describe('SoloPayClient', () => {
           data: {
             paymentId: 'pay-123',
             orderId: 'order-001',
-            serverSignature: '0x' + 'a'.repeat(130),
             chainId: 31337,
             tokenAddress: '0x1234567890123456789012345678901234567890',
             tokenSymbol: 'TEST',
@@ -112,6 +111,7 @@ describe('SoloPayClient', () => {
             expiresAt: '2025-12-31T00:00:00Z',
             recipientAddress: '0xRecipient',
             merchantId: '0xMerchant',
+            deadline: '1735689600',
           },
         }),
       });
@@ -121,7 +121,7 @@ describe('SoloPayClient', () => {
       expect(result.success).toBe(true);
       expect(result.data.paymentId).toBe('pay-123');
       expect(result.data.orderId).toBe('order-001');
-      expect(result.data.serverSignature).toBeDefined();
+      expect(result.data.deadline).toBeDefined();
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:3001/api/v1/payments',
         expect.objectContaining({
@@ -430,7 +430,7 @@ describe('SoloPayClient', () => {
         json: async () => ({
           success: true,
           data: {
-            status: 'FINALIZED',
+            status: 'CONFIRMED',
             transactionHash: '0xabc123',
             errorMessage: null,
             createdAt: '2025-11-29T10:00:00Z',
@@ -442,7 +442,7 @@ describe('SoloPayClient', () => {
       const result = await client.getRelayStatus('pay-123');
 
       expect(result.success).toBe(true);
-      expect(result.data.status).toBe('FINALIZED');
+      expect(result.data.status).toBe('CONFIRMED');
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:3001/api/v1/payments/pay-123/relay',
         expect.objectContaining({ method: 'GET' })
@@ -607,7 +607,7 @@ describe('SoloPayClient', () => {
           data: {
             paymentId: '0xabc',
             orderId: 'order-1',
-            status: 'FINALIZED',
+            status: 'PAID',
             amount: '1000',
             tokenSymbol: 'TEST',
             tokenDecimals: 18,
@@ -618,7 +618,7 @@ describe('SoloPayClient', () => {
       });
 
       const result = await client.getMerchantPaymentByOrderId('order-1');
-      expect(result.data.status).toBe('FINALIZED');
+      expect(result.data.status).toBe('PAID');
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:3001/api/v1/merchant/payments?orderId=order-1',
         expect.objectContaining({ method: 'GET' })
@@ -962,7 +962,6 @@ describe('SoloPayClient', () => {
           data: {
             paymentId: 'pay-123',
             orderId: 'order-1',
-            serverSignature: '0x' + 'a'.repeat(130),
             chainId: 31337,
             tokenAddress: '0x1234567890123456789012345678901234567890',
             tokenSymbol: 'TEST',
@@ -975,6 +974,7 @@ describe('SoloPayClient', () => {
             expiresAt: '2025-12-31T00:00:00Z',
             recipientAddress: '0xRecipient',
             merchantId: '0xMerchant',
+            deadline: '1735689600',
           },
         }),
       });

@@ -12,11 +12,11 @@ Full SoloPay REST API specification.
 
 ## Authentication
 
-| Method     | Header         | Endpoints                                                                                                |
-| ---------- | -------------- | -------------------------------------------------------------------------------------------------------- |
-| Public Key | `x-public-key` | POST /payments, GET /payments/:id, POST /payments/:id/relay, GET /payments/:id/relay                     |
-| API Key    | `x-api-key`    | GET /merchant/\*, POST /merchant/payment-methods, POST /payments/:id/finalize, POST /payments/:id/cancel |
-| None       | -              | GET /chains, GET /chains/tokens                                                                          |
+| Method     | Header         | Endpoints                                                                            |
+| ---------- | -------------- | ------------------------------------------------------------------------------------ |
+| Public Key | `x-public-key` | POST /payments, GET /payments/:id, POST /payments/:id/relay, GET /payments/:id/relay |
+| API Key    | `x-api-key`    | GET /merchant/\*, POST /merchant/payment-methods, POST /refunds                      |
+| None       | -              | GET /chains, GET /chains/tokens                                                      |
 
 ---
 
@@ -45,7 +45,6 @@ Create a payment. **Auth**: `x-public-key` + `Origin`
   "data": {
     "paymentId": "0xabc123...",
     "orderId": "order-001",
-    "serverSignature": "0x...",
     "chainId": 80002,
     "tokenAddress": "0xE4C687167705Abf55d709395f92e254bdF5825a2",
     "tokenSymbol": "SUT",
@@ -56,7 +55,6 @@ Create a payment. **Auth**: `x-public-key` + `Origin`
     "recipientAddress": "0xMerchantWallet...",
     "merchantId": "0x...",
     "deadline": "1706281200",
-    "escrowDuration": "300",
     "successUrl": "https://example.com/success",
     "failUrl": "https://example.com/fail",
     "expiresAt": "2024-01-26T12:35:00.000Z",
@@ -74,7 +72,7 @@ Create a payment. **Auth**: `x-public-key` + `Origin`
 
 Get payment status. **Auth**: `x-public-key`
 
-**Status values:** CREATED, ESCROWED, FINALIZE_SUBMITTED, FINALIZED, CANCEL_SUBMITTED, CANCELLED, EXPIRED, FAILED. Payment success = ESCROWED (in escrow, finalize required), confirmed = FINALIZED.
+**Status values:** CREATED, PAID, REFUND_SUBMITTED, REFUNDED, INVALID, EXPIRED, FAILED. Payment success = PAID (funds transferred directly to merchant).
 
 **Response (200)**
 
@@ -84,9 +82,8 @@ Get payment status. **Auth**: `x-public-key`
   "data": {
     "paymentId": "0xabc123...",
     "orderId": "order-001",
-    "status": "ESCROWED",
+    "status": "PAID",
     "chainId": 80002,
-    "serverSignature": "0x...",
     "tokenAddress": "0xE4C687167705Abf55d709395f92e254bdF5825a2",
     "tokenSymbol": "SUT",
     "tokenDecimals": 18,
@@ -97,12 +94,10 @@ Get payment status. **Auth**: `x-public-key`
     "recipientAddress": "0xMerchantWallet...",
     "merchantId": "0x...",
     "deadline": "1706281200",
-    "escrowDuration": "300",
     "successUrl": "https://example.com/success",
     "failUrl": "https://example.com/fail",
     "expiresAt": "2024-01-26T12:35:00.000Z",
     "txHash": "0xdef789...",
-    "releaseTxHash": null,
     "payerAddress": "0x...",
     "createdAt": "2024-01-26T12:30:00Z",
     "currency": "USD",
@@ -112,11 +107,8 @@ Get payment status. **Auth**: `x-public-key`
 }
 ```
 
-- **serverSignature** — Server-generated signature for the payment request. Used by the client SDK to construct the on-chain transaction.
-- **txHash** — Hash of the escrow (pay) transaction. Present once the user has paid and the payment is ESCROWED or later.
-- **releaseTxHash** — Hash of the finalize or cancel transaction. Present when status is FINALIZE_SUBMITTED, FINALIZED, CANCEL_SUBMITTED, or CANCELLED; null otherwise.
+- **txHash** — Hash of the pay transaction. Present once the payment is PAID or later.
 - **deadline** — Signature deadline (Unix timestamp) for the payment request; used when status is not yet terminal.
-- **escrowDuration** — Escrow duration in seconds. The merchant must call finalize before this duration elapses after the payment is escrowed; the exact escrow deadline (ISO datetime) is not returned by this API.
 
 ---
 
@@ -173,36 +165,6 @@ Get relay status. **Auth**: `x-public-key`
 ```
 
 **Status values**: `QUEUED` → `SUBMITTED` → `CONFIRMED` (or `FAILED`)
-
----
-
-### POST /payments/:id/finalize
-
-Finalize an escrowed payment (release funds to merchant). **Auth**: `x-api-key` (merchant only). Payment must be ESCROWED; must be called before escrow deadline. No body.
-
-**Response (200)** — `data.status` is the relay submission state (e.g. `submitted`, `pending`). Payment status in DB becomes `FINALIZE_SUBMITTED`; after on-chain confirm it becomes `FINALIZED`.
-
-```json
-{
-  "success": true,
-  "data": {
-    "paymentId": "0xabc123...",
-    "relayRequestId": "uuid-...",
-    "transactionHash": null,
-    "status": "submitted"
-  }
-}
-```
-
-Errors: 400 (INVALID_STATUS, ESCROW_EXPIRED), 403 (FORBIDDEN), 404 (PAYMENT_NOT_FOUND), 409 (CONFLICT). See [Finalize & Cancel](/en/payments/finalize).
-
----
-
-### POST /payments/:id/cancel
-
-Cancel an escrowed payment (return funds to buyer). **Auth**: `x-api-key` (merchant only). Payment must be ESCROWED. No body. After escrow deadline, anyone can cancel on-chain without this API.
-
-**Response (200)** — Same shape as finalize: `data.status` is relay submission state (e.g. `submitted`, `pending`). Payment status becomes `CANCEL_SUBMITTED` then `CANCELLED` after on-chain confirm. Errors: 400 (INVALID_STATUS), 403, 404, 409.
 
 ---
 

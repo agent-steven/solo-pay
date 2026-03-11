@@ -4,11 +4,11 @@ SoloPay API는 엔드포인트 종류에 따라 두 가지 인증 방식을 사�
 
 ## 인증 방식 개요
 
-| 방식       | 헤더           | 사용 엔드포인트                                                                                       |
-| ---------- | -------------- | ----------------------------------------------------------------------------------------------------- |
-| Public Key | `x-public-key` | POST /payments, GET /payments/:id, POST /payments/:id/relay, GET /payments/:id/relay                  |
-| API Key    | `x-api-key`    | GET /merchant/\*, POST /payments/:id/finalize, POST /payments/:id/cancel, POST /refunds, GET /refunds |
-| 인증 없음  | 없음           | GET /chains, GET /chains/tokens                                                                       |
+| 방식       | 헤더           | 사용 엔드포인트                                                                      |
+| ---------- | -------------- | ------------------------------------------------------------------------------------ |
+| Public Key | `x-public-key` | POST /payments, GET /payments/:id, POST /payments/:id/relay, GET /payments/:id/relay |
+| API Key    | `x-api-key`    | GET /merchant/\*, POST /refunds, GET /refunds                                        |
+| 인증 없음  | 없음           | GET /chains, GET /chains/tokens                                                      |
 
 ## API Key와 Public Key 발급
 

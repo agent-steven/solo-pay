@@ -30,7 +30,7 @@ const mockMerchant = {
 };
 
 // 유효한 pay() calldata 생성 헬퍼
-// Pay function: pay(paymentId, tokenAddress, amount, recipientAddress, merchantId, deadline, escrowDuration, serverSignature, permit)
+// Pay function: pay(paymentId, tokenAddress, amount, recipientAddress, merchantId, deadline, permit)
 const createValidPayCalldata = (paymentId: string, amount: string) => {
   const paymentIdHash = keccak256(toHex(paymentId));
   const merchantId = keccak256(toHex('merchant_demo_001')); // bytes32 merchantId
@@ -45,8 +45,6 @@ const createValidPayCalldata = (paymentId: string, amount: string) => {
       '0x70997970C51812dc3A010C7d01b50e0d17dc79C8' as `0x${string}`, // address recipientAddress
       merchantId, // bytes32 merchantId
       deadline, // uint256 deadline
-      86400n, // uint256 escrowDuration (24 hours)
-      ('0x' + 'ab'.repeat(65)) as `0x${string}`, // bytes serverSignature (dummy 65 bytes)
       {
         deadline: 0n,
         v: 0,
