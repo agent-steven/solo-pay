@@ -2,7 +2,7 @@ import type { NextPage } from 'next';
 import Head from 'next/head';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, type MouseEvent } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { validateWidgetUrlParams } from '../lib/validation';
 import type { UrlParamsValidationResult } from '../types';
@@ -69,17 +69,19 @@ function LanguageSwitcher() {
   const { locale, setLocale } = useLocale();
   return (
     <div className="flex gap-2 text-xs font-quantico text-[var(--color-brand-gray)] bg-zinc-800 px-2 py-1 rounded">
-      {SUPPORTED_LOCALES.map((loc) => (
+      {SUPPORTED_LOCALES.map((loc, index) => (
+        <>
+        {index > 0 && <span>/</span>}
         <button
           key={loc}
           type="button"
           onClick={() => setLocale(loc)}
-          className={`hover:text-white transition-colors ${
-            locale === loc ? 'text-white font-bold' : ''
-          }`}
+          className={`hover:text-white transition-colors ${locale === loc ? 'text-white font-bold' : ''
+            }`}
         >
           {loc === 'en' ? 'EN' : 'KO'}
         </button>
+        </>
       ))}
     </div>
   );
@@ -143,6 +145,14 @@ const Home: NextPage = () => {
     [router.query.lang]
   );
 
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [isHovering, setIsHovering] = useState(false);
+
+  const handleMouseMove = useCallback((e: MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  }, []);
+
   return (
     <>
       <Head>
@@ -152,11 +162,24 @@ const Home: NextPage = () => {
         <link href="/favicon.ico" rel="icon" />
       </Head>
       <main className="flex items-center justify-center min-h-screen bg-black">
-        <div className="bg-[var(--color-brand-bg)] border border-zinc-800 w-full max-w-md h-screen sm:h-[600px] sm:max-h-[90dvh] relative flex flex-col tech-cut-modal overflow-hidden">
+        <div
+          className="bg-[var(--color-brand-bg)] border border-zinc-800 w-full max-w-md h-screen sm:h-[600px] sm:max-h-[90dvh] relative flex flex-col tech-cut-modal overflow-hidden"
+          onMouseMove={handleMouseMove}
+          onMouseEnter={() => setIsHovering(true)}
+          onMouseLeave={() => setIsHovering(false)}
+        >
           {/* Corner accent line */}
           <div
             className="absolute h-[1px] rotate-[-45deg] z-20 pointer-events-none bg-white shadow-[0_0_8px_2px_rgba(255,255,255,0.8)]"
             style={{ width: '42.43px', right: '-6.21px', bottom: '14.5px' }}
+          />
+          {/* Mouse Follow Shine */}
+          <div
+            className="pointer-events-none absolute inset-0 z-[100] transition-opacity duration-500 ease-in-out"
+            style={{
+              opacity: isHovering ? 1 : 0,
+              background: `radial-gradient(150px circle at ${mousePos.x}px ${mousePos.y}px, rgba(255,255,255,0.08), transparent 100%)`,
+            }}
           />
           <LocaleProvider
             locale={locale}
