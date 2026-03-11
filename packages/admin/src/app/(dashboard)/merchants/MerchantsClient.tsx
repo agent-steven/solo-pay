@@ -6,6 +6,7 @@ import {
   updateMerchant,
   deleteMerchant,
   rotateApiKey,
+  rotatePublicKey,
 } from '@/app/actions/merchants';
 import { Modal, Field } from '@/components/ui';
 import type { Merchant } from '@solo-pay/database';
@@ -19,6 +20,7 @@ export default function MerchantsClient({ merchants, chains }: Props) {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Merchant | null>(null);
   const [newApiKey, setNewApiKey] = useState<string | null>(null);
+  const [newPublicKey, setNewPublicKey] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
 
@@ -42,6 +44,7 @@ export default function MerchantsClient({ merchants, chains }: Props) {
       }
       setFormError(null);
       setNewApiKey(result.apiKey);
+      setNewPublicKey(result.publicKey);
       setIsCreateOpen(false);
     } finally {
       setIsPending(false);
@@ -64,12 +67,25 @@ export default function MerchantsClient({ merchants, chains }: Props) {
     }
   }
 
-  async function handleRotateKey(id: number) {
+  async function handleRotateApiKey(id: number) {
     if (!confirm('Rotate API key? The old key will stop working immediately.')) return;
     setIsPending(true);
     try {
       const result = await rotateApiKey(id);
       setNewApiKey(result.apiKey ?? null);
+      setNewPublicKey(null);
+    } finally {
+      setIsPending(false);
+    }
+  }
+
+  async function handleRotatePublicKey(id: number) {
+    if (!confirm('Rotate public key? The old key will stop working immediately.')) return;
+    setIsPending(true);
+    try {
+      const result = await rotatePublicKey(id);
+      setNewApiKey(null);
+      setNewPublicKey(result.publicKey ?? null);
     } finally {
       setIsPending(false);
     }
@@ -100,23 +116,42 @@ export default function MerchantsClient({ merchants, chains }: Props) {
         </button>
       </div>
 
-      {newApiKey && (
-        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-          <p className="text-sm font-medium text-amber-800 mb-1">
-            Save this API key — it won&apos;t be shown again.
+      {(newApiKey || newPublicKey) && (
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-2">
+          <p className="text-sm font-medium text-amber-800">
+            Save these keys — they won&apos;t be shown again.
           </p>
-          <div className="flex items-center gap-2">
-            <code className="flex-1 text-sm bg-white border border-amber-200 rounded px-3 py-1.5 font-mono text-amber-900 break-all">
-              {newApiKey}
-            </code>
+          {newApiKey && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-amber-700 w-20 shrink-0">API Key</span>
+              <code className="flex-1 text-sm bg-white border border-amber-200 rounded px-3 py-1.5 font-mono text-amber-900 break-all">
+                {newApiKey}
+              </code>
+              <button
+                onClick={() => navigator.clipboard.writeText(newApiKey)}
+                className="px-3 py-1.5 text-xs border border-amber-300 rounded hover:bg-amber-100 text-amber-800 whitespace-nowrap"
+              >
+                Copy
+              </button>
+            </div>
+          )}
+          {newPublicKey && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-amber-700 w-20 shrink-0">Public Key</span>
+              <code className="flex-1 text-sm bg-white border border-amber-200 rounded px-3 py-1.5 font-mono text-amber-900 break-all">
+                {newPublicKey}
+              </code>
+              <button
+                onClick={() => navigator.clipboard.writeText(newPublicKey)}
+                className="px-3 py-1.5 text-xs border border-amber-300 rounded hover:bg-amber-100 text-amber-800 whitespace-nowrap"
+              >
+                Copy
+              </button>
+            </div>
+          )}
+          <div className="flex justify-end">
             <button
-              onClick={() => navigator.clipboard.writeText(newApiKey)}
-              className="px-3 py-1.5 text-xs border border-amber-300 rounded hover:bg-amber-100 text-amber-800 whitespace-nowrap"
-            >
-              Copy
-            </button>
-            <button
-              onClick={() => setNewApiKey(null)}
+              onClick={() => { setNewApiKey(null); setNewPublicKey(null); }}
               className="px-3 py-1.5 text-xs border border-amber-300 rounded hover:bg-amber-100 text-amber-800"
             >
               Dismiss
@@ -181,11 +216,18 @@ export default function MerchantsClient({ merchants, chains }: Props) {
                             Edit
                           </button>
                           <button
-                            onClick={() => handleRotateKey(merchant.id)}
+                            onClick={() => handleRotateApiKey(merchant.id)}
                             disabled={isPending}
                             className="px-2.5 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 border border-blue-200 hover:border-blue-400 rounded disabled:opacity-50 transition-colors"
                           >
-                            Rotate Key
+                            Rotate sk_
+                          </button>
+                          <button
+                            onClick={() => handleRotatePublicKey(merchant.id)}
+                            disabled={isPending}
+                            className="px-2.5 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 border border-blue-200 hover:border-blue-400 rounded disabled:opacity-50 transition-colors"
+                          >
+                            Rotate pk_
                           </button>
                         </div>
                         <div className="w-px h-4 bg-gray-200" />

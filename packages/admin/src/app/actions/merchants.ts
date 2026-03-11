@@ -27,7 +27,6 @@ const merchantSchema = z.object({
   chain_id: z.coerce.number().int().positive(),
   webhook_url: z.string().url().optional().or(z.literal('')),
   recipient_address: z.string().optional().or(z.literal('')),
-  escrow_duration: z.coerce.number().int().positive().optional().or(z.literal('')),
 });
 
 export async function getMerchants() {
@@ -59,7 +58,6 @@ export async function createMerchant(formData: FormData) {
         ...parsed.data,
         webhook_url: parsed.data.webhook_url || null,
         recipient_address: parsed.data.recipient_address || null,
-        escrow_duration: parsed.data.escrow_duration ? Number(parsed.data.escrow_duration) : null,
         api_key_hash: apiKey.hash,
         public_key: publicKey.key,
         public_key_hash: publicKey.hash,
@@ -87,7 +85,6 @@ export async function updateMerchant(id: number, formData: FormData) {
       ...parsed.data,
       webhook_url: parsed.data.webhook_url || null,
       recipient_address: parsed.data.recipient_address || null,
-      escrow_duration: parsed.data.escrow_duration ? Number(parsed.data.escrow_duration) : null,
     },
   });
 

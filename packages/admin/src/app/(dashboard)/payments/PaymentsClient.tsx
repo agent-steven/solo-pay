@@ -469,13 +469,13 @@ export default function PaymentsClient({ payments, merchants, chains }: Props) {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  FINALIZED: 'bg-green-50 text-green-700',
-  ESCROWED: 'bg-blue-50 text-blue-700',
   CREATED: 'bg-gray-100 text-gray-600',
-  CANCELLED: 'bg-red-50 text-red-500',
+  PAID: 'bg-green-50 text-green-700',
+  REFUND_SUBMITTED: 'bg-purple-50 text-purple-400',
   REFUNDED: 'bg-purple-50 text-purple-600',
   EXPIRED: 'bg-orange-50 text-orange-600',
   FAILED: 'bg-red-50 text-red-700',
+  INVALID: 'bg-red-50 text-red-500',
 };
 
 function StatusBadge({ status }: { status: string }) {
