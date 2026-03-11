@@ -378,13 +378,13 @@ services:
       - solo-pay-network
 
   # Admin Dashboard (Next.js)
-  admin:
+  admin-dashboard:
     build:
       context: ..
       dockerfile: docker/Dockerfile.packages
-      target: admin
-    image: 347765734000.dkr.ecr.ap-northeast-2.amazonaws.com/solo-pay/admin:nightly
-    container_name: solo-pay-admin
+      target: admin-dashboard
+    image: 347765734000.dkr.ecr.ap-northeast-2.amazonaws.com/solo-pay/admin-dashboard:nightly
+    container_name: solo-pay-admin-dashboard
     restart: always
     ports:
       - '3007:3007'
