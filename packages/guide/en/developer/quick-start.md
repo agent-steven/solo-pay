@@ -40,6 +40,10 @@ solopay.requestPayment({
 });
 ```
 
+::: warning amount decimal restriction
+`amount` allows a maximum of **2 decimal places** (e.g., `10.50` ✓, `10.123` ✗). Without `currency`, the value is used directly as the token amount. With `currency`, the fiat amount is converted to token units and truncated to 2 decimal places. The minimum token amount is `0.01`.
+:::
+
 For React projects, using the [`useWidget` hook from `@solo-pay/widget-react`](/en/widget/) is recommended.
 
 For Vanilla JS or other frameworks, you can use the CDN directly.
@@ -103,11 +107,24 @@ See the [Webhook Guide](/en/webhooks/) for details.
 
 ## Step 4: Verify Payment Status (Required)
 
-Whether from Callback or Webhook, always verify the final status by calling the API from your server. Never trust URL parameters or Webhook payload directly.
+Whether from Callback or Webhook, always verify the final status by calling the **Merchant API** from your server. Never trust URL parameters or Webhook payload directly.
+
+::: warning Do not verify with Public Key
+The Public Key (`pk_xxxxx`) is only for widget initialization. Always use your **API Key** (`sk_xxxxx`) for server-side verification.
+:::
+
+**Verify by paymentId:**
 
 ```bash
-curl https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123... \
-  -H "x-public-key: pk_xxxxx"
+curl "https://gateway.dev.solonetwork.io/merchant/payments/0xabc123..." \
+  -H "x-api-key: sk_xxxxx"
+```
+
+**Verify by orderId** (if you don't have the `paymentId` yet):
+
+```bash
+curl "https://gateway.dev.solonetwork.io/merchant/payments?orderId=order-001" \
+  -H "x-api-key: sk_xxxxx"
 ```
 
 **Verification Checklist**

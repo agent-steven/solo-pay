@@ -40,6 +40,10 @@ solopay.requestPayment({
 });
 ```
 
+::: warning amount 소수점 제한
+`amount`는 소수점 이하 최대 **2자리**까지만 허용됩니다 (예: `10.50` ✓, `10.123` ✗). `currency` 없이 전달하면 토큰 수량으로 직접 사용되며, `currency`가 있으면 법정화폐 금액에서 토큰 수량으로 변환 후 소수 둘째자리로 절삭됩니다. 최소 토큰 수량은 `0.01`입니다.
+:::
+
 React 프로젝트라면 [`@solo-pay/widget-react`의 `useWidget` 훅](/ko/widget/)을 사용하는 것을 권장합니다.
 
 Vanilla JS 또는 기타 프레임워크에서는 CDN으로 바로 사용할 수 있습니다.
@@ -103,11 +107,24 @@ Webhook 상세는 [Webhook 가이드](/ko/webhooks/)를 참조하세요.
 
 ## Step 4: 결제 상태 검증 (필수)
 
-Callback이든 Webhook이든, `paymentId`를 수신하면 반드시 서버에서 API를 호출하여 최종 상태를 확인합니다. URL 파라미터나 Webhook payload를 그대로 신뢰하지 마세요.
+Callback이든 Webhook이든, `paymentId`를 수신하면 반드시 서버에서 **Merchant API**를 호출하여 최종 상태를 확인합니다. URL 파라미터나 Webhook payload를 그대로 신뢰하지 마세요.
+
+::: warning Public Key로 검증하면 안 됩니다
+Public Key(`pk_xxxxx`)는 위젯 초기화 전용입니다. 서버 사이드 검증에는 반드시 **API Key**(`sk_xxxxx`)를 사용하세요.
+:::
+
+**paymentId로 조회:**
 
 ```bash
-curl https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123... \
-  -H "x-public-key: pk_xxxxx"
+curl "https://gateway.dev.solonetwork.io/merchant/payments/0xabc123..." \
+  -H "x-api-key: sk_xxxxx"
+```
+
+**orderId로 조회** (`paymentId`를 모르는 경우):
+
+```bash
+curl "https://gateway.dev.solonetwork.io/merchant/payments?orderId=order-001" \
+  -H "x-api-key: sk_xxxxx"
 ```
 
 **검증 체크리스트**
