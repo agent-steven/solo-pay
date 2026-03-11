@@ -13,7 +13,7 @@ SoloPay 위젯이 successUrl 또는 failUrl로 리다이렉트
     ↓
 가맹점 페이지에서 쿼리 파라미터 수신
     ↓
-서버에서 GET /payments/:id 호출하여 검증 (필수)
+서버에서 GET /merchant/payments/:id 호출하여 검증 (필수)
 ```
 
 ## 동작 방식
@@ -106,11 +106,11 @@ if (status === 'closed') {
 쿼리 파라미터는 사용자가 조작할 수 있습니다. `status=success`라도 반드시 서버에서 API를 호출하여 실제 결제 상태를 확인해야 합니다.
 :::
 
-`paymentId`를 수신하면 서버에서 `GET /payments/:id`를 호출하여 최종 상태를 검증합니다.
+`paymentId`를 수신하면 서버에서 `GET /merchant/payments/:id`를 호출하여 최종 상태를 검증합니다.
 
 ```bash
-curl https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123... \
-  -H "x-public-key: pk_xxxxx"
+curl https://gateway.dev.solonetwork.io/merchant/payments/0xabc123... \
+  -H "x-api-key: sk_xxxxx"
 ```
 
 **검증 체크리스트**
@@ -138,7 +138,7 @@ Callback URL의 한계를 보완하기 위해, 반드시 **Webhook과 함께 사
 
 - Callback URL — 사용자 경험(결과 페이지 표시)에 활용
 - Webhook — 서버 사이드에서 주문 완료 처리에 활용
-- 두 채널 모두에서 `GET /payments/:id`로 최종 검증 필수
+- 두 채널 모두에서 `GET /merchant/payments/:id`로 최종 검증 필수
 
 ## 다음 단계
 

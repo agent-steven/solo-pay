@@ -13,7 +13,7 @@ SoloPay widget redirects to successUrl or failUrl
     ↓
 Merchant page receives query parameters
     ↓
-Server calls GET /payments/:id to verify (required)
+Server calls GET /merchant/payments/:id to verify (required)
 ```
 
 ## How It Works
@@ -106,11 +106,11 @@ if (status === 'closed') {
 Query parameters can be manipulated by the user. Even if `status=success`, you must call the API from your server to verify the actual payment status.
 :::
 
-Once you receive a `paymentId`, call `GET /payments/:id` from your server to verify the final status.
+Once you receive a `paymentId`, call `GET /merchant/payments/:id` from your server to verify the final status.
 
 ```bash
-curl https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123... \
-  -H "x-public-key: pk_xxxxx"
+curl https://gateway.dev.solonetwork.io/merchant/payments/0xabc123... \
+  -H "x-api-key: sk_xxxxx"
 ```
 
 **Verification Checklist**
@@ -138,7 +138,7 @@ To compensate for callback limitations, it is strongly recommended to **use Webh
 
 - Callback URL — For user experience (showing result pages)
 - Webhook — For server-side order completion processing
-- Both channels require final verification via `GET /payments/:id`
+- Both channels require final verification via `GET /merchant/payments/:id`
 
 ## Next Steps
 
