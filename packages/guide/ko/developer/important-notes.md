@@ -13,12 +13,12 @@ SoloPay를 연동할 때 반드시 알아야 할 핵심 사항을 정리합니�
 - `successUrl`/`failUrl`은 브라우저 리다이렉트에 의존하므로, 유저가 창을 닫으면 도달하지 못합니다.
 - 반드시 Webhook(`payment.paid`, `payment.invalid`)을 구현해야 안정적으로 결제 결과를 수신할 수 있습니다.
 - Webhook + Callback URL 병행 사용을 권장합니다.
-- Fallback 수단으로 `GET /payments/:id` 폴링을 활용할 수 있습니다.
+- Fallback 수단으로 `GET /merchant/payments/:id` 폴링을 활용할 수 있습니다.
 
 ## 결제 결과를 반드시 서버에서 검증하세요
 
 - URL 쿼리 파라미터(`paymentId`, `status`)는 사용자가 조작할 수 있습니다.
-- 반드시 서버에서 `GET /payments/:id`를 호출하여 실제 결제 상태를 확인해야 합니다.
+- 반드시 서버에서 `GET /merchant/payments/:id`를 호출하여 실제 결제 상태를 확인해야 합니다.
 - 검증 체크리스트:
   - `status`가 `PAID`인지 확인 (결제 성공)
   - `amount`가 **자사 주문 DB에 저장된 기대 금액**과 일치 확인 (위젯은 클라이언트에서 실행되므로 금액이 변조될 수 있음)
@@ -34,7 +34,7 @@ SoloPay를 연동할 때 반드시 알아야 할 핵심 사항을 정리합니�
 
 ## PAID 상태 수신 시 무엇을 검증해야 하나요?
 
-- `payment.paid` 웹훅 수신을 확인하거나, `GET /payments/:id`로 `status === "PAID"`를 확인합니다.
+- `payment.paid` 웹훅 수신을 확인하거나, `GET /merchant/payments/:id`로 `status === "PAID"`를 확인합니다.
 - `amount`가 **자사 주문 DB에 저장된 기대 금액**과 일치하는지 확인합니다 — 위젯은 클라이언트에서 실행되므로 결제 요청의 금액이 변조되었을 수 있습니다.
 - `orderId`와 `tokenAddress`를 주문 데이터와 대조합니다.
 - 해당 결제가 이미 처리되지 않았는지 확인합니다 (주문 중복 완료 방지).
