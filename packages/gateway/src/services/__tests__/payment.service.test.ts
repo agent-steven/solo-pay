@@ -791,7 +791,7 @@ describe('PaymentService', () => {
           currency_code: null,
           fiat_amount: null,
           token_price: null,
-        recipient_address: null,
+          recipient_address: null,
         },
       ];
 
@@ -873,7 +873,7 @@ describe('PaymentService', () => {
           currency_code: null,
           fiat_amount: null,
           token_price: null,
-        recipient_address: null,
+          recipient_address: null,
         },
         {
           id: 202,
@@ -900,7 +900,7 @@ describe('PaymentService', () => {
           currency_code: null,
           fiat_amount: null,
           token_price: null,
-        recipient_address: null,
+          recipient_address: null,
         },
       ];
 
