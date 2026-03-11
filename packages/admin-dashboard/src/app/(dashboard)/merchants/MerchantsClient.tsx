@@ -193,7 +193,7 @@ export default function MerchantsClient({ merchants, chains }: Props) {
                     <td className="px-4 py-3 font-mono text-xs text-gray-500 max-w-[160px] truncate">
                       {merchant.merchant_key}
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-gray-500">
+                    <td className="px-4 py-3 font-mono text-xs text-gray-500 max-w-[160px] truncate">
                       {merchant.public_key ?? '—'}
                     </td>
                     <td className="px-4 py-3 text-gray-600">
