@@ -118,7 +118,7 @@ Example: `amount: 10, currency: "USD"` → pays 10 USD worth of tokens
 
 When using the widget (`@solo-pay/widget-js` / `@solo-pay/widget-react`), there is no need to call this API directly — the widget handles it automatically.
 
-See [Client-Side Integration Guide](/en/developer/client-side)
+See [Widget Integration Guide](/en/widget/)
 
 ---
 
