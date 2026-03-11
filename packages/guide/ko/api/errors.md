@@ -125,12 +125,12 @@ API Key 또는 Public Key가 유효하지 않거나 누락되었습니다.
 
 ### INVALID_PAYMENT_STATUS
 
-이미 종료 상태(ESCROWED, FINALIZED, CANCELLED 등)인 결제에 대해 가스리스(relay) 요청을 보낸 경우 반환됩니다. 가스리스는 결제 상태가 **CREATED**일 때만 가능합니다.
+이미 CREATED가 아닌 상태인 결제에 대해 가스리스(relay) 요청을 보낸 경우 반환됩니다. 가스리스는 결제 상태가 **CREATED**일 때만 가능합니다.
 
 ```json
 {
   "code": "INVALID_PAYMENT_STATUS",
-  "message": "결제가 이미 종료 상태입니다(ESCROWED, FINALIZED, CANCELLED 등). Gasless 요청은 상태가 CREATED일 때만 가능합니다."
+  "message": "결제가 이미 종료 상태입니다(PAID, REFUNDED, EXPIRED 등). Gasless 요청은 상태가 CREATED일 때만 가능합니다."
 }
 ```
 
@@ -145,31 +145,18 @@ API Key 또는 Public Key가 유효하지 않거나 누락되었습니다.
 }
 ```
 
-### INVALID_STATUS (Finalize / Cancel)
+### INVALID_STATUS (환불)
 
-**POST /payments/:id/finalize** 또는 **POST /payments/:id/cancel** 호출 시 결제가 **ESCROWED** 상태가 아닐 때 반환됩니다.
+**POST /refunds** 호출 시 결제가 **PAID** 상태가 아닐 때 반환됩니다.
 
 ```json
 {
   "code": "INVALID_STATUS",
-  "message": "Payment must be ESCROWED to finalize. Current status: FINALIZED"
+  "message": "Payment must be PAID to request a refund. Current status: REFUNDED"
 }
 ```
 
-**해결 방법**: `GET /payments/:id`에서 `status === "ESCROWED"`일 때만 finalize 또는 cancel을 호출하세요.
-
-### ESCROW_EXPIRED
-
-에스크로 기한이 지난 뒤 **POST /payments/:id/finalize**를 호출하면 반환됩니다. 응답 body에 이 코드가 포함되므로 백엔드에서 감지해 처리할 수 있습니다(예: 온체인 취소만 가능하다고 안내).
-
-```json
-{
-  "code": "ESCROW_EXPIRED",
-  "message": "Escrow deadline has expired"
-}
-```
-
-**해결 방법**: 에스크로 기한이 지나면 API로는 확정(finalize)할 수 없습니다. permissionless cancel이 활성화되어 누구나 온체인에서 cancel을 호출할 수 있으며, 호출 시 자금이 구매자에게 환불됩니다.
+**해결 방법**: `GET /payments/:id`에서 `status === "PAID"`일 때만 환불을 요청하세요.
 
 ### INVALID_SIGNATURE
 
@@ -274,10 +261,10 @@ EIP-712 서명 검증에 실패했습니다.
 
 ### PAYMENT_NOT_FINALIZED
 
-FINALIZED 상태가 아닌 결제에 대해 환불을 요청할 때 반환됩니다.
+PAID 상태가 아닌 결제에 대해 환불을 요청할 때 반환됩니다.
 
 ```json
-{ "code": "PAYMENT_NOT_FINALIZED", "message": "Payment must be FINALIZED to request a refund" }
+{ "code": "PAYMENT_NOT_FINALIZED", "message": "Payment must be PAID to request a refund" }
 ```
 
 ---
@@ -368,9 +355,9 @@ FINALIZED 상태가 아닌 결제에 대해 환불을 요청할 때 반환됩니
 { "code": "PAYMENT_ALREADY_REFUNDED", "message": "Payment has already been refunded" }
 ```
 
-### CONFLICT (Finalize / Cancel)
+### CONFLICT (환불)
 
-**POST /payments/:id/finalize** 또는 **POST /payments/:id/cancel** 호출 시, 동일 결제에 대한 다른 요청이 이미 처리 중일 때 반환됩니다(중복 제출 또는 경쟁).
+**POST /refunds** 호출 시, 동일 결제에 대한 다른 환불 요청이 이미 처리 중일 때 반환됩니다.
 
 ```json
 {
@@ -379,7 +366,7 @@ FINALIZED 상태가 아닌 결제에 대해 환불을 요청할 때 반환됩니
 }
 ```
 
-**해결 방법**: **GET /payments/:id**로 상태가 FINALIZED 또는 CANCELLED가 될 때까지 대기 후 폴링하고, finalize/cancel을 즉시 재시도하지 마세요.
+**해결 방법**: `GET /payments/:id`로 상태가 REFUNDED가 될 때까지 대기 후 폴링하고, 환불을 즉시 재시도하지 마세요.
 
 ### REFUND_IN_PROGRESS
 
@@ -410,7 +397,7 @@ FINALIZED 상태가 아닌 결제에 대해 환불을 요청할 때 반환됩니
 
 ### CHAIN_CONFIG_ERROR
 
-체인 또는 relayer 설정이 없거나 잘못된 경우 반환됩니다 (**POST /payments/:id/finalize**, **POST /payments/:id/cancel** 호출 시).
+체인 또는 relayer 설정이 없거나 잘못된 경우 반환됩니다.
 
 ```json
 {
@@ -437,7 +424,7 @@ FINALIZED 상태가 아닌 결제에 대해 환불을 요청할 때 반환됩니
 
 ### SIGNING_SERVICE_ERROR
 
-서버가 finalize/cancel 서명 생성에 실패한 경우 반환됩니다.
+서버가 필요한 서명 생성에 실패한 경우 반환됩니다.
 
 ```json
 {
@@ -448,7 +435,7 @@ FINALIZED 상태가 아닌 결제에 대해 환불을 요청할 때 반환됩니
 
 ### RELAYER_ERROR
 
-Relayer가 finalize/cancel 트랜잭션을 블록체인에 제출하는 데 실패한 경우 반환됩니다.
+Relayer가 트랜잭션을 블록체인에 제출하는 데 실패한 경우 반환됩니다.
 
 ```json
 {

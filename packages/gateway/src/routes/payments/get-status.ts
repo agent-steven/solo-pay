@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { Address, Hex } from 'viem';
+import { Address } from 'viem';
 import { BlockchainService } from '../../services/blockchain.service';
 import { PaymentService } from '../../services/payment.service';
 import { MerchantService } from '../../services/merchant.service';
@@ -18,8 +18,7 @@ export async function getPaymentStatusRoute(
   merchantService: MerchantService,
   chainService: ChainService,
   tokenService: TokenService,
-  paymentMethodService: PaymentMethodService,
-  signingServices?: Map<number, ServerSigningService>
+  paymentMethodService: PaymentMethodService
 ) {
   const authMiddleware = createPublicAuthMiddleware(merchantService);
 
@@ -35,19 +34,14 @@ export async function getPaymentStatusRoute(
         description: `
 Retrieves the current status and full details of a payment by its payment hash. Requires x-public-key.
 
-Stateless: blockchain is the source of truth for status when on-chain state is available (escrowed/finalized/cancelled). Returns that status (and syncs DB), plus full payment details including server signature, merchant/token/chain info, and contract parameters needed for the widget to resume a payment flow.
-
-For non-terminal statuses, a fresh server signature with a new deadline is generated. For terminal statuses, details are returned without a signature.
+Stateless: blockchain is the source of truth for status when on-chain state is available (paid/refunded). Returns that status (and syncs DB), plus full payment details including merchant/token/chain info and contract parameters needed for the widget to resume a payment flow.
 
 **Status Values:**
 - \`CREATED\` - Payment created, awaiting on-chain transaction
-- \`PENDING\` - Transaction submitted, awaiting confirmation
-- \`ESCROWED\` - Payment escrowed on-chain, awaiting merchant decision
-- \`FINALIZE_SUBMITTED\` - Merchant submitted finalize request
-- \`CANCEL_SUBMITTED\` - Merchant submitted cancel request
-- \`CONFIRMED\` - Payment confirmed on-chain (direct flow, no escrow)
-- \`FINALIZED\` - Escrowed payment released to merchant
-- \`CANCELLED\` - Escrowed payment refunded to buyer
+- \`PAID\` - Payment completed on-chain
+- \`REFUND_SUBMITTED\` - Refund request submitted
+- \`REFUNDED\` - Payment refunded
+- \`EXPIRED\` - Payment expired
 - \`FAILED\` - Payment failed
         `,
         headers: {
@@ -150,35 +144,18 @@ For non-terminal statuses, a fresh server signature with a new deadline is gener
           }
         }
 
-        // Stateless: blockchain is source of truth for payment status when on-chain state is available
+        // Blockchain is source of truth for response status when on-chain state is available.
+        // DB updates are handled exclusively by the webhook-manager (with full validation).
         const onChain = paymentStatus.status;
 
         const onChainToApiStatus: Record<string, string> = {
-          escrowed: 'ESCROWED',
-          finalized: 'FINALIZED',
-          cancelled: 'CANCELLED',
+          paid: 'PAID',
+          refunded: 'REFUNDED',
         };
         const finalStatusFromChain =
           onChain !== 'pending' ? onChainToApiStatus[onChain] : undefined;
 
-        // When chain has definitive status, always derive response status from chain and sync DB
         const finalStatus: string = finalStatusFromChain ?? paymentData.status;
-
-        if (finalStatusFromChain) {
-          const newStatus = finalStatusFromChain as import('@solo-pay/database').PaymentStatus;
-          const isRelease = newStatus === 'FINALIZED' || newStatus === 'CANCELLED';
-          const txHashToStore = isRelease
-            ? paymentStatus.releaseTxHash
-            : paymentStatus.transactionHash;
-          await paymentService.updateStatusByHash(
-            paymentData.payment_hash,
-            newStatus,
-            txHashToStore
-          );
-          if (paymentStatus.payerAddress) {
-            await paymentService.updatePayerAddress(id, paymentStatus.payerAddress);
-          }
-        }
 
         const tokenPermitSupported = await paymentService.getTokenPermitSupported(
           paymentData.payment_method_id
@@ -200,45 +177,10 @@ For non-terminal statuses, a fresh server signature with a new deadline is gener
             const merchantId = ServerSigningService.merchantKeyToId(merchantRecord.merchant_key);
             const recipientAddress = merchantRecord.recipient_address as Address | null;
             const amountInWei = BigInt(paymentData.amount.toString());
-            const defaultEscrowDuration = Number(process.env.DEFAULT_ESCROW_DURATION) || 300;
-            const escrowDuration = BigInt(merchantRecord.escrow_duration ?? defaultEscrowDuration);
 
-            const terminalStatuses = new Set([
-              'CONFIRMED',
-              'FINALIZED',
-              'CANCELLED',
-              'FAILED',
-              'EXPIRED',
-            ]);
-            const isTerminal = terminalStatuses.has(finalStatus);
-
-            let serverSignature: Hex | string = '';
-            let deadline = BigInt(0);
-
-            if (!isTerminal) {
-              const deadlineTtl = Number(process.env.PAYMENT_DEADLINE_SECONDS) || 3600;
-              deadline = BigInt(Math.floor(Date.now() / 1000) + deadlineTtl);
-
-              const signingService = signingServices?.get(paymentData.network_id);
-              if (signingService && recipientAddress) {
-                try {
-                  serverSignature = await signingService.signPaymentRequest(
-                    id as Hex,
-                    token.address as Address,
-                    amountInWei,
-                    recipientAddress,
-                    merchantId,
-                    deadline,
-                    escrowDuration
-                  );
-                } catch (err) {
-                  app.log.error({ err }, 'Failed to generate server signature for payment details');
-                }
-              }
-            }
+            const deadline = Math.floor(new Date(paymentData.expires_at).getTime() / 1000);
 
             detailsFields = {
-              serverSignature,
               orderId: paymentData.order_id ?? '',
               tokenAddress: token.address,
               gatewayAddress: chain.gateway_address ?? '',
@@ -247,7 +189,6 @@ For non-terminal statuses, a fresh server signature with a new deadline is gener
               recipientAddress: recipientAddress ?? '',
               merchantId,
               deadline: deadline.toString(),
-              escrowDuration: escrowDuration.toString(),
               forwarderAddress: chain.forwarder_address ?? undefined,
               successUrl: paymentData.success_url ?? '',
               failUrl: paymentData.fail_url ?? '',

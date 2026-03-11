@@ -4,5 +4,5 @@
 
 ## 다음 단계
 
-- [결제 확정 및 취소](/ko/payments/finalize) — 에스크로 결제 확정/취소
-- [결제 상태](/ko/payments/status) — 전체 상태 값
+- [결제 상태](/ko/payments/status) — 전체 결제 상태 값
+- [Webhook 설정](/ko/webhooks/) — 이벤트 기반 처리

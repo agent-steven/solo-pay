@@ -1,4 +1,4 @@
-import type { PaymentConfirmedBody } from './types';
+import type { PaymentWebhookBody } from './types';
 
 /** Retry delays in ms: 10s, 30s, 90s (3 retries after first attempt). */
 const RETRY_DELAYS_MS = [10_000, 30_000, 90_000];
@@ -9,7 +9,7 @@ const RETRY_DELAYS_MS = [10_000, 30_000, 90_000];
  */
 export async function sendWebhook(
   url: string,
-  body: PaymentConfirmedBody,
+  body: PaymentWebhookBody,
   options?: { signal?: AbortSignal }
 ): Promise<{ ok: boolean; statusCode?: number; error?: string }> {
   let lastError: string | undefined;

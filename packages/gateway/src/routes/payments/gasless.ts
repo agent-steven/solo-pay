@@ -150,9 +150,8 @@ Submits a gasless (meta-transaction) payment using ERC-2771 forwarder.
           });
         }
 
-        // Check payment expiry
+        // Check payment expiry (status update is handled by webhook-manager monitor)
         if (payment.expires_at && new Date() > new Date(payment.expires_at)) {
-          await paymentService.updateStatus(payment.id, 'EXPIRED');
           return reply.code(400).send({
             code: ErrorCodes.PAYMENT_EXPIRED,
             message: 'Payment has expired',
@@ -228,7 +227,7 @@ Submits a gasless (meta-transaction) payment using ERC-2771 forwarder.
           payment_id: payment.id,
         });
 
-        // Keep CREATED status after relay submit (transitions to ESCROWED on on-chain confirmation)
+        // Keep CREATED status after relay submit (transitions to PAID on on-chain confirmation)
 
         return reply.code(202).send({
           success: true,

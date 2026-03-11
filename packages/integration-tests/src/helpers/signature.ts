@@ -1,11 +1,6 @@
 import { ethers, Wallet, Interface, solidityPackedKeccak256, ZeroHash } from 'ethers';
-import { CONTRACT_ADDRESSES, TEST_CHAIN_ID, HARDHAT_ACCOUNTS } from '../setup/wallets';
+import { CONTRACT_ADDRESSES, TEST_CHAIN_ID } from '../setup/wallets';
 import { PaymentGatewayABI, getProvider } from './blockchain';
-
-/**
- * Default escrow duration for tests (1 day in seconds)
- */
-export const DEFAULT_ESCROW_DURATION = 86400n;
 
 /**
  * Zero permit signature for skipping permit and using traditional approve flow
@@ -37,16 +32,6 @@ export interface ForwardRequestData {
   signature: string;
 }
 
-export interface PaymentParams {
-  paymentId: string;
-  tokenAddress: string;
-  amount: bigint;
-  recipientAddress: string;
-  merchantId: string;
-  deadline: bigint;
-  escrowDuration: bigint;
-}
-
 const FORWARD_REQUEST_TYPES = {
   ForwardRequest: [
     { name: 'from', type: 'address' },
@@ -59,36 +44,12 @@ const FORWARD_REQUEST_TYPES = {
   ],
 };
 
-const PAYMENT_REQUEST_TYPES = {
-  PaymentRequest: [
-    { name: 'paymentId', type: 'bytes32' },
-    { name: 'tokenAddress', type: 'address' },
-    { name: 'amount', type: 'uint256' },
-    { name: 'recipientAddress', type: 'address' },
-    { name: 'merchantId', type: 'bytes32' },
-    { name: 'deadline', type: 'uint256' },
-    { name: 'escrowDuration', type: 'uint256' },
-  ],
-};
-
 export function getEIP712Domain(forwarderAddress: string, chainId: number = TEST_CHAIN_ID) {
   return {
     name: 'SoloForwarder',
     version: '1',
     chainId: chainId,
     verifyingContract: forwarderAddress,
-  };
-}
-
-export function getPaymentGatewayDomain(
-  gatewayAddress: string = CONTRACT_ADDRESSES.paymentGateway,
-  chainId: number = TEST_CHAIN_ID
-) {
-  return {
-    name: 'SoloPayGateway',
-    version: '1',
-    chainId: chainId,
-    verifyingContract: gatewayAddress,
   };
 }
 
@@ -117,34 +78,6 @@ export async function signForwardRequest(
 }
 
 /**
- * Sign a payment request with server's private key
- * This signature is verified by the PaymentGateway contract
- */
-export async function signPaymentRequest(
-  params: PaymentParams,
-  signerPrivateKey: string = HARDHAT_ACCOUNTS.signer.privateKey,
-  gatewayAddress: string = CONTRACT_ADDRESSES.paymentGateway,
-  chainId: number = TEST_CHAIN_ID
-): Promise<string> {
-  const provider = getProvider();
-  const wallet = new Wallet(signerPrivateKey, provider);
-  const domain = getPaymentGatewayDomain(gatewayAddress, chainId);
-
-  const message = {
-    paymentId: params.paymentId,
-    tokenAddress: params.tokenAddress,
-    amount: params.amount,
-    recipientAddress: params.recipientAddress,
-    merchantId: params.merchantId,
-    deadline: params.deadline,
-    escrowDuration: params.escrowDuration,
-  };
-
-  const signature = await wallet.signTypedData(domain, PAYMENT_REQUEST_TYPES, message);
-  return signature;
-}
-
-/**
  * Convert merchant key string to bytes32 merchantId
  */
 export function merchantKeyToId(merchantKey: string): string {
@@ -157,9 +90,7 @@ export function encodePayFunctionData(
   amount: bigint,
   recipientAddress: string,
   merchantId: string,
-  deadline: bigint,
-  escrowDuration: bigint,
-  serverSignature: string
+  deadline: bigint
 ): string {
   const iface = new Interface(PaymentGatewayABI);
   return iface.encodeFunctionData('pay', [
@@ -169,8 +100,6 @@ export function encodePayFunctionData(
     recipientAddress,
     merchantId,
     deadline,
-    escrowDuration,
-    serverSignature,
     ZERO_PERMIT,
   ]);
 }
@@ -200,63 +129,7 @@ export function getDeadline(hoursFromNow: number = 1): bigint {
 
 // --- Refund ---
 
-const REFUND_REQUEST_TYPES = {
-  RefundRequest: [{ name: 'paymentId', type: 'bytes32' }],
-};
-
-export async function signRefundRequest(
-  paymentId: string,
-  signerPrivateKey: string = HARDHAT_ACCOUNTS.signer.privateKey,
-  gatewayAddress: string = CONTRACT_ADDRESSES.paymentGateway,
-  chainId: number = TEST_CHAIN_ID
-): Promise<string> {
-  const provider = getProvider();
-  const wallet = new Wallet(signerPrivateKey, provider);
-  const domain = getPaymentGatewayDomain(gatewayAddress, chainId);
-
-  return wallet.signTypedData(domain, REFUND_REQUEST_TYPES, { paymentId });
-}
-
-export function encodeRefundFunctionData(
-  originalPaymentId: string,
-  serverSignature: string
-): string {
+export function encodeRefundFunctionData(originalPaymentId: string): string {
   const iface = new Interface(PaymentGatewayABI);
-  return iface.encodeFunctionData('refund', [originalPaymentId, serverSignature, ZERO_PERMIT]);
-}
-
-// --- Finalize / Cancel ---
-
-const FINALIZE_REQUEST_TYPES = {
-  FinalizeRequest: [{ name: 'paymentId', type: 'bytes32' }],
-};
-
-const CANCEL_REQUEST_TYPES = {
-  CancelRequest: [{ name: 'paymentId', type: 'bytes32' }],
-};
-
-export async function signFinalizeRequest(
-  paymentId: string,
-  signerPrivateKey: string = HARDHAT_ACCOUNTS.signer.privateKey,
-  gatewayAddress: string = CONTRACT_ADDRESSES.paymentGateway,
-  chainId: number = TEST_CHAIN_ID
-): Promise<string> {
-  const provider = getProvider();
-  const wallet = new Wallet(signerPrivateKey, provider);
-  const domain = getPaymentGatewayDomain(gatewayAddress, chainId);
-
-  return wallet.signTypedData(domain, FINALIZE_REQUEST_TYPES, { paymentId });
-}
-
-export async function signCancelRequest(
-  paymentId: string,
-  signerPrivateKey: string = HARDHAT_ACCOUNTS.signer.privateKey,
-  gatewayAddress: string = CONTRACT_ADDRESSES.paymentGateway,
-  chainId: number = TEST_CHAIN_ID
-): Promise<string> {
-  const provider = getProvider();
-  const wallet = new Wallet(signerPrivateKey, provider);
-  const domain = getPaymentGatewayDomain(gatewayAddress, chainId);
-
-  return wallet.signTypedData(domain, CANCEL_REQUEST_TYPES, { paymentId });
+  return iface.encodeFunctionData('refund', [originalPaymentId, ZERO_PERMIT]);
 }

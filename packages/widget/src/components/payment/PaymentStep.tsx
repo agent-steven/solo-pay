@@ -466,11 +466,6 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
     setConfigError(null);
 
     // Validate required payment details before proceeding
-    if (!paymentDetails?.serverSignature) {
-      setConfigError(t('error.configMissingSignature'));
-      console.error('Missing server signature - check SIGNER_PRIVATE_KEY configuration');
-      return;
-    }
     if (!paymentDetails?.recipientAddress || !paymentDetails?.merchantId) {
       setConfigError(t('error.configMissingRecipient'));
       console.error('Missing payment details:', {
@@ -627,8 +622,8 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
 
   // Resume mode: handle terminal statuses returned by the server
   if (isResumeMode && !urlParams?.walletOnly && paymentDetails?.status) {
-    const successStatuses = ['CONFIRMED', 'FINALIZED'];
-    const errorStatuses = ['EXPIRED', 'FAILED', 'CANCELLED'];
+    const successStatuses = ['CONFIRMED', 'PAID'];
+    const errorStatuses = ['EXPIRED', 'FAILED'];
 
     if (successStatuses.includes(paymentDetails.status) && currentStep !== 'payment-complete') {
       return (

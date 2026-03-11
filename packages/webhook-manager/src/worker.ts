@@ -38,7 +38,7 @@ async function main(): Promise<void> {
     },
   });
 
-  // Payment monitor: poll blockchain for CREATED/PENDING payments
+  // Payment monitor: poll blockchain for CREATED payments
   const prisma = getPrismaClient();
 
   const chains = await prisma.chain.findMany({

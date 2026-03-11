@@ -4,11 +4,11 @@ SoloPay API uses two authentication methods depending on the endpoint type.
 
 ## Authentication Overview
 
-| Method     | Header         | Endpoints                                                                                             |
-| ---------- | -------------- | ----------------------------------------------------------------------------------------------------- |
-| Public Key | `x-public-key` | POST /payments, GET /payments/:id, POST /payments/:id/relay, GET /payments/:id/relay                  |
-| API Key    | `x-api-key`    | GET /merchant/\*, POST /payments/:id/finalize, POST /payments/:id/cancel, POST /refunds, GET /refunds |
-| None       | -              | GET /chains, GET /chains/tokens                                                                       |
+| Method     | Header         | Endpoints                                                                            |
+| ---------- | -------------- | ------------------------------------------------------------------------------------ |
+| Public Key | `x-public-key` | POST /payments, GET /payments/:id, POST /payments/:id/relay, GET /payments/:id/relay |
+| API Key    | `x-api-key`    | GET /merchant/\*, POST /refunds, GET /refunds                                        |
+| None       | -              | GET /chains, GET /chains/tokens                                                      |
 
 ## Getting Your Keys
 

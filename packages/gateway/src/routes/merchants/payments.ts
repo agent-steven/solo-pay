@@ -1,72 +1,12 @@
 import { FastifyInstance } from 'fastify';
-import { Payment } from '@solo-pay/database';
-import { BlockchainService } from '../../services/blockchain.service';
 import { PaymentService } from '../../services/payment.service';
 import { createAuthMiddleware } from '../../middleware/auth.middleware';
 import { MerchantService } from '../../services/merchant.service';
 import { ErrorResponseSchema } from '../../docs/schemas';
 import { ErrorCodes } from '../../error-codes';
 
-/**
- * Syncs payment status from blockchain based on on-chain state.
- * Handles: CREATED/PENDING→ESCROWED, ESCROWED/FINALIZE_SUBMITTED→FINALIZED,
- *          ESCROWED/CANCEL_SUBMITTED→CANCELLED.
- * Mutates the payment object in place. Returns true if DB status was updated.
- */
-async function syncPaymentStatusFromChain(
-  blockchainService: BlockchainService,
-  paymentService: PaymentService,
-  payment: Payment
-): Promise<boolean> {
-  const chainId = payment.network_id;
-  if (!blockchainService.isChainSupported(chainId)) {
-    return false;
-  }
-  const chainStatus = await blockchainService.getPaymentStatus(chainId, payment.payment_hash);
-  if (!chainStatus || chainStatus.status === 'pending') {
-    return false;
-  }
-
-  const onChain = chainStatus.status;
-  const dbStatus = payment.status;
-
-  type PaymentStatus = import('@solo-pay/database').PaymentStatus;
-
-  const syncMap: Record<string, { from: string[]; to: PaymentStatus } | undefined> = {
-    escrowed: { from: ['CREATED'], to: 'ESCROWED' },
-    finalized: { from: ['ESCROWED', 'FINALIZE_SUBMITTED'], to: 'FINALIZED' },
-    cancelled: { from: ['ESCROWED', 'CANCEL_SUBMITTED'], to: 'CANCELLED' },
-  };
-
-  const rule = syncMap[onChain];
-  if (!rule || !rule.from.includes(dbStatus)) {
-    return false;
-  }
-
-  // For FINALIZED/CANCELLED, pass the release txHash; for ESCROWED, pass the escrow txHash
-  const isRelease = rule.to === 'FINALIZED' || rule.to === 'CANCELLED';
-  const txHashToStore = isRelease
-    ? (chainStatus.releaseTxHash ?? undefined)
-    : (chainStatus.transactionHash ?? undefined);
-
-  const updated = await paymentService.updateStatusByHash(
-    payment.payment_hash,
-    rule.to,
-    txHashToStore
-  );
-  payment.status = updated.status;
-  payment.tx_hash = updated.tx_hash;
-  payment.release_tx_hash = updated.release_tx_hash;
-  payment.confirmed_at = updated.confirmed_at ?? payment.confirmed_at;
-  if (chainStatus.payerAddress) {
-    const withPayer = await paymentService.updatePayerAddress(
-      payment.payment_hash,
-      chainStatus.payerAddress
-    );
-    payment.payer_address = withPayer.payer_address ?? payment.payer_address;
-  }
-  return true;
-}
+// DB status updates are handled exclusively by the webhook-manager (with full on-chain validation).
+// These GET endpoints are read-only and return DB state as-is.
 
 function buildPaymentDetailResponse(
   payment: {
@@ -77,7 +17,6 @@ function buildPaymentDetailResponse(
     token_symbol: string;
     token_decimals: number;
     tx_hash: string | null;
-    release_tx_hash: string | null;
     payer_address: string | null;
     currency_code: string | null;
     fiat_amount: { toString: () => string } | null;
@@ -95,7 +34,6 @@ function buildPaymentDetailResponse(
     tokenSymbol: payment.token_symbol,
     tokenDecimals: payment.token_decimals,
     txHash: payment.tx_hash ?? undefined,
-    releaseTxHash: payment.release_tx_hash ?? undefined,
     payerAddress: payment.payer_address ?? undefined,
     currencyCode: payment.currency_code ?? undefined,
     fiatAmount: payment.fiat_amount?.toString() ?? undefined,
@@ -108,7 +46,6 @@ function buildPaymentDetailResponse(
 
 export async function merchantPaymentRoute(
   app: FastifyInstance,
-  blockchainService: BlockchainService,
   merchantService: MerchantService,
   paymentService: PaymentService
 ) {
@@ -121,24 +58,12 @@ export async function merchantPaymentRoute(
       orderId: { type: 'string' },
       status: {
         type: 'string',
-        enum: [
-          'CREATED',
-          'ESCROWED',
-          'FINALIZE_SUBMITTED',
-          'FINALIZED',
-          'CANCEL_SUBMITTED',
-          'CANCELLED',
-          'REFUND_SUBMITTED',
-          'REFUNDED',
-          'EXPIRED',
-          'FAILED',
-        ],
+        enum: ['CREATED', 'PAID', 'REFUND_SUBMITTED', 'REFUNDED', 'EXPIRED', 'FAILED', 'INVALID'],
       },
       amount: { type: 'string', description: 'Wei' },
       tokenSymbol: { type: 'string' },
       tokenDecimals: { type: 'integer' },
       txHash: { type: 'string' },
-      releaseTxHash: { type: 'string', description: 'Finalize/cancel transaction hash' },
       payerAddress: { type: 'string' },
       currencyCode: { type: 'string', description: 'Fiat currency code (e.g. USD)' },
       fiatAmount: { type: 'string', description: 'Original fiat amount before conversion' },
@@ -208,7 +133,6 @@ export async function merchantPaymentRoute(
           });
         }
 
-        await syncPaymentStatusFromChain(blockchainService, paymentService, payment);
         const tokenPermitSupported = await paymentService.getTokenPermitSupported(
           payment.payment_method_id
         );
@@ -223,7 +147,7 @@ export async function merchantPaymentRoute(
     }
   );
 
-  // GET /merchant/payments/:id – API Key, merchant ownership, sync status
+  // GET /merchant/payments/:id – API Key, merchant ownership
   app.get<{ Params: { id: string } }>(
     '/merchant/payments/:id',
     {
@@ -232,7 +156,7 @@ export async function merchantPaymentRoute(
         tags: ['Merchant'],
         summary: 'Get payment detail by ID',
         description:
-          'Retrieves payment by payment hash. API Key required. Validates payment belongs to merchant. Syncs latest status from blockchain.',
+          'Retrieves payment by payment hash. API Key required. Validates payment belongs to merchant.',
         security: [{ ApiKeyAuth: [] }],
         params: {
           type: 'object',
@@ -282,7 +206,6 @@ export async function merchantPaymentRoute(
           });
         }
 
-        await syncPaymentStatusFromChain(blockchainService, paymentService, payment);
         const tokenPermitSupported = await paymentService.getTokenPermitSupported(
           payment.payment_method_id
         );

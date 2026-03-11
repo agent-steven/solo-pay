@@ -54,7 +54,6 @@ Example: `amount: 10, currency: "USD"` → pays 10 USD worth of tokens
   "data": {
     "paymentId": "0xabc123def456...",
     "orderId": "order-001",
-    "serverSignature": "0x...",
     "chainId": 80002,
     "tokenAddress": "0xE4C687167705Abf55d709395f92e254bdF5825a2",
     "tokenSymbol": "SUT",
@@ -65,7 +64,6 @@ Example: `amount: 10, currency: "USD"` → pays 10 USD worth of tokens
     "recipientAddress": "0xMerchantWallet...",
     "merchantId": "0x...",
     "deadline": "1706281200",
-    "escrowDuration": "300",
     "successUrl": "https://example.com/success",
     "failUrl": "https://example.com/fail",
     "expiresAt": "2024-01-26T12:35:00.000Z",
@@ -94,13 +92,11 @@ Example: `amount: 10, currency: "USD"` → pays 10 USD worth of tokens
 | Field                  | Type       | Description                                                                                           |
 | ---------------------- | ---------- | ----------------------------------------------------------------------------------------------------- |
 | `paymentId`            | `string`   | Unique payment identifier (bytes32 hash)                                                              |
-| `serverSignature`      | `string`   | Server EIP-712 signature for contract auth                                                            |
 | `amount`               | `string`   | Amount in wei                                                                                         |
 | `gatewayAddress`       | `address`  | PaymentGateway contract address                                                                       |
 | `forwarderAddress`     | `address`  | ERC2771 Forwarder address (for Gasless)                                                               |
 | `merchantId`           | `string`   | Merchant ID (bytes32)                                                                                 |
 | `deadline`             | `string`   | Server signature deadline (Unix timestamp); required for `pay()` and gasless. Default: 1 hour (3600s) |
-| `escrowDuration`       | `string`   | Escrow hold duration in seconds; required for `pay()` and gasless. Default: 5 minutes (300s)          |
 | `expiresAt`            | `datetime` | Payment expiry (5 minutes from creation)                                                              |
 | `tokenPermitSupported` | `boolean`  | Whether the token supports EIP-2612 Permit                                                            |
 | `currency`             | `string`   | Fiat currency code (included only when requested)                                                     |

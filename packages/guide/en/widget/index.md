@@ -97,6 +97,47 @@ Use the widget directly via script tag without npm.
 </script>
 ```
 
+## amount and currency Behavior
+
+How `amount` is interpreted depends on whether `currency` is provided.
+
+| `currency`                        | `amount` interpretation                                                         |
+| --------------------------------- | ------------------------------------------------------------------------------- |
+| Provided (e.g., `'USD'`, `'KRW'`) | **Fiat amount** — automatically converted to token amount using real-time price |
+| Omitted                           | **Token amount directly** — used as-is, no conversion                           |
+
+**Example 1: USD-based payment (currency provided)**
+
+```typescript
+// amount: 25.5 USD → converted to token amount at real-time price
+solopay.requestPayment({
+  orderId: 'order-001',
+  amount: '25.5',
+  currency: 'USD',
+  tokenAddress: '0xE4C687167705Abf55d709395f92e254bdF5825a2',
+  successUrl: 'https://myshop.com/payment/success',
+  failUrl: 'https://myshop.com/payment/fail',
+});
+```
+
+**Example 2: Token amount directly (currency omitted)**
+
+```typescript
+// amount: 25.5 USDT directly (no conversion)
+solopay.requestPayment({
+  orderId: 'order-001',
+  amount: '25.5',
+  // currency omitted → amount is used as token amount directly
+  tokenAddress: '0xE4C687167705Abf55d709395f92e254bdF5825a2',
+  successUrl: 'https://myshop.com/payment/success',
+  failUrl: 'https://myshop.com/payment/fail',
+});
+```
+
+::: tip What happens when currency is omitted?
+When `currency` is omitted, `amount` is treated as the **token amount** directly. For example, passing `amount: '25.5'` with a USDT token requests exactly 25.5 USDT. Use this when no currency conversion is needed.
+:::
+
 ## How It Works
 
 - **Desktop**: The widget opens as a popup window.
@@ -136,12 +177,11 @@ const result = await response.json();
 
 **Verification Checklist**
 
-- [ ] Confirm `status === 'ESCROWED'` (payment success)
-- [ ] Confirm `amount` matches order amount
+- [ ] Confirm `status === 'PAID'` (payment success)
+- [ ] Confirm `amount` matches the expected amount **in your order database** (the widget runs client-side and the amount could be tampered with)
 - [ ] Confirm `tokenAddress` matches the expected token
 - [ ] Confirm `orderId` matches the expected orderId
 - [ ] Prevent duplicate completion processing for the same `paymentId`
-- [ ] Call finalize from server, then complete the order only after confirming `FINALIZED` status
 
 ::: tip Webhook Integration Recommended
 Callbacks are browser-redirect based and can be lost due to network issues. **Using it with Webhooks** allows reliable payment completion reception. [View Webhook Setup Guide](/en/webhooks/)

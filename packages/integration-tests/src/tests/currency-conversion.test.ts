@@ -92,7 +92,7 @@ describe('Currency Conversion', () => {
 
       // Verify standard fields still present
       expect(response.data.paymentId).toBeDefined();
-      expect(response.data.serverSignature).toBeDefined();
+      expect(response.data.deadline).toBeDefined();
       expect(response.data.chainId).toBeDefined();
       expect(response.data.tokenAddress.toLowerCase()).toBe(DEFAULT_TOKEN_ADDRESS.toLowerCase());
     });

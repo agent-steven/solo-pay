@@ -145,18 +145,18 @@ const translations = {
     'progress.SIGNING_FORWARD': 'Please sign payment transaction in wallet',
     'progress.RELAYING': 'Sending to payment network...',
     'progress.CONFIRMING': 'Verifying on blockchain... please wait',
-    'progress.ESCROWED': 'Payment Secured!',
+    'progress.PAID': 'Payment Completed!',
     'progress.ERROR': 'Transaction failed',
 
     // Processing Steps List
     'step.signing': 'Sign Transaction',
     'step.relaying': 'Send to Network',
     'step.confirming': 'Verify on Blockchain',
-    'step.escrowed': 'Payment Secured',
+    'step.paid': 'Payment Completed',
 
     // Complete
-    'complete.title': 'Payment Secured',
-    'complete.description': 'Please return to the merchant to finalize your order.',
+    'complete.title': 'Payment Completed',
+    'complete.description': 'Your payment has been completed successfully.',
     'complete.returnToMerchant': 'Return to Merchant',
     'complete.date': 'Date',
     'complete.amount': 'Amount',
@@ -284,16 +284,16 @@ const translations = {
     'progress.SIGNING_FORWARD': '지갑에서 결제 트랜잭션을 승인해 주세요',
     'progress.RELAYING': '결제 네트워크로 전송 중...',
     'progress.CONFIRMING': '블록체인 검증 중... 잠시만 대기해 주세요',
-    'progress.ESCROWED': '안전 결제 예치 완료!',
+    'progress.PAID': '결제 완료!',
     'progress.ERROR': '결제 실패',
 
     'step.signing': '결제 트랜잭션 서명',
     'step.relaying': '결제 네트워크 전송',
     'step.confirming': '블록체인 검증',
-    'step.escrowed': '안전 결제 예치',
+    'step.paid': '결제 완료',
 
-    'complete.title': '안전 결제 예치 완료',
-    'complete.description': '상점으로 돌아가 결제를 최종 완료해 주세요.',
+    'complete.title': '결제 완료',
+    'complete.description': '결제가 성공적으로 완료되었습니다.',
     'complete.returnToMerchant': '상점으로 돌아가기',
     'complete.date': '일시',
     'complete.amount': '금액',

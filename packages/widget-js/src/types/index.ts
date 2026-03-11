@@ -23,7 +23,11 @@ export interface PaymentRequest {
   successUrl: string;
   /** Redirect URL on failure (required) */
   failUrl: string;
-  /** Fiat currency code (e.g., USD, KRW). When provided, amount is treated as fiat amount. */
+  /**
+   * Fiat currency code (e.g., USD, KRW).
+   * When provided, `amount` is treated as fiat amount and converted to token amount using real-time price.
+   * When omitted, `amount` is treated as token amount directly (no conversion).
+   */
   currency?: string;
   /** Widget UI language: en (default) or ko. Sets URL param `lang` so widget opens in that language. */
   locale?: WidgetLocale;

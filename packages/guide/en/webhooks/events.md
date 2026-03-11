@@ -1,69 +1,48 @@
 # Event Details
 
-## ESCROWED
+## payment.paid
 
-Payment escrowed on-chain; user has paid and funds are held in escrow. Merchant can finalize (release to merchant) or cancel (return to buyer).
+Payment confirmed on-chain. Funds have been transferred directly to the merchant wallet. This is the terminal success state.
 
 ```json
 {
   "paymentId": "0xabc123...",
   "orderId": "order-001",
-  "status": "ESCROWED",
+  "status": "PAID",
   "txHash": "0xdef789...",
   "amount": "10500000000000000000",
   "tokenSymbol": "SUT",
-  "escrowedAt": "2024-01-26T12:35:00.000Z"
+  "paidAt": "2024-01-26T12:35:42.000Z"
 }
 ```
 
-## FINALIZED
+## payment.invalid
 
-Funds released to merchant. Terminal success state for the finalize flow.
-
-```json
-{
-  "paymentId": "0xabc123...",
-  "orderId": "order-001",
-  "status": "FINALIZED",
-  "txHash": "0xdef789...",
-  "releaseTxHash": "0xrelease123...",
-  "amount": "10500000000000000000",
-  "tokenSymbol": "SUT",
-  "finalizedAt": "2024-01-26T12:36:00.000Z"
-}
-```
-
-## CANCELLED
-
-Escrowed payment was cancelled; funds returned to buyer.
+Payment detected on-chain but validation failed. The on-chain transaction did not match the expected payment parameters (amount, token, or recipient mismatch).
 
 ```json
 {
   "paymentId": "0xabc123...",
   "orderId": "order-001",
-  "status": "CANCELLED",
+  "status": "INVALID",
   "txHash": "0xdef789...",
-  "releaseTxHash": "0xcancel123...",
   "amount": "10500000000000000000",
   "tokenSymbol": "SUT",
-  "cancelledAt": "2024-01-26T12:36:00.000Z"
+  "paidAt": "2024-01-26T12:35:42.000Z"
 }
 ```
 
 ## Payload Fields
 
-| Field           | Type     | Description                                                    |
-| --------------- | -------- | -------------------------------------------------------------- |
-| `paymentId`     | `string` | Unique payment identifier (bytes32 hash)                       |
-| `orderId`       | `string` | Merchant order ID (null if not provided)                       |
-| `status`        | `string` | Payment status at the time of the event                        |
-| `txHash`        | `string` | Escrow (pay) transaction hash                                  |
-| `releaseTxHash` | `string` | Finalize or cancel transaction hash (finalized/cancelled only) |
-| `amount`        | `string` | Amount in wei (string for precision)                           |
-| `tokenSymbol`   | `string` | Token symbol (e.g., USDC, SUT)                                 |
-| `escrowedAt`    | `string` | ISO-8601 timestamp (escrowed event only)                       |
-| `finalizedAt`   | `string` | ISO-8601 timestamp (finalized event only)                      |
-| `cancelledAt`   | `string` | ISO-8601 timestamp (cancelled event only)                      |
+| Field         | Type     | Description                                     |
+| ------------- | -------- | ----------------------------------------------- |
+| `paymentId`   | `string` | Unique payment identifier (bytes32 hash)        |
+| `orderId`     | `string` | Merchant order ID (null if not provided)        |
+| `status`      | `string` | Payment status at the time of the event         |
+| `txHash`      | `string` | On-chain transaction hash                       |
+| `amount`      | `string` | Amount in wei (string for precision)            |
+| `tokenSymbol` | `string` | Token symbol (e.g., USDC, SUT)                  |
+| `paidAt`      | `string` | ISO-8601 timestamp of the on-chain confirmation |
 
 ## Event Handler Example
 
@@ -72,15 +51,11 @@ async function handleWebhook(payload: any) {
   const { status, orderId, paymentId } = payload;
 
   switch (status) {
-    case 'ESCROWED':
-      await updateOrderStatus(orderId, 'PAID_ESCROW');
-      // Optionally complete order here, or wait for FINALIZED
-      break;
-    case 'FINALIZED':
+    case 'PAID':
       await completeOrder(orderId);
       break;
-    case 'CANCELLED':
-      await cancelOrder(orderId);
+    case 'INVALID':
+      await flagOrderForReview(orderId, paymentId);
       break;
   }
 }
@@ -89,6 +64,6 @@ async function handleWebhook(payload: any) {
 ## Next Steps
 
 - [Payment Status](/en/payments/status) - All status values
-- [Finalize & Cancel](/en/payments/finalize) - Release or cancel after escrowed
+- [Refunds](/en/payments/refunds) - Request a refund for a completed payment
 - [API Reference](/en/api/) - Full API spec
 - [Error Codes](/en/api/errors) - Error handling

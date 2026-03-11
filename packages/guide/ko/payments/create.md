@@ -22,7 +22,7 @@ SoloPay 위젯을 사용하면 **결제 생성은 위젯이 자동으로 처리*
        │  POST /payments       │                       │
        │──────────────────────▶│                       │
        │                       │                       │
-       │  { paymentId, serverSignature, ... }          │
+       │  { paymentId, deadline, ... }          │
        │◀──────────────────────│                       │
        │                       │                       │
        │     (사용자가 지갑에서 결제)                   │
@@ -73,7 +73,6 @@ curl -X POST https://gateway.dev.solonetwork.io/api/v1/payments \
   "data": {
     "paymentId": "0xabc123def456...",
     "orderId": "order-001",
-    "serverSignature": "0x...",
     "chainId": 80002,
     "tokenAddress": "0xE4C687167705Abf55d709395f92e254bdF5825a2",
     "tokenSymbol": "SUT",
@@ -84,7 +83,6 @@ curl -X POST https://gateway.dev.solonetwork.io/api/v1/payments \
     "recipientAddress": "0xMerchantWallet...",
     "merchantId": "0x...",
     "deadline": "1706281200",
-    "escrowDuration": "300",
     "successUrl": "https://example.com/success",
     "failUrl": "https://example.com/fail",
     "expiresAt": "2024-01-26T12:35:00.000Z",
@@ -113,13 +111,11 @@ curl -X POST https://gateway.dev.solonetwork.io/api/v1/payments \
 | 필드                   | 타입       | 설명                                                                                 |
 | ---------------------- | ---------- | ------------------------------------------------------------------------------------ |
 | `paymentId`            | `string`   | 결제 고유 식별자 (bytes32 해시)                                                      |
-| `serverSignature`      | `string`   | 서버 EIP-712 서명 (컨트랙트 인증용)                                                  |
 | `amount`               | `string`   | wei 단위로 변환된 금액                                                               |
 | `gatewayAddress`       | `address`  | PaymentGateway 컨트랙트 주소                                                         |
 | `forwarderAddress`     | `address`  | ERC2771 Forwarder 주소 (Gasless용)                                                   |
 | `merchantId`           | `string`   | bytes32 형태의 가맹점 ID                                                             |
 | `deadline`             | `string`   | 서버 서명 만료 기한 (Unix timestamp); `pay()` 및 가스리스에 필요. 기본 1시간(3600초) |
-| `escrowDuration`       | `string`   | 에스크로 유지 기간(초); `pay()` 및 가스리스에 필요. 기본 5분(300초)                  |
 | `expiresAt`            | `datetime` | 결제 만료 시각 (생성 후 5분)                                                         |
 | `tokenPermitSupported` | `boolean`  | EIP-2612 Permit 지원 여부                                                            |
 | `currency`             | `string`   | 법정화폐 통화 코드 (요청 시에만 포함)                                                |

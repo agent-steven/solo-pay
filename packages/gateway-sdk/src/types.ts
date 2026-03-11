@@ -54,8 +54,6 @@ export interface CreatePaymentResponse {
   data: {
     paymentId: string;
     orderId: string;
-    /** Server EIP-712 signature for payment authorization */
-    serverSignature: string;
     chainId: number;
     tokenAddress: string;
     gatewayAddress: string;
@@ -67,10 +65,8 @@ export interface CreatePaymentResponse {
     expiresAt: string;
     recipientAddress: string;
     merchantId: string;
-    /** Payment deadline (unix timestamp) included in server signature */
+    /** Payment expiration timestamp (unix seconds) for on-chain validation */
     deadline: string;
-    /** Escrow duration (seconds) included in server signature */
-    escrowDuration: string;
     /** ERC2771Forwarder address for gasless payments */
     forwarderAddress?: string;
     /** Whether the token supports EIP-2612 permit (gasless approval) */
@@ -228,11 +224,7 @@ export interface DeletePaymentMethodResponse {
 /** All possible payment statuses */
 export type PaymentStatus =
   | 'CREATED'
-  | 'ESCROWED'
-  | 'FINALIZE_SUBMITTED'
-  | 'FINALIZED'
-  | 'CANCEL_SUBMITTED'
-  | 'CANCELLED'
+  | 'PAID'
   | 'REFUND_SUBMITTED'
   | 'REFUNDED'
   | 'EXPIRED'
@@ -253,33 +245,8 @@ export interface MerchantPaymentDetailResponse {
     createdAt: string;
     confirmedAt?: string;
     expiresAt: string;
-    escrowDeadline?: string;
-    finalizedAt?: string;
-    cancelledAt?: string;
     /** Whether the token supports EIP-2612 permit (gasless approval) */
     tokenPermitSupported: boolean;
-  };
-}
-
-/** Response from POST /payments/:id/finalize */
-export interface FinalizePaymentResponse {
-  success: true;
-  data: {
-    paymentId: string;
-    serverSignature: string;
-    gatewayAddress: string;
-    chainId: number;
-  };
-}
-
-/** Response from POST /payments/:id/cancel */
-export interface CancelPaymentResponse {
-  success: true;
-  data: {
-    paymentId: string;
-    serverSignature: string;
-    gatewayAddress: string;
-    chainId: number;
   };
 }
 

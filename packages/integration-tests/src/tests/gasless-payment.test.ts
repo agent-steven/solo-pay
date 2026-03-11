@@ -11,15 +11,11 @@ import {
 } from '../helpers/blockchain';
 import {
   signForwardRequest,
-  signPaymentRequest,
-  signFinalizeRequest,
   encodePayFunctionData,
   generatePaymentId,
   merchantKeyToId,
   getDeadline,
-  DEFAULT_ESCROW_DURATION,
   type ForwardRequest,
-  type PaymentParams,
 } from '../helpers/signature';
 import { HARDHAT_ACCOUNTS, CONTRACT_ADDRESSES } from '../setup/wallets';
 import { getToken } from '../fixtures/token';
@@ -28,7 +24,6 @@ describe('Gasless Payment Integration', () => {
   const token = getToken('mockUSDT');
   const payerPrivateKey = HARDHAT_ACCOUNTS.payer.privateKey;
   const relayerPrivateKey = HARDHAT_ACCOUNTS.relayer.privateKey;
-  const signerPrivateKey = HARDHAT_ACCOUNTS.signer.privateKey;
   const payerAddress = HARDHAT_ACCOUNTS.payer.address;
   // Treasury receives platform fees (Account #5 - contract config)
   const treasuryAddress = HARDHAT_ACCOUNTS.treasury.address;
@@ -53,25 +48,14 @@ describe('Gasless Payment Integration', () => {
     return forwarder.nonces(address);
   }
 
-  it('should complete a gasless payment via forwarder with no fee (escrow + finalize)', async () => {
+  it('should complete a gasless payment via forwarder with no fee (direct payment)', async () => {
     const paymentId = generatePaymentId(`ORDER_GASLESS_${Date.now()}`);
     const amount = parseUnits('100', token.decimals);
 
     const initialPayerBalance = await getTokenBalance(token.address, payerAddress);
     const initialRecipientBalance = await getTokenBalance(token.address, recipientAddress);
 
-    // Create server signature
     const paymentDeadline = getDeadline(1);
-    const paymentParams: PaymentParams = {
-      paymentId,
-      tokenAddress: token.address,
-      amount,
-      recipientAddress: recipientAddress,
-      merchantId,
-      deadline: paymentDeadline,
-      escrowDuration: DEFAULT_ESCROW_DURATION,
-    };
-    const serverSignature = await signPaymentRequest(paymentParams, signerPrivateKey);
 
     await approveToken(token.address, gatewayAddress, amount, payerPrivateKey);
 
@@ -81,9 +65,7 @@ describe('Gasless Payment Integration', () => {
       amount,
       recipientAddress,
       merchantId,
-      paymentDeadline,
-      DEFAULT_ESCROW_DURATION,
-      serverSignature
+      paymentDeadline
     );
     const nonce = await getNonce(payerAddress);
     const deadline = getDeadline(1);
@@ -121,13 +103,7 @@ describe('Gasless Payment Integration', () => {
     const isProcessed = await gateway.isPaymentProcessed(paymentId);
     expect(isProcessed).toBe(true);
 
-    // Finalize to release funds
-    const signerWallet = getWallet(signerPrivateKey);
-    const gatewayWithSigner = getContract(gatewayAddress, PaymentGatewayABI, signerWallet);
-    const finalizeSignature = await signFinalizeRequest(paymentId, signerPrivateKey);
-    const finalizeTx = await gatewayWithSigner.finalize(paymentId, finalizeSignature);
-    await finalizeTx.wait();
-
+    // In direct payment, funds go directly to recipient — no finalize needed
     const finalPayerBalance = await getTokenBalance(token.address, payerAddress);
     const finalRecipientBalance = await getTokenBalance(token.address, recipientAddress);
 
@@ -148,18 +124,7 @@ describe('Gasless Payment Integration', () => {
     const gatewayAsDeployer = getContract(gatewayAddress, PaymentGatewayABI, deployerWallet);
     await (await gatewayAsDeployer.setFeeBps(500)).wait();
 
-    // Create server signature with fee
     const paymentDeadline = getDeadline(1);
-    const paymentParams: PaymentParams = {
-      paymentId,
-      tokenAddress: token.address,
-      amount,
-      recipientAddress: recipientAddress,
-      merchantId,
-      deadline: paymentDeadline,
-      escrowDuration: DEFAULT_ESCROW_DURATION,
-    };
-    const serverSignature = await signPaymentRequest(paymentParams, signerPrivateKey);
 
     await approveToken(token.address, gatewayAddress, amount, payerPrivateKey);
 
@@ -169,9 +134,7 @@ describe('Gasless Payment Integration', () => {
       amount,
       recipientAddress,
       merchantId,
-      paymentDeadline,
-      DEFAULT_ESCROW_DURATION,
-      serverSignature
+      paymentDeadline
     );
     const nonce = await getNonce(payerAddress);
     const deadline = getDeadline(1);
@@ -204,13 +167,7 @@ describe('Gasless Payment Integration', () => {
     const tx = await forwarder.execute(requestData);
     await tx.wait();
 
-    // Finalize to release funds with fee split
-    const signerWallet = getWallet(signerPrivateKey);
-    const gatewayWithSigner = getContract(gatewayAddress, PaymentGatewayABI, signerWallet);
-    const finalizeSignature = await signFinalizeRequest(paymentId, signerPrivateKey);
-    const finalizeTx = await gatewayWithSigner.finalize(paymentId, finalizeSignature);
-    await finalizeTx.wait();
-
+    // In direct payment with fee, funds are split immediately — no finalize needed
     const expectedFee = (amount * 500n) / 10000n;
     const expectedRecipientAmount = amount - expectedFee;
 
@@ -230,18 +187,7 @@ describe('Gasless Payment Integration', () => {
     const paymentId = generatePaymentId(`ORDER_EXPIRED_${Date.now()}`);
     const amount = parseUnits('50', token.decimals);
 
-    // Create server signature
     const paymentDeadline = getDeadline(1);
-    const paymentParams: PaymentParams = {
-      paymentId,
-      tokenAddress: token.address,
-      amount,
-      recipientAddress: recipientAddress,
-      merchantId,
-      deadline: paymentDeadline,
-      escrowDuration: DEFAULT_ESCROW_DURATION,
-    };
-    const serverSignature = await signPaymentRequest(paymentParams, signerPrivateKey);
 
     await approveToken(token.address, gatewayAddress, amount, payerPrivateKey);
 
@@ -251,9 +197,7 @@ describe('Gasless Payment Integration', () => {
       amount,
       recipientAddress,
       merchantId,
-      paymentDeadline,
-      DEFAULT_ESCROW_DURATION,
-      serverSignature
+      paymentDeadline
     );
     const nonce = await getNonce(payerAddress);
     const expiredDeadline = BigInt(Math.floor(Date.now() / 1000) - 3600);
@@ -290,18 +234,7 @@ describe('Gasless Payment Integration', () => {
     const paymentId = generatePaymentId(`ORDER_INVALID_FWD_SIG_${Date.now()}`);
     const amount = parseUnits('50', token.decimals);
 
-    // Create server signature
     const paymentDeadline = getDeadline(1);
-    const paymentParams: PaymentParams = {
-      paymentId,
-      tokenAddress: token.address,
-      amount,
-      recipientAddress: recipientAddress,
-      merchantId,
-      deadline: paymentDeadline,
-      escrowDuration: DEFAULT_ESCROW_DURATION,
-    };
-    const serverSignature = await signPaymentRequest(paymentParams, signerPrivateKey);
 
     await approveToken(token.address, gatewayAddress, amount, payerPrivateKey);
 
@@ -311,9 +244,7 @@ describe('Gasless Payment Integration', () => {
       amount,
       recipientAddress,
       merchantId,
-      paymentDeadline,
-      DEFAULT_ESCROW_DURATION,
-      serverSignature
+      paymentDeadline
     );
     const nonce = await getNonce(payerAddress);
     const deadline = getDeadline(1);
@@ -357,18 +288,8 @@ describe('Gasless Payment Integration', () => {
     const nonce = await getNonce(payerAddress);
     const deadline = getDeadline(1);
 
-    // First transaction - create server signature
+    // First transaction
     const paymentDeadline1 = getDeadline(1);
-    const paymentParams1: PaymentParams = {
-      paymentId: paymentId1,
-      tokenAddress: token.address,
-      amount,
-      recipientAddress: recipientAddress,
-      merchantId,
-      deadline: paymentDeadline1,
-      escrowDuration: DEFAULT_ESCROW_DURATION,
-    };
-    const serverSignature1 = await signPaymentRequest(paymentParams1, signerPrivateKey);
 
     const data1 = encodePayFunctionData(
       paymentId1,
@@ -376,9 +297,7 @@ describe('Gasless Payment Integration', () => {
       amount,
       recipientAddress,
       merchantId,
-      paymentDeadline1,
-      DEFAULT_ESCROW_DURATION,
-      serverSignature1
+      paymentDeadline1
     );
     const request1: ForwardRequest = {
       from: payerAddress,
@@ -409,16 +328,6 @@ describe('Gasless Payment Integration', () => {
 
     // Second transaction with same nonce (replay attack)
     const paymentDeadline2 = getDeadline(1);
-    const paymentParams2: PaymentParams = {
-      paymentId: paymentId2,
-      tokenAddress: token.address,
-      amount,
-      recipientAddress: recipientAddress,
-      merchantId,
-      deadline: paymentDeadline2,
-      escrowDuration: DEFAULT_ESCROW_DURATION,
-    };
-    const serverSignature2 = await signPaymentRequest(paymentParams2, signerPrivateKey);
 
     const data2 = encodePayFunctionData(
       paymentId2,
@@ -426,9 +335,7 @@ describe('Gasless Payment Integration', () => {
       amount,
       recipientAddress,
       merchantId,
-      paymentDeadline2,
-      DEFAULT_ESCROW_DURATION,
-      serverSignature2
+      paymentDeadline2
     );
     const request2: ForwardRequest = {
       from: payerAddress,
@@ -452,68 +359,5 @@ describe('Gasless Payment Integration', () => {
     };
 
     await expect(forwarder.execute(requestData2)).rejects.toThrow();
-  });
-
-  it('should reject invalid server signature in gasless payment', async () => {
-    const paymentId = generatePaymentId(`ORDER_GASLESS_INVALID_SERVER_${Date.now()}`);
-    const amount = parseUnits('50', token.decimals);
-
-    // Create server signature with wrong key (relayer instead of signer)
-    const paymentDeadline = getDeadline(1);
-    const paymentParams: PaymentParams = {
-      paymentId,
-      tokenAddress: token.address,
-      amount,
-      recipientAddress: recipientAddress,
-      merchantId,
-      deadline: paymentDeadline,
-      escrowDuration: DEFAULT_ESCROW_DURATION,
-    };
-    const wrongServerSignature = await signPaymentRequest(
-      paymentParams,
-      HARDHAT_ACCOUNTS.relayer.privateKey
-    );
-
-    await approveToken(token.address, gatewayAddress, amount, payerPrivateKey);
-
-    const data = encodePayFunctionData(
-      paymentId,
-      token.address,
-      amount,
-      recipientAddress,
-      merchantId,
-      paymentDeadline,
-      DEFAULT_ESCROW_DURATION,
-      wrongServerSignature
-    );
-    const nonce = await getNonce(payerAddress);
-    const deadline = getDeadline(1);
-
-    const request: ForwardRequest = {
-      from: payerAddress,
-      to: gatewayAddress,
-      value: 0n,
-      gas: 500000n,
-      nonce,
-      deadline,
-      data,
-    };
-
-    const signature = await signForwardRequest(request, payerPrivateKey);
-
-    const relayerWallet = getWallet(relayerPrivateKey);
-    const forwarder = getContract(forwarderAddress, ERC2771ForwarderABI, relayerWallet);
-
-    const requestData = {
-      from: request.from,
-      to: request.to,
-      value: request.value,
-      gas: request.gas,
-      deadline: request.deadline,
-      data: request.data,
-      signature,
-    };
-
-    await expect(forwarder.execute(requestData)).rejects.toThrow();
   });
 });

@@ -155,7 +155,7 @@ const tokens: TokenModel[] = [
     address: '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
     symbol: 'TEST',
     decimals: 18,
-    cmc_slug: null, // for testing
+    cmc_slug: 'supertrust', // for testing
     permit_enabled: false,
     is_enabled: true,
     is_deleted: false,
@@ -223,7 +223,6 @@ const merchants: MerchantModel[] = [
     webhook_url: 'http://demo:3000/api/webhook',
 
     recipient_address: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
-    escrow_duration: 300,
     is_enabled: true,
     is_deleted: false,
     deleted_at: null,
@@ -239,9 +238,7 @@ const merchants: MerchantModel[] = [
     public_key: null,
     public_key_hash: null,
     webhook_url: null,
-
     recipient_address: '0x7bE4CfF95eb3c3d2162410abCd5506f691C624Ed',
-    escrow_duration: 300,
     is_enabled: true,
     is_deleted: false,
     deleted_at: null,
@@ -257,9 +254,7 @@ const merchants: MerchantModel[] = [
     public_key: 'pk_live_xqKZ6PpVdfUaaVBJhS6qI8RbUbZUbvSq',
     public_key_hash: '05994e195c9cde2a1548d848fa5d40d3506da18d0071785981db25daeb86d4f6',
     webhook_url: 'http://sample-merchant:3004/api/webhook',
-
     recipient_address: '0x976EA74026E726554dB657fA54763abd0C3a0aa9',
-    escrow_duration: 300,
     is_enabled: true,
     is_deleted: false,
     deleted_at: null,

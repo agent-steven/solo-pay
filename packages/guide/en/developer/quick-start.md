@@ -7,7 +7,16 @@ Get SoloPay integrated in 5 minutes.
 - API Key and Public Key (provided by admin)
 - Node.js 18 or higher
 
-## Step 1: Open Payment Widget
+## Step 1: Create Order in Your Database
+
+Before calling the payment widget, create an order record on your server and save it to your database.
+
+- **orderId**: A unique identifier for the order within your merchant account. SoloPay enforces uniqueness per merchant — duplicate `orderId` values will be rejected with a `DUPLICATE_ORDER` error.
+- **Save the expected amount and token address** alongside the `orderId`. These values are needed later to verify that the completed payment matches what you intended (see Step 4).
+- **Must be stored server-side**: The widget runs in the user's browser, where parameters like `amount` could be tampered with. Only values stored on your server can be trusted for verification.
+- **orderId for payment lookup**: When you don't yet know the `paymentId`, you can look up the payment using `orderId` via `GET /merchant/payments?orderId=xxx` (requires API Key).
+
+## Step 2: Open Payment Widget
 
 Open the payment widget with `@solo-pay/widget-js`. The widget handles payment creation, wallet connection, signing, and processing.
 
@@ -49,13 +58,13 @@ For Vanilla JS or other frameworks, you can use the CDN directly.
 </script>
 ```
 
-## Step 2: Receive Payment Results
+## Step 3: Receive Payment Results
 
 After payment completes, results are delivered through two channels.
 
 ### Callback URL (Frontend)
 
-The user is redirected to the `successUrl` or `failUrl` specified in Step 1. `paymentId`, `orderId`, and `status` are passed as query parameters.
+The user is redirected to the `successUrl` or `failUrl` specified in Step 2. `paymentId`, `orderId`, and `status` are passed as query parameters.
 
 - `successUrl` — `status=success` (payment succeeded)
 - `failUrl` — `status=fail` (payment failed) or `status=closed` (user closed the widget)
@@ -75,24 +84,24 @@ Register a Webhook URL with your account admin to receive HTTP POST notification
 
 Key events:
 
-- `ESCROWED` — User payment completed, held in escrow
-- `FINALIZED` — Funds released to merchant wallet
+- `payment.paid` — Payment confirmed on-chain
+- `payment.invalid` — Payment validation failed
 
 ```json
 {
   "paymentId": "0xabc123...",
   "orderId": "order-001",
-  "status": "ESCROWED",
+  "status": "PAID",
   "txHash": "0xdef789...",
   "amount": "10500000000000000000",
   "tokenSymbol": "SUT",
-  "escrowedAt": "2024-01-26T12:35:00.000Z"
+  "paidAt": "2024-01-26T12:35:00.000Z"
 }
 ```
 
 See the [Webhook Guide](/en/webhooks/) for details.
 
-## Step 3: Verify Payment Status (Required)
+## Step 4: Verify Payment Status (Required)
 
 Whether from Callback or Webhook, always verify the final status by calling the API from your server. Never trust URL parameters or Webhook payload directly.
 
@@ -101,69 +110,44 @@ curl https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123... \
   -H "x-public-key: pk_xxxxx"
 ```
 
-When `status` is `ESCROWED` and `amount`, `tokenAddress`, `orderId` match your order data, the payment is valid. Call finalize in Step 4 to confirm the payment.
+**Verification Checklist**
 
-## Step 4: Finalize or Cancel Payment
+- [ ] Confirm `status === 'PAID'` (payment success)
+- [ ] Confirm `amount` matches the expected amount **in your order database** (the widget runs client-side and the amount could be tampered with)
+- [ ] Confirm `tokenAddress` matches the expected token
+- [ ] Confirm `orderId` matches the expected orderId
+- [ ] Prevent duplicate completion processing for the same `paymentId`
 
-After payment reaches **ESCROWED** status, verify the order details and call finalize or cancel.
+## Step 5: Complete Order After PAID
 
-- **Finalize** — Release funds to the merchant wallet.
-- **Cancel** — Refund funds to the buyer (e.g. out of stock, order mismatch).
+When the payment status is **PAID**, the payment is confirmed on-chain and funds have been transferred directly to the merchant wallet. No additional API call is needed.
 
-```bash
-# Finalize
-curl -X POST https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123.../finalize \
-  -H "x-api-key: sk_xxxxx"
+Complete your order fulfillment (shipping products, activating services, etc.) after confirming `status === 'PAID'` via `GET /payments/:id` or the `payment.paid` webhook.
 
-# Cancel
-curl -X POST https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123.../cancel \
-  -H "x-api-key: sk_xxxxx"
-```
-
-::: warning Always call finalize or cancel
-After escrow expiry, finalize is no longer possible and anyone can call cancel on-chain to refund the buyer.
+::: tip Direct Payment Model
+Unlike escrow-based systems, SoloPay transfers funds directly to the merchant on payment. There is no separate finalize step.
 :::
-
-See [Finalize & Cancel](/en/payments/finalize) for details.
-
-## Step 5: Complete Order After FINALIZED
-
-::: danger Never complete the order before FINALIZED
-Even after calling finalize, the blockchain transaction can fail due to network issues. You must confirm `FINALIZED` status before completing the order.
-:::
-
-After calling finalize, the status transitions from `FINALIZE_SUBMITTED` to `FINALIZED`. Confirm `FINALIZED` using one of the following methods.
-
-- **Webhook** — On receiving the `FINALIZED` event, call `GET /payments/:id` to re-confirm `FINALIZED` status
-- **API Polling** — Periodically call `GET /payments/:id` and confirm `status === 'FINALIZED'`
-
-```bash
-curl https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123... \
-  -H "x-public-key: pk_xxxxx"
-```
-
-Only after confirming `FINALIZED` status should you proceed with order fulfillment such as shipping products or activating services.
 
 ## Payment Status Flow
 
 ```
-CREATED ──► ESCROWED ──► FINALIZE_SUBMITTED ──► FINALIZED
-                    └──► CANCEL_SUBMITTED   ──► CANCELLED
+CREATED ──► PAID
 CREATED ──► EXPIRED
 CREATED ──► FAILED
+CREATED ──► INVALID
 ```
 
-| Status      | Description                  |
-| ----------- | ---------------------------- |
-| `CREATED`   | Payment created              |
-| `ESCROWED`  | User paid; funds in escrow   |
-| `FINALIZED` | Funds released to merchant   |
-| `FAILED`    | Transaction failed           |
-| `EXPIRED`   | Expired (5 minutes exceeded) |
+| Status    | Description                  |
+| --------- | ---------------------------- |
+| `CREATED` | Payment created              |
+| `PAID`    | Payment confirmed on-chain   |
+| `INVALID` | Payment validation failed    |
+| `FAILED`  | Transaction failed           |
+| `EXPIRED` | Expired (5 minutes exceeded) |
 
 ## Next Steps
 
 - [Webhook Guide](/en/webhooks/) - Webhook events and verification
-- [Finalize & Cancel](/en/payments/finalize) - Release or cancel escrowed payments
+- [Payment Status](/en/payments/status) - All payment status values
 - [Authentication](/en/developer/authentication) - API Key / Public Key details
 - [Create Payment API](/en/payments/create) - Detailed payment API guide

@@ -97,6 +97,47 @@ npm 없이 스크립트 태그로 바로 사용할 수 있습니다.
 </script>
 ```
 
+## amount와 currency 동작 방식
+
+`amount`의 해석 방식은 `currency` 제공 여부에 따라 달라집니다.
+
+| `currency`                  | `amount` 해석                                         |
+| --------------------------- | ----------------------------------------------------- |
+| 제공 (예: `'USD'`, `'KRW'`) | **법정화폐 금액** — 실시간 시세로 토큰 수량 자동 변환 |
+| 생략                        | **토큰 수량 직접 지정** — 변환 없이 그대로 사용       |
+
+**예시 1: USD 기준 결제 (currency 제공)**
+
+```typescript
+// amount: 25.5 USD → 실시간 USDT 시세로 변환
+solopay.requestPayment({
+  orderId: 'order-001',
+  amount: '25.5',
+  currency: 'USD',
+  tokenAddress: '0xE4C687167705Abf55d709395f92e254bdF5825a2',
+  successUrl: 'https://myshop.com/payment/success',
+  failUrl: 'https://myshop.com/payment/fail',
+});
+```
+
+**예시 2: 토큰 수량 직접 지정 (currency 생략)**
+
+```typescript
+// amount: 25.5 USDT 직접 지정 (변환 없음)
+solopay.requestPayment({
+  orderId: 'order-001',
+  amount: '25.5',
+  // currency 생략 → amount가 토큰 수량으로 그대로 사용됨
+  tokenAddress: '0xE4C687167705Abf55d709395f92e254bdF5825a2',
+  successUrl: 'https://myshop.com/payment/success',
+  failUrl: 'https://myshop.com/payment/fail',
+});
+```
+
+::: tip currency를 생략하면?
+`currency`를 생략하면 `amount`가 **토큰 수량**으로 직접 처리됩니다. 예를 들어 USDT 토큰에 `amount: '25.5'`를 전달하면 정확히 25.5 USDT를 요청합니다. 환율 변환이 필요 없는 경우 사용합니다.
+:::
+
 ## 동작 방식
 
 - **PC 환경**: 팝업 창으로 위젯이 열립니다.
@@ -136,12 +177,11 @@ const result = await response.json();
 
 **검증 체크리스트**
 
-- [ ] `status === 'ESCROWED'` 확인 (결제 성공)
-- [ ] `amount`가 주문 금액과 일치 확인
+- [ ] `status === 'PAID'` 확인 (결제 성공)
+- [ ] `amount`가 **자사 주문 DB에 저장된 기대 금액**과 일치 확인 (위젯은 클라이언트에서 실행되므로 금액이 변조될 수 있음)
 - [ ] `tokenAddress`가 기대한 토큰과 일치 확인
 - [ ] `orderId`가 기대한 orderId와 일치 확인
 - [ ] 동일 `paymentId`의 중복 완료 처리 방지
-- [ ] 서버에서 finalize 호출 후, `FINALIZED` 상태를 확인한 뒤 주문 완료 처리
 
 ::: tip Webhook 연동 권장
 Callback은 브라우저 리다이렉트 기반이므로 네트워크 장애 등으로 유실될 수 있습니다. **Webhook과 함께 사용**하면 결제 완료를 안정적으로 수신할 수 있습니다. [Webhook 설정 가이드 보기](/ko/webhooks/)

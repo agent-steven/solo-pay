@@ -7,12 +7,9 @@ import { createTestClient, TEST_MERCHANT, makeCreatePaymentParams } from '../hel
  * Cross-Merchant Authentication & Isolation Tests
  *
  * Verifies that:
- * - Merchant A cannot finalize/cancel Merchant B's payments
  * - Invalid/missing auth headers are properly rejected
  * - Origin validation works correctly
- *
- * Note: The finalize/cancel routes check merchant ownership BEFORE status,
- * so we only need a CREATED payment (no on-chain escrow required).
+ * - Merchant B cannot query Merchant A's payments
  *
  * Prerequisites:
  *   - Gateway API running (port 3001)
@@ -39,11 +36,6 @@ describe('Authentication & Isolation', () => {
     }
   }
 
-  /**
-   * Create a payment via gateway API (CREATED status, no on-chain escrow).
-   * The finalize/cancel routes check merchant ownership before status,
-   * so a CREATED payment is sufficient to test cross-merchant isolation.
-   */
   async function createPaymentForMerchantA(orderId: string): Promise<string> {
     const client = createTestClient(merchantA);
     const params = makeCreatePaymentParams(100, orderId);
@@ -62,95 +54,6 @@ describe('Authentication & Isolation', () => {
     } catch (err) {
       console.warn('[auth-isolation] Setup failed:', err);
     }
-  });
-
-  // ── Cross-Merchant Isolation ──────────────────────────────────────
-
-  describe('Cross-merchant payment isolation', () => {
-    it('should reject finalize when using a different merchant API key', async () => {
-      if (!isReady) return;
-
-      const orderId = `AUTH_CROSS_FIN_${Date.now()}`;
-      const paymentHash = await createPaymentForMerchantA(orderId);
-
-      // Merchant B tries to finalize Merchant A's payment → 403
-      const res = await fetch(`${GATEWAY_API_URL}/payments/${paymentHash}/finalize`, {
-        method: 'POST',
-        headers: { 'x-api-key': merchantB.apiKey },
-      });
-
-      expect(res.status).toBe(403);
-      const body = (await res.json()) as { code: string };
-      expect(body.code).toBe('FORBIDDEN');
-    });
-
-    it('should reject cancel when using a different merchant API key', async () => {
-      if (!isReady) return;
-
-      const orderId = `AUTH_CROSS_CAN_${Date.now()}`;
-      const paymentHash = await createPaymentForMerchantA(orderId);
-
-      // Merchant B tries to cancel Merchant A's payment → 403
-      const res = await fetch(`${GATEWAY_API_URL}/payments/${paymentHash}/cancel`, {
-        method: 'POST',
-        headers: { 'x-api-key': merchantB.apiKey },
-      });
-
-      expect(res.status).toBe(403);
-      const body = (await res.json()) as { code: string };
-      expect(body.code).toBe('FORBIDDEN');
-    });
-  });
-
-  // ── API Key Authentication ────────────────────────────────────────
-
-  describe('API key authentication (x-api-key)', () => {
-    it('should reject finalize with missing x-api-key', async () => {
-      if (!isReady) return;
-
-      const fakePaymentId = '0x' + 'ab'.repeat(32);
-      const res = await fetch(`${GATEWAY_API_URL}/payments/${fakePaymentId}/finalize`, {
-        method: 'POST',
-        // No x-api-key header
-      });
-
-      expect(res.status).toBe(401);
-    });
-
-    it('should reject finalize with invalid x-api-key', async () => {
-      if (!isReady) return;
-
-      const fakePaymentId = '0x' + 'ab'.repeat(32);
-      const res = await fetch(`${GATEWAY_API_URL}/payments/${fakePaymentId}/finalize`, {
-        method: 'POST',
-        headers: { 'x-api-key': 'completely_invalid_key_12345' },
-      });
-
-      expect(res.status).toBe(401);
-    });
-
-    it('should reject cancel with missing x-api-key', async () => {
-      if (!isReady) return;
-
-      const fakePaymentId = '0x' + 'ab'.repeat(32);
-      const res = await fetch(`${GATEWAY_API_URL}/payments/${fakePaymentId}/cancel`, {
-        method: 'POST',
-      });
-
-      expect(res.status).toBe(401);
-    });
-
-    it('should reject cancel with invalid x-api-key', async () => {
-      if (!isReady) return;
-
-      const fakePaymentId = '0x' + 'ab'.repeat(32);
-      const res = await fetch(`${GATEWAY_API_URL}/payments/${fakePaymentId}/cancel`, {
-        method: 'POST',
-        headers: { 'x-api-key': 'completely_invalid_key_12345' },
-      });
-
-      expect(res.status).toBe(401);
-    });
   });
 
   // ── Public Key Authentication ─────────────────────────────────────
@@ -228,6 +131,32 @@ describe('Authentication & Isolation', () => {
         const body = (await res.json()) as { code: string };
         expect(body.code).toBeDefined();
       }
+    });
+  });
+
+  // ── API Key Authentication ────────────────────────────────────────
+
+  describe('API key authentication (x-api-key)', () => {
+    it('should reject merchant endpoint with missing x-api-key', async () => {
+      if (!isReady) return;
+
+      const res = await fetch(`${GATEWAY_API_URL}/merchant`, {
+        method: 'GET',
+        // No x-api-key header
+      });
+
+      expect(res.status).toBe(401);
+    });
+
+    it('should reject merchant endpoint with invalid x-api-key', async () => {
+      if (!isReady) return;
+
+      const res = await fetch(`${GATEWAY_API_URL}/merchant`, {
+        method: 'GET',
+        headers: { 'x-api-key': 'completely_invalid_key_12345' },
+      });
+
+      expect(res.status).toBe(401);
     });
   });
 

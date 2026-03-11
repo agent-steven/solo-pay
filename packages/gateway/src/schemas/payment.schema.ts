@@ -51,21 +51,12 @@ export const PaymentStatusSchema = z.object({
   paymentId: z.string(),
   payerAddress: z.string(), // wallet address of payer (from chain event)
   amount: z.number(),
+  rawAmount: z.string().optional(), // wei string for precise comparison
   tokenAddress: z.string(),
   tokenSymbol: z.string(),
-  treasuryAddress: z.string(),
-  status: z.enum([
-    'pending',
-    'escrowed',
-    'finalized',
-    'cancelled',
-    'refunded',
-    'confirmed',
-    'failed',
-    'completed',
-  ]),
+  treasuryAddress: z.string(), // recipient address from event
+  status: z.enum(['pending', 'paid', 'refunded', 'failed']),
   transactionHash: z.string().optional(),
-  releaseTxHash: z.string().optional(),
   blockNumber: z.number().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),

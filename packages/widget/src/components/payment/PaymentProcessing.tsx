@@ -10,7 +10,7 @@ const PROGRESS_KEYS: Record<
   | 'progress.SIGNING_FORWARD'
   | 'progress.RELAYING'
   | 'progress.CONFIRMING'
-  | 'progress.ESCROWED'
+  | 'progress.PAID'
   | 'progress.ERROR'
 > = {
   INIT: 'progress.SIGNING_PERMIT',
@@ -19,7 +19,7 @@ const PROGRESS_KEYS: Record<
   SIGNING_FORWARD: 'progress.SIGNING_FORWARD',
   RELAYING: 'progress.RELAYING',
   CONFIRMING: 'progress.CONFIRMING',
-  ESCROWED: 'progress.ESCROWED',
+  PAID: 'progress.PAID',
   ERROR: 'progress.ERROR',
 };
 
@@ -131,8 +131,8 @@ export default function PaymentProcessing({
       case 'CONFIRMING':
         return 75;
 
-      // Step 4: Escrowed
-      case 'ESCROWED':
+      // Step 4: Paid
+      case 'PAID':
         return 100;
 
       case 'ERROR':
@@ -157,14 +157,14 @@ export default function PaymentProcessing({
   const signingStatus = getStepStatus(
     progressState,
     ['INIT', 'CHECKING_ALLOWANCE', 'SIGNING_PERMIT', 'SIGNING_FORWARD'],
-    ['RELAYING', 'CONFIRMING', 'ESCROWED']
+    ['RELAYING', 'CONFIRMING', 'PAID']
   );
 
-  const relayingStatus = getStepStatus(progressState, ['RELAYING'], ['CONFIRMING', 'ESCROWED']);
+  const relayingStatus = getStepStatus(progressState, ['RELAYING'], ['CONFIRMING', 'PAID']);
 
-  const confirmingStatus = getStepStatus(progressState, ['CONFIRMING'], ['ESCROWED']);
+  const confirmingStatus = getStepStatus(progressState, ['CONFIRMING'], ['PAID']);
 
-  const escrowStatus = getStepStatus(progressState, [], ['ESCROWED']);
+  const paidStatus = getStepStatus(progressState, [], ['PAID']);
 
   const percentage = getProgressPercentage(progressState, !!error);
 
@@ -239,7 +239,7 @@ export default function PaymentProcessing({
                 }`}
                 style={{ width: `${percentage}%` }}
               >
-                {progressState !== 'ESCROWED' && !error && (
+                {progressState !== 'PAID' && !error && (
                   <div className="absolute inset-0 w-full h-full bg-linear-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
                 )}
               </div>
@@ -266,7 +266,7 @@ export default function PaymentProcessing({
               <StepRow label={t('step.signing')} status={signingStatus} />
               <StepRow label={t('step.relaying')} status={relayingStatus} />
               <StepRow label={t('step.confirming')} status={confirmingStatus} />
-              <StepRow label={t('step.escrowed')} status={escrowStatus} isLast />
+              <StepRow label={t('step.paid')} status={paidStatus} isLast />
             </div>
           </div>
         </div>
