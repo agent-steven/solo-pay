@@ -137,7 +137,7 @@ curl -X POST https://gateway.dev.solonetwork.io/api/v1/payments \
 
 위젯(`@solo-pay/widget-js` / `@solo-pay/widget-react`)을 사용하면 이 API를 직접 호출할 필요 없이 위젯이 자동으로 처리합니다.
 
-[클라이언트 사이드 연동 가이드](/ko/developer/client-side) 참고
+[위젯 연동 가이드](/ko/widget/) 참고
 
 ---
 
