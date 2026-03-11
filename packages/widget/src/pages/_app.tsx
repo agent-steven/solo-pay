@@ -48,10 +48,10 @@ function MyApp({ Component, pageProps }: AppProps) {
           socials: false,
           connectMethodsOrder: ['wallet'],
         },
-        themeMode: 'light',
+        themeMode: 'dark',
         themeVariables: {
-          '--apkt-accent': '#2563eb',
-          '--apkt-border-radius-master': '12px',
+          '--apkt-accent': '#FFFFFF',
+          '--apkt-border-radius-master': '0px',
         },
       } as unknown as CreateAppKitOptions);
     });

@@ -1,10 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
-import { useAppKit } from '@reown/appkit/react';
+import { useAppKit, useAppKitState } from '@reown/appkit/react';
 import { useLocale } from '../context/LocaleContext';
 import { APPKIT_WALLET_IDS } from '../appkit-config';
+import { CpuArchitecture } from './ui/cpu-architecture';
+import { TechScrambleButton } from './ui/tech-scramble-button';
+import { WalletProcessingCard } from './ui/processing-card';
+import { motion, AnimatePresence } from 'framer-motion';
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -16,20 +20,6 @@ function useIsMobile() {
   return isMobile;
 }
 
-const WALLET_BUTTON_BASE =
-  'w-full rounded-xl px-6 py-3 sm:py-4 text-sm sm:text-lg font-semibold text-white shadow-sm disabled:opacity-50 transition-colors';
-
-const WALLET_STYLES = {
-  metaMask: 'bg-[#FF5C16] hover:bg-[#E85210] active:bg-[#CC4A0D]',
-  trustWallet: 'bg-[#3375BB] hover:bg-[#2a5f99] active:bg-[#1e4a7a]',
-} as const;
-
-/**
- * Connect step: MetaMask + Trust Wallet buttons.
- * Uses EIP-6963 injected connectors when the extension is installed.
- * Falls back to WalletConnect QR when extension is not detected.
- * No MetaMask SDK -- only injected providers + WalletConnect.
- */
 export function ConnectWalletButton({
   className,
   onConnectorClick,
@@ -39,12 +29,17 @@ export function ConnectWalletButton({
 }) {
   const { t } = useLocale();
   const { open } = useAppKit();
+  const { open: isModalOpen } = useAppKitState();
   const { isConnected } = useAccount();
   const { connectAsync, connectors, isPending } = useConnect();
   const { disconnectAsync } = useDisconnect();
   const isMobile = useIsMobile();
 
-  // EIP-6963 connectors (RDNS-based IDs). No MetaMask SDK.
+  const [selectedWallet, setSelectedWallet] = useState<string>('');
+  const [connectingStatus, setConnectingStatus] = useState<
+    'idle' | 'connecting' | 'succeeded' | 'failed'
+  >('idle');
+
   const metaMaskConnector = useMemo(
     () =>
       connectors.find((c) => c.id === 'io.metamask') ??
@@ -65,13 +60,14 @@ export function ConnectWalletButton({
         try {
           await disconnectAsync();
         } catch {
-          // ignore
+          /* ignore */
         }
       }
       try {
         await connectAsync({ connector });
       } catch (err) {
         console.warn('Wallet connection failed:', err);
+        setConnectingStatus('failed');
       }
     },
     [onConnectorClick, isConnected, disconnectAsync, connectAsync]
@@ -80,8 +76,6 @@ export function ConnectWalletButton({
   const openWalletConnect = useCallback(
     (walletId: string, walletName: string) => {
       onConnectorClick?.();
-      // Open AppKit directly to the specific wallet's WalletConnect screen.
-      // Desktop: shows QR code. Mobile: shows deep link to wallet app.
       (open as (opts: Record<string, unknown>) => void)({
         view: 'ConnectingWalletConnect',
         data: { wallet: { id: walletId, name: walletName } },
@@ -90,99 +84,184 @@ export function ConnectWalletButton({
     [onConnectorClick, open]
   );
 
-  const handleMetaMask = useCallback(() => {
-    if (metaMaskConnector) {
-      connectWith(metaMaskConnector);
-    } else {
-      openWalletConnect(APPKIT_WALLET_IDS[0], 'MetaMask');
-    }
-  }, [metaMaskConnector, connectWith, openWalletConnect]);
-
-  const handleTrustWallet = useCallback(() => {
-    if (trustWalletConnector) {
-      connectWith(trustWalletConnector);
-    } else {
-      openWalletConnect(APPKIT_WALLET_IDS[1], 'Trust Wallet');
-    }
-  }, [trustWalletConnector, connectWith, openWalletConnect]);
+  const handleWalletSelect = useCallback(
+    (walletName: string) => {
+      setSelectedWallet(walletName);
+      setConnectingStatus('connecting');
+      if (walletName === 'MetaMask') {
+        metaMaskConnector
+          ? connectWith(metaMaskConnector)
+          : openWalletConnect(APPKIT_WALLET_IDS[0], 'MetaMask');
+      } else {
+        trustWalletConnector
+          ? connectWith(trustWalletConnector)
+          : openWalletConnect(APPKIT_WALLET_IDS[1], 'Trust Wallet');
+      }
+    },
+    [metaMaskConnector, trustWalletConnector, connectWith, openWalletConnect]
+  );
 
   const handleMobileConnect = useCallback(() => {
     onConnectorClick?.();
+    setConnectingStatus('connecting');
+    setSelectedWallet('Wallet');
     open();
   }, [onConnectorClick, open]);
 
+  useEffect(() => {
+    if (isConnected && connectingStatus === 'connecting') {
+      setConnectingStatus('succeeded');
+    }
+  }, [isConnected, connectingStatus]);
+
+  // Track whether the AppKit modal was actually opened during this connection attempt.
+  // This prevents the reset effect from firing on desktop injected connector paths
+  // where the modal is never opened (user approves directly in their extension).
+  const wasModalOpenRef = useRef(false);
+  useEffect(() => {
+    if (isModalOpen) {
+      wasModalOpenRef.current = true;
+    }
+    if (connectingStatus === 'idle') {
+      wasModalOpenRef.current = false;
+    }
+  }, [isModalOpen, connectingStatus]);
+
+  // Reset to idle when AppKit modal closes without a successful connection.
+  // Only triggers when modal was actually opened and then closed (not for direct connector paths).
+  // Uses a short delay to avoid resetting during mobile deep-link navigation
+  // (modal closes immediately when browser navigates to wallet app).
+  useEffect(() => {
+    if (
+      !isModalOpen &&
+      wasModalOpenRef.current &&
+      connectingStatus === 'connecting' &&
+      !isConnected
+    ) {
+      const timer = setTimeout(() => {
+        setConnectingStatus((prev) => {
+          if (prev === 'connecting') {
+            setSelectedWallet('');
+            return 'idle';
+          }
+          return prev;
+        });
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isModalOpen, connectingStatus, isConnected]);
+
+  if (connectingStatus === 'idle') {
+    return (
+      <div className={['w-full', className].filter(Boolean).join(' ')}>
+        <motion.div
+          key="wallet-select"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          className="flex flex-col items-center"
+        >
+          <div className="w-full h-32 flex items-center justify-center mb-2 mt-[-1rem]">
+            <CpuArchitecture text="SOLO PAY" />
+          </div>
+          <h2 className="relative z-10 text-2xl md:text-3xl bg-clip-text text-transparent bg-gradient-to-b from-white to-zinc-500 text-center font-extrabold antialiased mb-2 mt-2 tracking-tight">
+            {t('connect.title')}
+          </h2>
+          <p className="text-center text-sm text-[var(--color-brand-gray)] mb-8">
+            {t('connect.description')
+              .split('\n')
+              .map((line, i) => (
+                <span key={i}>
+                  {line}
+                  {i === 0 && <br />}
+                </span>
+              ))}
+          </p>
+          <div className="space-y-3 w-full">
+            {isMobile ? (
+              <TechScrambleButton
+                text={t('connect.connectWallet').toUpperCase()}
+                onClick={handleMobileConnect}
+                delay={0.2}
+                disabled={isPending}
+              />
+            ) : (
+              <>
+                <TechScrambleButton
+                  text="METAMASK"
+                  onClick={() => handleWalletSelect('MetaMask')}
+                  delay={0.2}
+                  iconSrc="/metamask.svg"
+                  disabled={isPending}
+                />
+                <TechScrambleButton
+                  text="TRUST WALLET"
+                  onClick={() => handleWalletSelect('Trust Wallet')}
+                  delay={0.3}
+                  iconSrc="/trustwallet.svg"
+                  disabled={isPending}
+                />
+              </>
+            )}
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <div className={['w-full', className].filter(Boolean).join(' ')}>
-      {/* Wallet Icon */}
-      <div className="flex justify-center mb-8 sm:mb-10">
-        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-blue-50 flex items-center justify-center">
-          <svg
-            className="w-8 h-8 sm:w-10 sm:h-10 text-blue-600"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={1.5}
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1-6 0H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 9m18 0V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v3"
-            />
-          </svg>
-        </div>
-      </div>
-
-      {/* Title */}
-      <div className="text-center mb-5">
-        <h1 className="text-base sm:text-lg font-bold text-gray-900">{t('connect.title')}</h1>
-      </div>
-
-      {/* Description */}
-      <div className="text-center mb-10 sm:mb-12">
-        <p className="text-xs sm:text-sm text-gray-500 leading-relaxed">
-          {t('connect.description')
-            .split('\n')
-            .map((line, i) => (
-              <span key={i}>
-                {line}
-                {i === 0 && <br />}
-              </span>
-            ))}
-        </p>
-      </div>
-
-      <div className="flex flex-col gap-2 w-full">
-        {isMobile ? (
-          <button
-            type="button"
-            onClick={handleMobileConnect}
-            disabled={isPending}
-            className={`${WALLET_BUTTON_BASE} bg-blue-600 hover:bg-blue-700 active:bg-blue-800`}
-          >
-            {t('connect.connectWallet')}
-          </button>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={handleMetaMask}
-              disabled={isPending}
-              className={`${WALLET_BUTTON_BASE} ${WALLET_STYLES.metaMask}`}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key="wallet-connecting"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          className="flex flex-col items-center w-full"
+        >
+          <h2 className="relative z-10 text-2xl md:text-3xl bg-clip-text text-transparent bg-gradient-to-b from-white to-zinc-500 text-center font-extrabold antialiased mb-2 tracking-tight">
+            {t('connect.connecting').replace('...', '')} {selectedWallet}
+          </h2>
+          <p className="text-center text-sm text-[var(--color-brand-gray)] mb-4 sm:mb-8">
+            {t('connect.description').split('\n')[0]}
+          </p>
+          <WalletProcessingCard
+            walletName={selectedWallet}
+            status={
+              connectingStatus === 'succeeded'
+                ? 'succeeded'
+                : connectingStatus === 'failed'
+                  ? 'failed'
+                  : 'connecting'
+            }
+            progress={
+              connectingStatus === 'succeeded' ? 100 : connectingStatus === 'failed' ? 100 : 50
+            }
+          />
+          {connectingStatus === 'failed' && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="w-full space-y-3 mt-4"
             >
-              {t('connect.metaMask')}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleTrustWallet}
-              disabled={isPending}
-              className={`${WALLET_BUTTON_BASE} ${WALLET_STYLES.trustWallet}`}
-            >
-              {t('connect.trustWallet')}
-            </button>
-          </>
-        )}
-      </div>
+              <TechScrambleButton
+                text={t('common.tryAgain').toUpperCase()}
+                onClick={() => handleWalletSelect(selectedWallet)}
+                delay={0}
+                containerClassName="w-full"
+              />
+              <TechScrambleButton
+                text={t('common.goBack').toUpperCase()}
+                onClick={() => setConnectingStatus('idle')}
+                delay={0.1}
+                containerClassName="w-full"
+                gradientClassName="via-white/20 group-hover:via-zinc-800"
+                buttonClassName="bg-zinc-950 text-zinc-400 hover:text-white"
+              />
+            </motion.div>
+          )}
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }
