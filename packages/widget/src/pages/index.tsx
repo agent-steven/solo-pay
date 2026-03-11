@@ -71,16 +71,17 @@ function LanguageSwitcher() {
     <div className="flex gap-2 text-xs font-quantico text-[var(--color-brand-gray)] bg-zinc-800 px-2 py-1 rounded">
       {SUPPORTED_LOCALES.map((loc, index) => (
         <>
-        {index > 0 && <span>/</span>}
-        <button
-          key={loc}
-          type="button"
-          onClick={() => setLocale(loc)}
-          className={`hover:text-white transition-colors ${locale === loc ? 'text-white font-bold' : ''
+          {index > 0 && <span>/</span>}
+          <button
+            key={loc}
+            type="button"
+            onClick={() => setLocale(loc)}
+            className={`hover:text-white transition-colors ${
+              locale === loc ? 'text-white font-bold' : ''
             }`}
-        >
-          {loc === 'en' ? 'EN' : 'KO'}
-        </button>
+          >
+            {loc === 'en' ? 'EN' : 'KO'}
+          </button>
         </>
       ))}
     </div>
