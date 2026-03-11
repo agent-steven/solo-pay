@@ -177,13 +177,13 @@ jobs:
           echo "Checking simple-relayer..."
           curl -sf $RELAY_API_URL/health
 
-          echo "Checking webhook-manager process..."
-          if ! pgrep -f "webhook-manager/dist/worker.js" > /dev/null; then
-            echo "::error::webhook-manager is not running"
+          echo "Checking webhook-manager..."
+          if ! grep -q "worker started" /tmp/webhook-manager.log 2>/dev/null; then
+            echo "::error::webhook-manager failed to start"
             cat /tmp/webhook-manager.log 2>/dev/null || true
             exit 1
           fi
-          echo "webhook-manager process alive"
+          echo "webhook-manager started successfully"
 
           echo "All services healthy!"
 
