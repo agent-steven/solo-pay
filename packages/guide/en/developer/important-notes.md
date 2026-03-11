@@ -45,8 +45,6 @@ SoloPay does not currently provide an automated refund feature. If a refund is n
 
 ::: warning Refunds must be handled by the merchant
 SoloPay operates on a direct payment model — funds are transferred directly to the merchant wallet at the time of payment. If a refund is required, the merchant must send funds back to the buyer directly or handle it according to their own refund policy.
-
-An automated refund API is planned for a future release.
 :::
 
 ## Next steps
