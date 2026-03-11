@@ -274,8 +274,7 @@ export function PaymentModal({ product, onClose, onSuccess }: PaymentModalProps)
   );
 
   // Poll server for payment status (Contract = Source of Truth).
-  // After pay(), status becomes ESCROWED (funds in escrow). FINALIZED only after merchant finalize.
-  // Treat ESCROWED or FINALIZED as success so we do not timeout waiting for finalize.
+  // After pay(), status becomes PAID (funds transferred directly to merchant wallet).
   const pollPaymentStatus = useCallback(
     async (paymentId: string): Promise<void> => {
       if (!serverConfig) {
@@ -289,11 +288,11 @@ export function PaymentModal({ product, onClose, onSuccess }: PaymentModalProps)
         const response = await getPaymentStatus(paymentId);
 
         if (response.success && response.data) {
-          const status = response.data.status;
-          if (status === 'ESCROWED' || status === 'FINALIZED') {
-            return;
+          const status = response.data.status.toUpperCase();
+          if (status === 'PAID') {
+            return; // Success - funds transferred to merchant
           }
-          if (status.toUpperCase() === 'FAILED') {
+          if (status === 'FAILED' || status === 'INVALID') {
             throw new Error('Payment failed on server');
           }
         }
@@ -534,7 +533,7 @@ export function PaymentModal({ product, onClose, onSuccess }: PaymentModalProps)
         throw new Error(submitResponse.message || 'Failed to submit gasless payment');
       }
 
-      // 6. Poll payment status until ESCROWED (or FINALIZED)
+      // 6. Poll payment status until PAID (funds transferred to merchant)
       await pollPaymentStatus(paymentId);
 
       // 7. Get final status for txHash

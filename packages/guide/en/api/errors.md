@@ -198,12 +198,12 @@ Returned when the amount in the relay request does not match the payment amount 
 { "code": "AMOUNT_MISMATCH", "message": "Payment amount mismatch" }
 ```
 
-### PAYMENT_NOT_FINALIZED
+### PAYMENT_NOT_PAID
 
 Returned when requesting a refund for a payment that is not in PAID status.
 
 ```json
-{ "code": "PAYMENT_NOT_FINALIZED", "message": "Payment must be PAID to request a refund" }
+{ "code": "PAYMENT_NOT_PAID", "message": "Payment must be PAID to request a refund" }
 ```
 
 ---
