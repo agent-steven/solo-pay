@@ -43,6 +43,7 @@ function makeJobData(overrides: Record<string, unknown> = {}) {
     amount: '1000000',
     tokenSymbol: 'USDC',
     tokenAddress: '0xTokenAddr',
+    recipientAddress: '0x' + 'd'.repeat(40),
     orderId: 'order-1',
     webhookUrl: 'https://merchant.example/webhook',
     status: 'CREATED',
@@ -212,6 +213,77 @@ describe('monitor worker', () => {
       });
 
       await processJob(makeJobData());
+
+      expect(mockPrisma.payment.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'INVALID' }),
+        })
+      );
+    });
+
+    it('should mark as INVALID when recipient mismatches (self-payment attack)', async () => {
+      const attackerAddress = '0x' + 'e'.repeat(40);
+      const details = makePaidDetails({ recipientAddress: attackerAddress });
+      mockGetOnChainStatus.mockResolvedValue({
+        status: OnChainPaymentStatus.Paid,
+        details,
+      });
+
+      await processJob(makeJobData());
+
+      expect(mockPrisma.payment.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'INVALID' }),
+        })
+      );
+      expect(mockWebhookQueue.addPaymentEvent).toHaveBeenCalledWith(
+        'payment.invalid',
+        expect.objectContaining({
+          body: expect.objectContaining({ status: 'INVALID' }),
+        })
+      );
+    });
+
+    it('should mark as INVALID when recipient is missing', async () => {
+      const details = makePaidDetails({ recipientAddress: undefined });
+      mockGetOnChainStatus.mockResolvedValue({
+        status: OnChainPaymentStatus.Paid,
+        details,
+      });
+
+      await processJob(makeJobData());
+
+      expect(mockPrisma.payment.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'INVALID' }),
+        })
+      );
+    });
+
+    it('should mark as INVALID when expected recipient address is empty (bypass prevention)', async () => {
+      const details = makePaidDetails();
+      mockGetOnChainStatus.mockResolvedValue({
+        status: OnChainPaymentStatus.Paid,
+        details,
+      });
+
+      await processJob(makeJobData({ recipientAddress: '' }));
+
+      expect(mockPrisma.payment.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'INVALID' }),
+        })
+      );
+    });
+
+    it('should mark as INVALID when expected token address is empty (bypass prevention)', async () => {
+      const details = makePaidDetails();
+      mockGetOnChainStatus.mockResolvedValue({
+        status: OnChainPaymentStatus.Paid,
+        details,
+      });
+
+      await processJob(makeJobData({ tokenAddress: '' }));
 
       expect(mockPrisma.payment.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({

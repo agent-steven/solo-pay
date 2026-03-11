@@ -584,6 +584,7 @@ describe('RefundService', () => {
         currency_code: null,
         fiat_amount: null,
         token_price: null,
+        recipient_address: null,
       });
       mockPrisma.refund.findMany.mockResolvedValue([]);
       mockPrisma.refund.count.mockResolvedValue(0);
