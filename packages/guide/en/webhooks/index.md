@@ -113,6 +113,8 @@ curl https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123... \
 
 - [ ] Confirm `status === 'PAID'` (payment success)
 - [ ] Confirm `amount` matches the expected amount **in your order database** (the widget runs client-side and the amount could be tampered with)
+- [ ] Confirm `recipientAddress` matches your merchant wallet address (prevents self-payment attacks where an attacker substitutes the recipient)
+- [ ] Confirm `tokenAddress` matches the expected token
 - [ ] Confirm `orderId` matches orderId stored in DB
 - [ ] Prevent duplicate processing for the same `paymentId`
 - [ ] Complete the order after confirming `PAID` status

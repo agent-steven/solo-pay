@@ -62,6 +62,7 @@ describe('PaymentService', () => {
       currency_code: null,
       fiat_amount: null,
       token_price: null,
+      recipient_address: null,
     };
 
     mockPrisma.payment.create.mockResolvedValue(mockResult);
@@ -109,6 +110,7 @@ describe('PaymentService', () => {
       currency_code: null,
       fiat_amount: null,
       token_price: null,
+      recipient_address: null,
     };
 
     mockPrisma.payment.findUnique.mockResolvedValue(mockPayment);
@@ -147,6 +149,7 @@ describe('PaymentService', () => {
       currency_code: null,
       fiat_amount: null,
       token_price: null,
+      recipient_address: null,
     };
 
     mockPrisma.payment.findUnique.mockResolvedValue(mockPayment);
@@ -188,6 +191,7 @@ describe('PaymentService', () => {
       currency_code: null,
       fiat_amount: null,
       token_price: null,
+      recipient_address: null,
     };
 
     const mockUpdated = {
@@ -240,6 +244,7 @@ describe('PaymentService', () => {
         currency_code: null,
         fiat_amount: null,
         token_price: null,
+        recipient_address: null,
       },
     ];
 
@@ -283,6 +288,7 @@ describe('PaymentService', () => {
       currency_code: null,
       fiat_amount: null,
       token_price: null,
+      recipient_address: null,
     };
 
     mockPrisma.payment.create.mockResolvedValue(mockResult);
@@ -327,6 +333,7 @@ describe('PaymentService', () => {
       currency_code: null,
       fiat_amount: null,
       token_price: null,
+      recipient_address: null,
     };
 
     mockPrisma.payment.findUnique.mockResolvedValue(mockPayment);
