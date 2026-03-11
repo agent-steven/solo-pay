@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { Prisma } from '@solo-pay/database';
 import { prisma } from '@/lib/db';
+import { getSession } from '@/lib/session';
 
 const chainSchema = z.object({
   network_id: z.coerce.number().int().positive(),
@@ -16,12 +17,16 @@ const chainSchema = z.object({
 });
 
 export async function getChains() {
+  const session = await getSession();
+  if (!session) return { error: 'Unauthorized' };
   return prisma.chain.findMany({
     orderBy: { network_id: 'asc' },
   });
 }
 
 export async function createChain(formData: FormData) {
+  const session = await getSession();
+  if (!session) return { error: 'Unauthorized' };
   const parsed = chainSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.errors[0].message };
 
@@ -44,6 +49,8 @@ export async function createChain(formData: FormData) {
 }
 
 export async function updateChain(id: number, formData: FormData) {
+  const session = await getSession();
+  if (!session) return { error: 'Unauthorized' };
   const parsed = chainSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.errors[0].message };
 
@@ -61,11 +68,15 @@ export async function updateChain(id: number, formData: FormData) {
 }
 
 export async function toggleChain(id: number, is_enabled: boolean) {
+  const session = await getSession();
+  if (!session) throw new Error('Unauthorized');
   await prisma.chain.update({ where: { id }, data: { is_enabled } });
   revalidatePath('/chains');
 }
 
 export async function deleteChain(id: number) {
+  const session = await getSession();
+  if (!session) throw new Error('Unauthorized');
   await prisma.chain.delete({ where: { id } });
   revalidatePath('/chains');
 }

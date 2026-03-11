@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 
+import { redirect } from 'next/navigation';
 import { getPaymentMethods } from '@/app/actions/payment-methods';
 import { getMerchants } from '@/app/actions/merchants';
 import { getTokens } from '@/app/actions/tokens';
@@ -13,6 +14,11 @@ export default async function PaymentMethodsPage() {
     getTokens(),
     getChains(),
   ]);
+
+  if ('error' in paymentMethods) redirect('/login');
+  if ('error' in merchants) redirect('/login');
+  if ('error' in tokens) redirect('/login');
+  if ('error' in chains) redirect('/login');
 
   return (
     <PaymentMethodsClient

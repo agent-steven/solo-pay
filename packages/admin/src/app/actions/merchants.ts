@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { Prisma } from '@solo-pay/database';
 import { prisma } from '@/lib/db';
+import { getSession } from '@/lib/session';
 
 function hashKey(value: string): string {
   return crypto.createHash('sha256').update(value).digest('hex');
@@ -30,16 +31,22 @@ const merchantSchema = z.object({
 });
 
 export async function getMerchants() {
+  const session = await getSession();
+  if (!session) return { error: 'Unauthorized' };
   return prisma.merchant.findMany({
     orderBy: { created_at: 'desc' },
   });
 }
 
 export async function getMerchant(id: number) {
+  const session = await getSession();
+  if (!session) return { error: 'Unauthorized' };
   return prisma.merchant.findFirst({ where: { id } });
 }
 
 export async function createMerchant(formData: FormData) {
+  const session = await getSession();
+  if (!session) return { error: 'Unauthorized' };
   const parsed = merchantSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.errors[0].message };
 
@@ -69,6 +76,8 @@ export async function createMerchant(formData: FormData) {
 }
 
 export async function updateMerchant(id: number, formData: FormData) {
+  const session = await getSession();
+  if (!session) return { error: 'Unauthorized' };
   const parsed = merchantSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.errors[0].message };
 
@@ -87,6 +96,8 @@ export async function updateMerchant(id: number, formData: FormData) {
 }
 
 export async function rotateApiKey(id: number) {
+  const session = await getSession();
+  if (!session) return { error: 'Unauthorized' };
   const apiKey = generateApiKey();
   await prisma.merchant.update({ where: { id }, data: { api_key_hash: apiKey.hash } });
   revalidatePath('/merchants');
@@ -94,6 +105,8 @@ export async function rotateApiKey(id: number) {
 }
 
 export async function rotatePublicKey(id: number) {
+  const session = await getSession();
+  if (!session) return { error: 'Unauthorized' };
   const publicKey = generatePublicKey();
   await prisma.merchant.update({
     where: { id },
@@ -104,6 +117,8 @@ export async function rotatePublicKey(id: number) {
 }
 
 export async function deleteMerchant(id: number) {
+  const session = await getSession();
+  if (!session) throw new Error('Unauthorized');
   await prisma.merchant.delete({ where: { id } });
   revalidatePath('/merchants');
 }

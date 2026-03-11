@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 
 const COOKIE_NAME = 'admin_session';
@@ -10,10 +11,37 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const session = request.cookies.get(COOKIE_NAME)?.value;
-  const secret = process.env.ADMIN_SESSION_SECRET ?? 'dev-secret';
+  const secret = process.env.ADMIN_SESSION_SECRET ?? '';
 
-  if (!session || session !== secret) {
+  if (!secret) {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  const session = request.cookies.get(COOKIE_NAME)?.value;
+  if (!session) {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  const dotIndex = session.lastIndexOf('.');
+  if (dotIndex === -1) {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  const token = session.slice(0, dotIndex);
+  const storedHmac = session.slice(dotIndex + 1);
+  const computedHmac = crypto.createHmac('sha256', secret).update(token).digest('hex');
+
+  let valid = false;
+  try {
+    valid = crypto.timingSafeEqual(
+      Buffer.from(computedHmac, 'hex'),
+      Buffer.from(storedHmac, 'hex')
+    );
+  } catch {
+    valid = false;
+  }
+
+  if (!valid) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 

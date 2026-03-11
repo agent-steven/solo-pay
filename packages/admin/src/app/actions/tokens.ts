@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { Prisma } from '@solo-pay/database';
 import { prisma } from '@/lib/db';
+import { getSession } from '@/lib/session';
 
 const tokenSchema = z.object({
   chain_id: z.coerce.number().int().positive(),
@@ -15,12 +16,16 @@ const tokenSchema = z.object({
 });
 
 export async function getTokens() {
+  const session = await getSession();
+  if (!session) return { error: 'Unauthorized' };
   return prisma.token.findMany({
     orderBy: { symbol: 'asc' },
   });
 }
 
 export async function createToken(formData: FormData) {
+  const session = await getSession();
+  if (!session) return { error: 'Unauthorized' };
   const parsed = tokenSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.errors[0].message };
 
@@ -38,6 +43,8 @@ export async function createToken(formData: FormData) {
 }
 
 export async function updateToken(id: number, formData: FormData) {
+  const session = await getSession();
+  if (!session) return { error: 'Unauthorized' };
   const parsed = tokenSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.errors[0].message };
 
@@ -50,11 +57,15 @@ export async function updateToken(id: number, formData: FormData) {
 }
 
 export async function toggleToken(id: number, is_enabled: boolean) {
+  const session = await getSession();
+  if (!session) throw new Error('Unauthorized');
   await prisma.token.update({ where: { id }, data: { is_enabled } });
   revalidatePath('/tokens');
 }
 
 export async function deleteToken(id: number) {
+  const session = await getSession();
+  if (!session) throw new Error('Unauthorized');
   await prisma.token.delete({ where: { id } });
   revalidatePath('/tokens');
 }

@@ -1,8 +1,11 @@
 'use server';
 
 import { prisma } from '@/lib/db';
+import { getSession } from '@/lib/session';
 
 export async function getPayments() {
+  const session = await getSession();
+  if (!session) return { error: 'Unauthorized' };
   const payments = await prisma.payment.findMany({
     orderBy: { created_at: 'desc' },
     select: {
@@ -28,6 +31,8 @@ export async function getPayments() {
 }
 
 export async function getMerchantNames() {
+  const session = await getSession();
+  if (!session) return { error: 'Unauthorized' };
   return prisma.merchant.findMany({
     select: { id: true, name: true },
     orderBy: { name: 'asc' },

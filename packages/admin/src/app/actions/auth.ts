@@ -1,5 +1,6 @@
 'use server';
 
+import crypto from 'crypto';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { createSession, deleteSession } from '@/lib/session';
@@ -21,7 +22,24 @@ export async function login(formData: FormData) {
 
   const { username, password } = parsed.data;
 
-  if (username !== process.env.ADMIN_USERNAME || password !== process.env.ADMIN_PASSWORD) {
+  const adminUsername = process.env.ADMIN_USERNAME ?? '';
+  const adminPassword = process.env.ADMIN_PASSWORD ?? '';
+
+  if (!adminUsername || !adminPassword) {
+    return { error: 'Invalid username or password.' };
+  }
+
+  const usernameMatch = crypto.timingSafeEqual(
+    crypto.createHash('sha256').update(username).digest(),
+    crypto.createHash('sha256').update(adminUsername).digest()
+  );
+
+  const passwordMatch = crypto.timingSafeEqual(
+    crypto.createHash('sha256').update(password).digest(),
+    crypto.createHash('sha256').update(adminPassword).digest()
+  );
+
+  if (!usernameMatch || !passwordMatch) {
     return { error: 'Invalid username or password.' };
   }
 
