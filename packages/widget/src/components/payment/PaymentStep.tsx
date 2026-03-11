@@ -137,6 +137,9 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
   // Error for invalid payment configuration
   const [configError, setConfigError] = useState<string | null>(null);
 
+  // Delay advancing from wallet-connect so the user sees the success animation
+  const [connectAnimationDone, setConnectAnimationDone] = useState(false);
+
   // Wallet connection state from wagmi
   const { address, isConnected, chain, disconnect } = useWallet();
   const { connector } = useAccount();
@@ -272,12 +275,24 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
   const goToPaymentProcessing = () => setCurrentStep('payment-processing');
   const goToPaymentComplete = () => setCurrentStep('payment-complete');
 
+  // When wallet connects, wait 1.5s for the success animation before allowing advance
+  useEffect(() => {
+    if (currentStep !== 'wallet-connect') return;
+    if (!isConnected || !buttonConnectClicked || lockReconnect) return;
+
+    setConnectAnimationDone(false);
+    const timer = setTimeout(() => setConnectAnimationDone(true), 1500);
+    return () => clearTimeout(timer);
+  }, [isConnected, currentStep, buttonConnectClicked, lockReconnect]);
+
   // Auto-switch chain and advance when wallet connects
   useEffect(() => {
     if (currentStep !== 'wallet-connect') return;
     if (!isConnected || !address || !paymentDetails) return;
     // Guard: only advance after explicit user click — prevents AppKit auto-reconnect from skipping connect step
     if (!buttonConnectClicked || lockReconnect) return;
+    // Wait for the success animation to finish
+    if (!connectAnimationDone) return;
 
     const targetChainId = paymentDetails.chainId;
     const needsSwitch = chain?.id !== targetChainId;
@@ -351,6 +366,7 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
     currentStep,
     buttonConnectClicked,
     lockReconnect,
+    connectAnimationDone,
   ]);
 
   // Fallback: if still on wallet-connect after connecting (e.g. Trust Wallet chain/switch delay), advance after 4s
@@ -436,6 +452,7 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
   /** Show wallet picker and block auto-reconnect until user picks a wallet */
   const handleDisconnect = useCallback(() => {
     setLockReconnect(true);
+    setConnectAnimationDone(false);
     disconnect();
     goToWalletConnect();
   }, [disconnect]);
@@ -586,7 +603,7 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
   if (!urlParams?.walletOnly && apiError) {
     return (
       <div className="text-center py-8">
-        <div className="text-red-500 mb-4">
+        <div className="text-[var(--color-brand-error)] mb-4">
           <svg
             className="w-12 h-12 mx-auto mb-2"
             fill="none"
@@ -602,11 +619,11 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
           </svg>
           <p className="font-medium">{t('error.paymentError')}</p>
         </div>
-        <p className="text-sm text-gray-600 mb-4">{parseErrorMessage(apiError, t, apiErrorCode)}</p>
+        <p className="text-sm text-zinc-400 mb-4">{parseErrorMessage(apiError, t, apiErrorCode)}</p>
         {effectiveFailUrl && (
           <button
             onClick={handleCancel}
-            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200"
+            className="px-4 py-2 bg-zinc-800 text-zinc-300 rounded-lg text-sm hover:bg-zinc-700 border border-zinc-700"
           >
             {t('common.goBack')}
           </button>
@@ -640,7 +657,7 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
     if (errorStatuses.includes(paymentDetails.status)) {
       return (
         <div className="text-center py-8">
-          <div className="text-red-500 mb-4">
+          <div className="text-[var(--color-brand-error)] mb-4">
             <svg
               className="w-12 h-12 mx-auto mb-2"
               fill="none"
@@ -663,7 +680,7 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
           {effectiveFailUrl && (
             <button
               onClick={handleCancel}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200"
+              className="px-4 py-2 bg-zinc-800 text-zinc-300 rounded-lg text-sm hover:bg-zinc-700 border border-zinc-700"
             >
               {t('common.goBack')}
             </button>
@@ -715,24 +732,24 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
     };
     return (
       <div className="text-center py-6">
-        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 text-green-600 mb-4">
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[var(--color-brand-success)]/10 text-[var(--color-brand-success)] mb-4">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <p className="font-medium text-gray-900 mb-1">{t('walletOnly.connected')}</p>
-        <p className="text-sm text-gray-500 mb-4">{formatAddress(address)}</p>
+        <p className="font-medium text-white mb-1">{t('walletOnly.connected')}</p>
+        <p className="text-sm text-zinc-400 mb-4">{formatAddress(address)}</p>
         <button
           type="button"
           onClick={handleWalletOnlyContinue}
-          className="w-full px-4 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 active:bg-blue-800"
+          className="w-full px-4 py-3 bg-[var(--color-brand-success)] text-black font-bold rounded-none tech-cut-btn hover:brightness-110 active:brightness-90"
         >
           {t('common.continue')}
         </button>
         <button
           type="button"
           onClick={handleDisconnect}
-          className="mt-3 text-sm text-gray-500 hover:text-gray-700"
+          className="mt-3 text-sm text-zinc-500 hover:text-zinc-300"
         >
           {t('common.disconnect')}
         </button>
@@ -745,6 +762,10 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
     switch (currentStep) {
       case 'wallet-connect':
         if (isConnected && buttonConnectClicked && !lockReconnect) {
+          // Show ConnectWalletButton success animation before advancing
+          if (!connectAnimationDone) {
+            return <ConnectWalletButton onConnectorClick={clearWalletChangeIntent} />;
+          }
           return (
             <LoadingSpinner
               message={

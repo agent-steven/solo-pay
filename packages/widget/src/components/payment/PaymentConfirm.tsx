@@ -1,4 +1,7 @@
+import { motion } from 'framer-motion';
+import { ArrowRightLeft } from 'lucide-react';
 import { useLocale } from '../../context/LocaleContext';
+import { TechScrambleButton } from '../ui/tech-scramble-button';
 
 interface PaymentConfirmProps {
   product: string;
@@ -15,7 +18,6 @@ interface PaymentConfirmProps {
 }
 
 export default function PaymentConfirm({
-  product,
   amount,
   token,
   network,
@@ -31,106 +33,103 @@ export default function PaymentConfirm({
   const numberLocale = locale === 'ko' ? 'ko-KR' : 'en-US';
 
   return (
-    <div className="w-full px-4 pt-0 pb-3 sm:px-6 sm:pt-0 sm:pb-5">
-      {/* Title */}
-      <div className="text-center mb-5 sm:mb-6">
-        <h1 className="text-base sm:text-lg font-bold text-gray-900">{t('confirm.title')}</h1>
-        <p className="text-xs sm:text-sm text-gray-500 mt-0.5">{t('confirm.reviewDetails')}</p>
-      </div>
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      className="flex flex-col items-center"
+    >
+      <h2 className="relative z-10 text-2xl md:text-3xl bg-clip-text text-transparent bg-gradient-to-b from-white to-zinc-500 text-center font-extrabold antialiased mb-2 tracking-tight">
+        {t('confirm.title')}
+      </h2>
+      <p className="text-center text-sm text-[var(--color-brand-gray)] mb-4 sm:mb-8">
+        {t('confirm.reviewDetails')}
+      </p>
 
-      {/* Payment Details */}
-      <div className="rounded-xl bg-gray-50 border border-gray-100 p-3.5 sm:p-4 mb-5 sm:mb-6">
-        <h2 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2.5 sm:mb-3">
-          {t('confirm.paymentDetails')}
-        </h2>
-
-        <div className="space-y-1.5 sm:space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs sm:text-sm text-gray-500">{t('confirm.network')}</span>
-            <span className="text-xs sm:text-sm font-medium text-gray-900">{network}</span>
+      {/* Payment Details Card */}
+      <div className="w-full bg-zinc-800 p-4 rounded-none mb-4 sm:mb-6 border border-zinc-600/70 shadow-sm">
+        <div className="text-xs font-mono text-[var(--color-brand-gray)] mb-4">
+          {t('confirm.paymentDetails').toUpperCase()}
+        </div>
+        <div className="space-y-3 text-sm">
+          <div className="flex justify-between">
+            <span className="text-[var(--color-brand-gray)]">{t('confirm.network')}</span>
+            <span>{network}</span>
           </div>
           {walletAddress && (
-            <div className="flex items-center justify-between">
-              <span className="text-xs sm:text-sm text-gray-500">{t('confirm.payingFrom')}</span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs sm:text-sm font-mono font-medium text-gray-900">
-                  {walletAddress}
-                </span>
+            <div className="flex justify-between items-center">
+              <span className="text-[var(--color-brand-gray)]">{t('confirm.payingFrom')}</span>
+              <div className="flex items-center gap-3">
+                <span className="font-mono">{walletAddress}</span>
                 {onChangeWallet && (
                   <button
                     type="button"
                     onClick={onChangeWallet}
-                    className="text-xs text-blue-600 hover:text-blue-500 font-medium cursor-pointer"
+                    className="flex items-center gap-1.5 text-xs bg-zinc-700 px-3 py-1 rounded-none hover:bg-zinc-600 transition-colors text-white"
                   >
-                    {t('common.change')}
+                    <ArrowRightLeft className="w-3 h-3" />
+                    <span>{t('common.change')}</span>
                   </button>
                 )}
               </div>
             </div>
           )}
-
-          <div className="border-t border-gray-200 pt-1.5 sm:pt-2 mt-1.5 sm:mt-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs sm:text-sm text-gray-500">{t('confirm.gasFee')}</span>
-              <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 rounded-full bg-green-50 text-green-700 text-xs font-medium">
-                {t('confirm.gasFree')}
-              </span>
-            </div>
+          <div className="flex justify-between">
+            <span className="text-[var(--color-brand-gray)]">{t('confirm.gasFee')}</span>
+            <span className="text-[var(--color-brand-success)] font-bold">
+              {t('confirm.gasFree')}
+            </span>
           </div>
+        </div>
 
-          {/* Total - highlighted within the card */}
-          <div className="border-t-2 border-blue-200 pt-2.5 sm:pt-3 mt-1.5 sm:mt-2">
-            <div className="flex items-end justify-between rounded-lg bg-blue-50 p-2.5 sm:p-3">
-              <span className="text-sm sm:text-base font-semibold text-blue-700">
-                {t('confirm.total')}
-              </span>
-              <div className="text-right">
-                {currency && fiatAmount !== undefined && (
-                  <span className="block text-xs text-blue-500">
-                    {fiatAmount.toLocaleString(numberLocale, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}{' '}
-                    {currency}
-                  </span>
-                )}
-                <span className="text-sm sm:text-base font-bold text-blue-700">
-                  {amount} {token}
-                </span>
-              </div>
-            </div>
+        {/* Total */}
+        <div className="bg-zinc-900 p-3 rounded-none mt-4 flex flex-col items-end border border-zinc-600/70 shadow-inner">
+          {currency && fiatAmount !== undefined && (
+            <span className="text-xs text-[var(--color-brand-blue)]">
+              {fiatAmount.toLocaleString(numberLocale, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}{' '}
+              {currency}
+            </span>
+          )}
+          <div className="flex justify-between w-full mt-1">
+            <span className="font-bold text-[var(--color-brand-blue)]">{t('confirm.total')}</span>
+            <span className="font-mono font-bold text-[var(--color-brand-blue)]">
+              {amount} {token}
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Error Message */}
+      {/* Error */}
       {error && (
-        <div className="mb-3 p-2.5 rounded-lg bg-red-50 border border-red-200">
-          <p className="text-xs text-red-600">{error}</p>
+        <div className="w-full mb-4 p-3 rounded-none bg-[var(--color-brand-error)]/10 border border-[var(--color-brand-error)]/30">
+          <p className="text-xs text-[var(--color-brand-error)]">{error}</p>
         </div>
       )}
 
-      {/* Pay Button (hidden when error is present) */}
-      {!error && (
-        <button
-          type="button"
-          className="w-full py-2.5 sm:py-3 rounded-xl text-white text-sm font-semibold transition-colors bg-blue-600 hover:bg-blue-500 active:bg-blue-700 cursor-pointer"
-          onClick={onPay}
-        >
-          {t('confirm.payNow')}
-        </button>
-      )}
-
-      {/* Cancel Button */}
-      {onCancel && (
-        <button
-          type="button"
-          className="w-full mt-2 py-2.5 sm:py-3 rounded-xl bg-gray-100 text-gray-600 text-sm font-semibold hover:bg-gray-200 transition-colors cursor-pointer"
-          onClick={onCancel}
-        >
-          {t('confirm.cancelPayment')}
-        </button>
-      )}
-    </div>
+      {/* Buttons */}
+      <div className="w-full space-y-3 mt-2">
+        {!error && (
+          <TechScrambleButton
+            text={t('confirm.payNow').toUpperCase()}
+            onClick={() => onPay?.()}
+            delay={0.2}
+            containerClassName="w-full"
+          />
+        )}
+        {onCancel && (
+          <TechScrambleButton
+            text={t('confirm.cancelPayment').toUpperCase()}
+            onClick={onCancel}
+            delay={0.3}
+            containerClassName="w-full"
+            gradientClassName="via-white/20 group-hover:via-zinc-800"
+            buttonClassName="bg-zinc-950 text-zinc-400 hover:text-white"
+          />
+        )}
+      </div>
+    </motion.div>
   );
 }

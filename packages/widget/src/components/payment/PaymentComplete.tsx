@@ -1,5 +1,9 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Copy } from 'lucide-react';
 import { useLocale } from '../../context/LocaleContext';
+import { TechScrambleButton } from '../ui/tech-scramble-button';
+import { InnerShockwave, SquarePixelDebris, TwinkleParticles } from '../ui/processing-card';
 
 interface PaymentCompleteProps {
   amount: string;
@@ -42,97 +46,75 @@ export default function PaymentComplete({
   };
 
   return (
-    <div className="w-full p-4 sm:p-8">
-      {/* Success Icon */}
-      <div className="flex justify-center mb-4 sm:mb-6">
-        <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-green-50 flex items-center justify-center">
-          <svg
-            className="w-6 h-6 sm:w-8 sm:h-8 text-green-500"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={2}
-            stroke="currentColor"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-          </svg>
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0 }}
+      className="flex flex-col items-center relative"
+    >
+      {/* Shockwave & particle effects */}
+      <div className="absolute inset-[-50px] pointer-events-none z-[-1] flex items-center justify-center mix-blend-normal">
+        <InnerShockwave />
+        <SquarePixelDebris count={30} radius={180} duration={0.6} className="z-0" />
+      </div>
+
+      <div className="relative flex items-center justify-center mb-6">
+        <TwinkleParticles count={30} radius={80} />
+        <div className="relative z-10 w-16 h-16 bg-[var(--color-brand-success)]/10 text-[var(--color-brand-success)] rounded-full flex items-center justify-center text-3xl shadow-[0_0_15px_rgba(34,197,94,0.3)]">
+          &#10003;
         </div>
       </div>
 
-      {/* Title */}
-      <div className="text-center mb-6 sm:mb-8">
-        <h1 className="text-base sm:text-lg font-bold text-gray-900">{t('complete.title')}</h1>
-        <p className="text-xs sm:text-sm text-gray-500 mt-1">{t('complete.description')}</p>
-      </div>
+      <h2 className="relative z-10 text-2xl md:text-3xl bg-clip-text text-transparent bg-gradient-to-b from-[var(--color-brand-success)] to-green-900 text-center font-extrabold antialiased mb-2 tracking-tight">
+        {t('complete.title')}
+      </h2>
+      <p className="relative z-10 text-center text-sm text-[var(--color-brand-gray)] mb-4 sm:mb-8">
+        {t('complete.description')}
+      </p>
 
-      {/* Payment Details */}
-      <div className="rounded-xl bg-gray-50 border border-gray-100 p-4 sm:p-5 mb-6 sm:mb-8">
-        <div className="space-y-3 sm:space-y-4">
-          {/* Date */}
-          <div className="flex items-center justify-between">
-            <span className="text-xs sm:text-sm text-gray-500">{t('complete.date')}</span>
-            <span className="text-xs sm:text-sm font-medium text-gray-900">{date}</span>
+      {/* Details Card */}
+      <div className="relative z-10 w-full bg-zinc-800 p-4 rounded-none mb-4 sm:mb-6 border border-zinc-600/70 text-sm space-y-4 shadow-xl">
+        {date && (
+          <div className="flex justify-between">
+            <span className="text-[var(--color-brand-gray)]">{t('complete.date')}</span>
+            <span className="font-mono">{date}</span>
           </div>
-
-          {/* Amount */}
-          <div className="flex items-center justify-between">
-            <span className="text-xs sm:text-sm text-gray-500">{t('complete.amount')}</span>
-            <span className="text-xs sm:text-sm font-bold text-gray-900">
-              {amount} {token}
-            </span>
-          </div>
-
-          {/* Transaction Hash */}
-          <div className="border-t border-gray-200 pt-3 sm:pt-4">
-            <span className="text-xs text-gray-500 block mb-2">
-              {t('complete.transactionHash')}
-            </span>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono text-gray-700 truncate">{txHash}</span>
-              <button
-                type="button"
-                className="shrink-0 p-1 rounded hover:bg-gray-200 transition-colors cursor-pointer"
-                aria-label={t('common.copyTxHash')}
-                onClick={handleCopyTxHash}
-              >
-                {copied ? (
-                  <svg
-                    className="w-4 h-4 text-green-500"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={2}
-                    stroke="currentColor"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                  </svg>
-                ) : (
-                  <svg
-                    className="w-4 h-4 text-gray-400"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75"
-                    />
-                  </svg>
-                )}
-              </button>
-            </div>
+        )}
+        <div className="flex justify-between">
+          <span className="text-[var(--color-brand-gray)]">{t('complete.amount')}</span>
+          <span className="font-mono font-bold">
+            {amount} {token}
+          </span>
+        </div>
+        <div className="border-t border-zinc-700 pt-4">
+          <div className="text-[var(--color-brand-gray)] mb-2">{t('complete.transactionHash')}</div>
+          <div className="flex justify-between items-center text-xs">
+            <span className="font-mono break-all text-zinc-300">{txHash}</span>
+            <button
+              type="button"
+              className="text-[var(--color-brand-gray)] hover:text-white transition-colors ml-2"
+              aria-label={t('common.copyTxHash')}
+              onClick={handleCopyTxHash}
+            >
+              {copied ? (
+                <span className="text-[var(--color-brand-success)] text-xs">&#10003;</span>
+              ) : (
+                <Copy className="w-4 h-4" />
+              )}
+            </button>
           </div>
         </div>
       </div>
 
       {/* Confirm Button */}
-      <button
-        type="button"
-        className="w-full py-3 sm:py-3.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-500 active:bg-blue-700 transition-colors cursor-pointer"
-        onClick={onConfirm}
-      >
-        {t('complete.returnToMerchant')}
-      </button>
-    </div>
+      <div className="relative z-10 w-full">
+        <TechScrambleButton
+          text={t('complete.returnToMerchant').toUpperCase()}
+          onClick={() => onConfirm?.()}
+          delay={0.2}
+          containerClassName="w-full mt-2 shadow-xl"
+        />
+      </div>
+    </motion.div>
   );
 }
