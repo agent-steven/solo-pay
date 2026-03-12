@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import Fastify, { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
-import { encodeFunctionData, keccak256, toHex } from 'viem';
+import { encodeFunctionData, encodePacked, keccak256, toHex } from 'viem';
 import { submitGaslessRoute } from '../../../src/routes/payments/gasless';
 import { RelayerService } from '../../../src/services/relayer.service';
 import { RelayService } from '../../../src/services/relay.service';
@@ -15,9 +15,16 @@ import PaymentGatewayV1Artifact from '@solo-pay/contracts/artifacts/src/PaymentG
 const TEST_PUBLIC_KEY = 'pk_test_abc123';
 const TEST_ORIGIN = 'http://localhost:3000';
 
+// Pre-computed constants: DB mock and calldata must use identical values
+const MOCK_MERCHANT_KEY = 'merchant_demo_001';
+const MOCK_TOKEN_ADDRESS = '0xE4C687167705Abf55d709395f92e254bdF5825a2';
+const MOCK_RECIPIENT_ADDRESS = '0x70997970C51812dc3A010C7d01b50e0d17dc79C8';
+const MOCK_PAYMENT_HASH = keccak256(toHex('payment-123'));
+const MOCK_MERCHANT_ID = keccak256(encodePacked(['string'], [MOCK_MERCHANT_KEY]));
+
 const mockMerchant = {
   id: 1,
-  merchant_key: 'merchant_demo_001',
+  merchant_key: MOCK_MERCHANT_KEY,
   name: 'Demo Store',
   api_key_hash: 'hashed',
   public_key_hash: 'hashed_public',
@@ -31,19 +38,17 @@ const mockMerchant = {
 
 // 유효한 pay() calldata 생성 헬퍼
 // Pay function: pay(paymentId, tokenAddress, amount, recipientAddress, merchantId, deadline, permit)
-const createValidPayCalldata = (paymentId: string, amount: string) => {
-  const paymentIdHash = keccak256(toHex(paymentId));
-  const merchantId = keccak256(toHex('merchant_demo_001')); // bytes32 merchantId
+const createValidPayCalldata = (amount: string = '1000000000000000000') => {
   const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
   return encodeFunctionData({
     abi: PaymentGatewayV1Artifact.abi,
     functionName: 'pay',
     args: [
-      paymentIdHash, // bytes32 paymentId
-      '0xE4C687167705Abf55d709395f92e254bdF5825a2' as `0x${string}`, // address tokenAddress
+      MOCK_PAYMENT_HASH, // bytes32 paymentId
+      MOCK_TOKEN_ADDRESS as `0x${string}`, // address tokenAddress
       BigInt(amount), // uint256 amount
-      '0x70997970C51812dc3A010C7d01b50e0d17dc79C8' as `0x${string}`, // address recipientAddress
-      merchantId, // bytes32 merchantId
+      MOCK_RECIPIENT_ADDRESS as `0x${string}`, // address recipientAddress
+      MOCK_MERCHANT_ID, // bytes32 merchantId
       deadline, // uint256 deadline
       {
         deadline: 0n,
@@ -56,41 +61,37 @@ const createValidPayCalldata = (paymentId: string, amount: string) => {
 };
 
 // 유효한 ForwardRequest 객체 생성 헬퍼
-const createValidForwardRequest = (paymentId: string, amount: string, overrides = {}) => ({
+const createValidForwardRequest = (amount: string = '1000000000000000000', overrides = {}) => ({
   from: '0x' + 'a'.repeat(40),
   to: '0x' + 'b'.repeat(40),
   value: '0',
   gas: '100000',
   nonce: '1', // Required by ForwardRequestSchema
   deadline: String(Math.floor(Date.now() / 1000) + 3600),
-  data: createValidPayCalldata(paymentId, amount),
+  data: createValidPayCalldata(amount),
   signature: '0x' + 'd'.repeat(130),
   ...overrides,
 });
 
 // 유효한 Gasless 요청 생성 헬퍼
 // amount는 mockPaymentData.amount와 일치해야 함
-const createValidGaslessRequest = (
-  paymentId: string,
-  amount: string = '1000000000000000000',
-  overrides = {}
-) => ({
-  paymentId,
+const createValidGaslessRequest = (amount: string = '1000000000000000000', overrides = {}) => ({
+  paymentId: MOCK_PAYMENT_HASH,
   forwarderAddress: '0x' + 'e'.repeat(40),
-  forwardRequest: createValidForwardRequest(paymentId, amount),
+  forwardRequest: createValidForwardRequest(amount),
   ...overrides,
 });
 
 // Mock payment data
 const mockPaymentData = {
   id: 1,
-  payment_hash: 'payment-123',
+  payment_hash: MOCK_PAYMENT_HASH,
   merchant_id: 1,
   status: 'CREATED',
   amount: '1000000000000000000', // 1 token in wei (18 decimals)
   network_id: 80002,
-  token_address: '0xE4C687167705Abf55d709395f92e254bdF5825a2',
-  recipient_address: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
+  token_address: MOCK_TOKEN_ADDRESS,
+  recipient_address: MOCK_RECIPIENT_ADDRESS,
 };
 
 describe('POST /payments/:id/relay', () => {
@@ -166,11 +167,11 @@ describe('POST /payments/:id/relay', () => {
 
   describe('정상 케이스', () => {
     it('유효한 Gasless 요청을 받으면 202 상태 코드와 함께 릴레이 요청 ID를 반환해야 함', async () => {
-      const validRequest = createValidGaslessRequest('payment-123');
+      const validRequest = createValidGaslessRequest();
 
       const response = await app.inject({
         method: 'POST',
-        url: `${API_V1_BASE_PATH}/payments/payment-123/relay`,
+        url: `${API_V1_BASE_PATH}/payments/${MOCK_PAYMENT_HASH}/relay`,
         headers: { 'x-public-key': TEST_PUBLIC_KEY, origin: TEST_ORIGIN },
         payload: validRequest,
       });
@@ -182,11 +183,11 @@ describe('POST /payments/:id/relay', () => {
     });
 
     it('Gasless 거래 응답에 필요한 모든 필드가 포함되어야 함', async () => {
-      const validRequest = createValidGaslessRequest('payment-456');
+      const validRequest = createValidGaslessRequest();
 
       const response = await app.inject({
         method: 'POST',
-        url: `${API_V1_BASE_PATH}/payments/payment-456/relay`,
+        url: `${API_V1_BASE_PATH}/payments/${MOCK_PAYMENT_HASH}/relay`,
         headers: { 'x-public-key': TEST_PUBLIC_KEY, origin: TEST_ORIGIN },
         payload: validRequest,
       });
@@ -211,11 +212,11 @@ describe('POST /payments/:id/relay', () => {
         },
       ]);
 
-      const validRequest = createValidGaslessRequest('payment-123');
+      const validRequest = createValidGaslessRequest();
 
       const response = await app.inject({
         method: 'POST',
-        url: `${API_V1_BASE_PATH}/payments/payment-123/relay`,
+        url: `${API_V1_BASE_PATH}/payments/${MOCK_PAYMENT_HASH}/relay`,
         headers: { 'x-public-key': TEST_PUBLIC_KEY, origin: TEST_ORIGIN },
         payload: validRequest,
       });
@@ -228,13 +229,13 @@ describe('POST /payments/:id/relay', () => {
     });
 
     it('should return 400 INVALID_REQUEST when forwarderAddress does not match authorized forwarder', async () => {
-      const request = createValidGaslessRequest('payment-123', '1000000000000000000', {
+      const request = createValidGaslessRequest('1000000000000000000', {
         forwarderAddress: '0x' + '1'.repeat(40), // wrong forwarder
       });
 
       const response = await app.inject({
         method: 'POST',
-        url: `${API_V1_BASE_PATH}/payments/payment-123/relay`,
+        url: `${API_V1_BASE_PATH}/payments/${MOCK_PAYMENT_HASH}/relay`,
         headers: { 'x-public-key': TEST_PUBLIC_KEY, origin: TEST_ORIGIN },
         payload: request,
       });
@@ -247,15 +248,15 @@ describe('POST /payments/:id/relay', () => {
     });
 
     it('should return 400 INVALID_REQUEST when forwardRequest.to does not match authorized gateway', async () => {
-      const request = createValidGaslessRequest('payment-123', '1000000000000000000', {
-        forwardRequest: createValidForwardRequest('payment-123', '1000000000000000000', {
+      const request = createValidGaslessRequest('1000000000000000000', {
+        forwardRequest: createValidForwardRequest('1000000000000000000', {
           to: '0x' + '1'.repeat(40), // wrong gateway
         }),
       });
 
       const response = await app.inject({
         method: 'POST',
-        url: `${API_V1_BASE_PATH}/payments/payment-123/relay`,
+        url: `${API_V1_BASE_PATH}/payments/${MOCK_PAYMENT_HASH}/relay`,
         headers: { 'x-public-key': TEST_PUBLIC_KEY, origin: TEST_ORIGIN },
         payload: request,
       });
@@ -272,11 +273,11 @@ describe('POST /payments/:id/relay', () => {
         undefined
       );
 
-      const request = createValidGaslessRequest('payment-123');
+      const request = createValidGaslessRequest();
 
       const response = await app.inject({
         method: 'POST',
-        url: `${API_V1_BASE_PATH}/payments/payment-123/relay`,
+        url: `${API_V1_BASE_PATH}/payments/${MOCK_PAYMENT_HASH}/relay`,
         headers: { 'x-public-key': TEST_PUBLIC_KEY, origin: TEST_ORIGIN },
         payload: request,
       });
@@ -290,11 +291,11 @@ describe('POST /payments/:id/relay', () => {
     it('유효하지 않은 서명 형식일 때 400 상태 코드를 반환해야 함', async () => {
       relayerService.validateTransactionData = vi.fn().mockReturnValueOnce(false);
 
-      const invalidRequest = createValidGaslessRequest('payment-789');
+      const invalidRequest = createValidGaslessRequest();
 
       const response = await app.inject({
         method: 'POST',
-        url: `${API_V1_BASE_PATH}/payments/payment-789/relay`,
+        url: `${API_V1_BASE_PATH}/payments/${MOCK_PAYMENT_HASH}/relay`,
         headers: { 'x-public-key': TEST_PUBLIC_KEY, origin: TEST_ORIGIN },
         payload: invalidRequest,
       });
@@ -306,14 +307,14 @@ describe('POST /payments/:id/relay', () => {
 
     it('유효하지 않은 포워더 주소일 때 400 상태 코드를 반환해야 함', async () => {
       const invalidRequest = {
-        paymentId: 'payment-101',
+        paymentId: MOCK_PAYMENT_HASH,
         forwarderAddress: 'invalid-address',
-        forwardRequest: createValidForwardRequest('payment-101', '1000000000000000000'),
+        forwardRequest: createValidForwardRequest(),
       };
 
       const response = await app.inject({
         method: 'POST',
-        url: `${API_V1_BASE_PATH}/payments/payment-101/relay`,
+        url: `${API_V1_BASE_PATH}/payments/${MOCK_PAYMENT_HASH}/relay`,
         headers: { 'x-public-key': TEST_PUBLIC_KEY, origin: TEST_ORIGIN },
         payload: invalidRequest,
       });
@@ -325,14 +326,14 @@ describe('POST /payments/:id/relay', () => {
 
     it('필수 필드가 누락되었을 때 400 상태 코드를 반환해야 함', async () => {
       const incompleteRequest = {
-        paymentId: 'payment-202',
+        paymentId: MOCK_PAYMENT_HASH,
         forwarderAddress: '0x' + 'a'.repeat(40),
         // forwardRequest 누락
       };
 
       const response = await app.inject({
         method: 'POST',
-        url: `${API_V1_BASE_PATH}/payments/payment-202/relay`,
+        url: `${API_V1_BASE_PATH}/payments/${MOCK_PAYMENT_HASH}/relay`,
         headers: { 'x-public-key': TEST_PUBLIC_KEY, origin: TEST_ORIGIN },
         payload: incompleteRequest,
       });
@@ -343,7 +344,7 @@ describe('POST /payments/:id/relay', () => {
     });
 
     it('결제 ID가 누락되었을 때 400 상태 코드를 반환해야 함', async () => {
-      const validRequest = createValidGaslessRequest('payment-303');
+      const validRequest = createValidGaslessRequest();
 
       const response = await app.inject({
         method: 'POST',
@@ -362,11 +363,11 @@ describe('POST /payments/:id/relay', () => {
         .fn()
         .mockRejectedValueOnce(new Error('Relayer API 오류'));
 
-      const validRequest = createValidGaslessRequest('payment-404');
+      const validRequest = createValidGaslessRequest();
 
       const response = await app.inject({
         method: 'POST',
-        url: `${API_V1_BASE_PATH}/payments/payment-404/relay`,
+        url: `${API_V1_BASE_PATH}/payments/${MOCK_PAYMENT_HASH}/relay`,
         headers: { 'x-public-key': TEST_PUBLIC_KEY, origin: TEST_ORIGIN },
         payload: validRequest,
       });
@@ -378,16 +379,16 @@ describe('POST /payments/:id/relay', () => {
 
     it('서명이 빈 문자열일 때 400 상태 코드를 반환해야 함', async () => {
       const invalidRequest = {
-        paymentId: 'payment-505',
+        paymentId: MOCK_PAYMENT_HASH,
         forwarderAddress: '0x' + 'a'.repeat(40),
-        forwardRequest: createValidForwardRequest('payment-505', '1000000000000000000', {
+        forwardRequest: createValidForwardRequest('1000000000000000000', {
           signature: '',
         }),
       };
 
       const response = await app.inject({
         method: 'POST',
-        url: `${API_V1_BASE_PATH}/payments/payment-505/relay`,
+        url: `${API_V1_BASE_PATH}/payments/${MOCK_PAYMENT_HASH}/relay`,
         headers: { 'x-public-key': TEST_PUBLIC_KEY, origin: TEST_ORIGIN },
         payload: invalidRequest,
       });
@@ -400,13 +401,13 @@ describe('POST /payments/:id/relay', () => {
 
   describe('성능 요구사항', () => {
     it('Gasless 요청 응답 시간이 500ms 이내여야 함', async () => {
-      const validRequest = createValidGaslessRequest('payment-606');
+      const validRequest = createValidGaslessRequest();
 
       const startTime = performance.now();
 
       await app.inject({
         method: 'POST',
-        url: `${API_V1_BASE_PATH}/payments/payment-606/relay`,
+        url: `${API_V1_BASE_PATH}/payments/${MOCK_PAYMENT_HASH}/relay`,
         headers: { 'x-public-key': TEST_PUBLIC_KEY, origin: TEST_ORIGIN },
         payload: validRequest,
       });

@@ -4,13 +4,14 @@ import { ZodError } from 'zod';
 import {
   GaslessRequestSchema,
   ForwardRequest,
-  createAmountValidationSchema,
+  createPayCallValidationSchema,
 } from '../../schemas/payment.schema';
 import { RelayerService } from '../../services/relayer.service';
 import { RelayService } from '../../services/relay.service';
 import { PaymentService } from '../../services/payment.service';
 import { MerchantService } from '../../services/merchant.service';
 import { BlockchainService } from '../../services/blockchain.service';
+import { ServerSigningService } from '../../services/signature-server.service';
 import { createPublicAuthMiddleware } from '../../middleware/public-auth.middleware';
 import {
   GaslessRequestSchema as GaslessRequestDocSchema,
@@ -127,10 +128,23 @@ Submits a gasless (meta-transaction) payment using ERC-2771 forwarder.
           });
         }
 
-        // Validate forwardRequest.data amount matches DB amount prevent frontend manipulation
-        const dbAmount = BigInt(payment.amount.toString());
+        // Validate ALL pay() params in forwardRequest.data against DB to prevent frontend manipulation
+        if (!merchant || !payment.token_address || !payment.recipient_address) {
+          return reply.code(400).send({
+            code: ErrorCodes.INVALID_REQUEST,
+            message: 'Payment data incomplete for relay validation',
+          });
+        }
+
+        const merchantId = ServerSigningService.merchantKeyToId(merchant.merchant_key);
         try {
-          validatedData = createAmountValidationSchema(dbAmount).parse(validatedData);
+          validatedData = createPayCallValidationSchema({
+            paymentId: payment.payment_hash,
+            tokenAddress: payment.token_address,
+            amount: BigInt(payment.amount.toString()),
+            recipientAddress: payment.recipient_address,
+            merchantId,
+          }).parse(validatedData);
         } catch (error) {
           if (error instanceof ZodError) {
             return reply.code(400).send({
