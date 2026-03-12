@@ -145,6 +145,7 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
   const { connector } = useAccount();
   const { switchChainAsync } = useSwitchChain();
   const [isSwitchingChain, setIsSwitchingChain] = useState(false);
+  const [chainSwitchFailed, setChainSwitchFailed] = useState(false);
 
   // API hook for payment operations
   const {
@@ -298,7 +299,7 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
     const needsSwitch = chain?.id !== targetChainId;
 
     if (needsSwitch) {
-      if (switchInProgressRef.current || isSwitchingChain) return;
+      if (switchInProgressRef.current || isSwitchingChain || chainSwitchFailed) return;
       switchInProgressRef.current = true;
       setIsSwitchingChain(true);
 
@@ -337,11 +338,13 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
           .then(() => {
             switchInProgressRef.current = false;
             setIsSwitchingChain(false);
+            setChainSwitchFailed(false);
           })
           .catch((err) => {
             console.warn('Chain switch failed:', err);
             switchInProgressRef.current = false;
             setIsSwitchingChain(false);
+            setChainSwitchFailed(true);
           })
       );
       return;
@@ -361,6 +364,7 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
     needsApproval,
     chain?.id,
     isSwitchingChain,
+    chainSwitchFailed,
     switchChainAsync,
     connector,
     currentStep,
@@ -370,6 +374,7 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
   ]);
 
   // Fallback: if still on wallet-connect after connecting (e.g. Trust Wallet chain/switch delay), advance after 4s
+  // Blocked when chain switch explicitly failed (mobile MetaMask) — error UI handles that case
   useEffect(() => {
     if (
       !paymentDetails ||
@@ -377,7 +382,8 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
       !address ||
       currentStep !== 'wallet-connect' ||
       !buttonConnectClicked ||
-      lockReconnect
+      lockReconnect ||
+      chainSwitchFailed
     ) {
       return;
     }
@@ -394,6 +400,7 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
     buttonConnectClicked,
     lockReconnect,
     needsApproval,
+    chainSwitchFailed,
   ]);
 
   // Auto-advance after approval confirmation
@@ -453,6 +460,7 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
   const handleDisconnect = useCallback(() => {
     setLockReconnect(true);
     setConnectAnimationDone(false);
+    setChainSwitchFailed(false);
     disconnect();
     goToWalletConnect();
   }, [disconnect]);
@@ -766,14 +774,58 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
           if (!connectAnimationDone) {
             return <ConnectWalletButton onConnectorClick={clearWalletChangeIntent} />;
           }
+          // Chain switch failed — show error with retry
+          if (chainSwitchFailed && chain?.id !== paymentDetails.chainId) {
+            return (
+              <div className="text-center py-6">
+                <div className="text-[var(--color-brand-error)] mb-4">
+                  <svg
+                    className="w-12 h-12 mx-auto mb-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    />
+                  </svg>
+                  <p className="font-medium text-sm">
+                    {t('error.chainSwitchFailed', { network: getNetworkName(paymentDetails.chainId) })}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setChainSwitchFailed(false);
+                    switchInProgressRef.current = false;
+                  }}
+                  className="w-full px-4 py-3 bg-white text-black font-bold rounded-none tech-cut-btn hover:brightness-90 active:brightness-75 mb-3"
+                >
+                  {t('common.tryAgain')}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDisconnect}
+                  className="text-sm text-zinc-500 hover:text-zinc-300"
+                >
+                  {t('common.disconnect')}
+                </button>
+              </div>
+            );
+          }
           return (
             <LoadingSpinner
               message={
-                isCheckingPermit
-                  ? t('error.checkingTokenSupport')
-                  : isTokenLoading
-                    ? t('error.checkingBalanceApproval')
-                    : t('error.loadingPayment')
+                isSwitchingChain
+                  ? t('error.switchingNetwork')
+                  : isCheckingPermit
+                    ? t('error.checkingTokenSupport')
+                    : isTokenLoading
+                      ? t('error.checkingBalanceApproval')
+                      : t('error.loadingPayment')
               }
             />
           );

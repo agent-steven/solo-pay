@@ -32,6 +32,7 @@ const translations = {
     'error.invalidParams': 'Invalid Parameters',
     'error.paymentError': 'Payment Error',
     'error.loadingPayment': 'Loading payment...',
+    'error.switchingNetwork': 'Switching network...',
     'error.checkingTokenSupport': 'Checking token support...',
     'error.checkingBalanceApproval': 'Checking balance & approval...',
     'error.configMissingSignature':
@@ -44,6 +45,8 @@ const translations = {
     'error.transactionCancelled': 'Transaction was cancelled by user',
     'error.insufficientFundsGas': 'Insufficient funds for gas fee',
     'error.wrongNetwork': 'Transaction failed. Please check you are on the correct network',
+    'error.chainSwitchFailed':
+      'Failed to switch network. Please switch to {network} in your wallet manually and try again.',
     'error.transactionFailedRetry': 'Transaction failed. Please try again',
     'error.networkError': 'Network error. Please check your connection',
     'error.insufficientBalance': 'Insufficient balance. You need {amount} {token}',
@@ -178,6 +181,7 @@ const translations = {
     'error.invalidParams': '잘못된 매개변수',
     'error.paymentError': '결제 오류',
     'error.loadingPayment': '결제 정보 불러오는 중...',
+    'error.switchingNetwork': '네트워크 전환 중...',
     'error.checkingTokenSupport': '토큰 지원 확인 중...',
     'error.checkingBalanceApproval': '잔액 및 승인 확인 중...',
     'error.configMissingSignature': '결제 설정 오류: 서버 서명이 없습니다. 고객센터에 문의하세요.',
@@ -189,6 +193,8 @@ const translations = {
     'error.transactionCancelled': '사용자가 트랜잭션을 취소했습니다',
     'error.insufficientFundsGas': '가스 수수료 잔액이 부족합니다',
     'error.wrongNetwork': '트랜잭션 실패. 올바른 네트워크인지 확인하세요',
+    'error.chainSwitchFailed':
+      '네트워크 전환에 실패했습니다. 지갑에서 {network} 네트워크로 직접 전환한 후 다시 시도해 주세요.',
     'error.transactionFailedRetry': '트랜잭션 실패. 다시 시도해 주세요',
     'error.networkError': '네트워크 오류. 연결을 확인해 주세요',
     'error.insufficientBalance': '잔액이 부족합니다. {amount} {token} 필요',
