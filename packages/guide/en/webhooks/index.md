@@ -2,10 +2,6 @@
 
 Receive real-time notifications when payment status changes.
 
-## Why Use Webhooks?
-
-The callback URL (`successUrl`/`failUrl`) only redirects the user's browser — if the user closes the browser before the redirect, your server never knows the payment succeeded. **Webhooks are the only reliable way to receive payment status updates.** Always handle DB updates, order completion, and fulfillment in your webhook handler, not in the callback URL.
-
 ## Webhook Overview
 
 When configured, Webhooks send HTTP POST requests to your URL on payment status changes.
