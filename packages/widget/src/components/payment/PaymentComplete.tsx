@@ -68,12 +68,12 @@ export default function PaymentComplete({
       <h2 className="relative z-10 text-2xl md:text-3xl bg-clip-text text-transparent bg-gradient-to-b from-[var(--color-brand-success)] to-green-900 text-center font-extrabold antialiased mb-2 tracking-tight">
         {t('complete.title')}
       </h2>
-      <p className="relative z-10 text-center text-sm text-[var(--color-brand-gray)] mb-4">
+      <p className="relative z-10 text-center text-sm text-[var(--color-brand-gray)] mb-4 sm:mb-6">
         {t('complete.description')}
       </p>
 
       {/* Details Card */}
-      <div className="relative z-10 w-full bg-zinc-800 p-4 rounded-none mb-4 border border-zinc-600/70 text-sm space-y-4 shadow-xl">
+      <div className="relative z-10 w-full bg-zinc-800 p-4 rounded-none mb-4 sm:mb-5 border border-zinc-600/70 text-sm space-y-4 shadow-xl">
         {date && (
           <div className="flex justify-between">
             <span className="text-[var(--color-brand-gray)]">{t('complete.date')}</span>

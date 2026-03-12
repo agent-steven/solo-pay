@@ -42,12 +42,12 @@ export default function PaymentConfirm({
       <h2 className="relative z-10 text-2xl md:text-3xl bg-clip-text text-transparent bg-gradient-to-b from-white to-zinc-500 text-center font-extrabold antialiased mb-1 tracking-tight">
         {t('confirm.title')}
       </h2>
-      <p className="text-center text-sm text-[var(--color-brand-gray)] mb-4">
+      <p className="text-center text-sm text-[var(--color-brand-gray)] mb-4 sm:mb-6">
         {t('confirm.reviewDetails')}
       </p>
 
       {/* Payment Details Card */}
-      <div className="w-full bg-zinc-800 p-3 rounded-none mb-4 border border-zinc-600/70 shadow-sm">
+      <div className="w-full bg-zinc-800 p-3 rounded-none mb-4 sm:mb-5 border border-zinc-600/70 shadow-sm">
         <div className="text-xs font-mono text-[var(--color-brand-gray)] mb-3">
           {t('confirm.paymentDetails').toUpperCase()}
         </div>
