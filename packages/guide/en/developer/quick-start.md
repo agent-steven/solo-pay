@@ -44,6 +44,8 @@ curl https://pay-api.staging.sut.com/api/v1/payments/0xabc123... \
 
 Only mark the order complete when `status === 'ESCROWED'` or `status === 'FINALIZED'` and `amount`, `tokenAddress`, and `orderId` all match.
 
+> **Important:** The callback URL (`successUrl`/`failUrl`) is for **display purposes only**. Do not update your database from the callback. Use [Webhooks](/en/webhooks/) to handle order status updates and fulfillment — the callback can fail if the user closes the browser.
+
 If you use escrow, after payment is **ESCROWED** your backend can call **POST /payments/:id/finalize** to release funds to your wallet. See [Finalize & Cancel](/en/payments/finalize).
 
 ## Payment Status Flow
