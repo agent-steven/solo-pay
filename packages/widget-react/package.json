@@ -1,6 +1,6 @@
 {
   "name": "@solo-pay/widget-react",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "description": "React hook wrapper for SoloPay payment widget",
   "main": "dist/index.js",
