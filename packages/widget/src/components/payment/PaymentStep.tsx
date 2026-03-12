@@ -793,7 +793,9 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
                     />
                   </svg>
                   <p className="font-medium text-sm">
-                    {t('error.chainSwitchFailed', { network: getNetworkName(paymentDetails.chainId) })}
+                    {t('error.chainSwitchFailed', {
+                      network: getNetworkName(paymentDetails.chainId),
+                    })}
                   </p>
                 </div>
                 <button
