@@ -8,8 +8,8 @@
 ## REST API
 
 ```bash
-curl https://pay-api.staging.sut.com/api/v1/payments/0xabc123... \
-  -H "x-public-key: pk_test_xxxxx"
+curl https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123... \
+  -H "x-public-key: pk_xxxxx"
 ```
 
 ## 응답
@@ -21,60 +21,62 @@ curl https://pay-api.staging.sut.com/api/v1/payments/0xabc123... \
   "success": true,
   "data": {
     "paymentId": "0xabc123...",
-    "status": "ESCROWED",
-    "amount": "10500000000000000000",
+    "orderId": "order-001",
+    "status": "PAID",
+    "chainId": 80002,
     "tokenAddress": "0xE4C687167705Abf55d709395f92e254bdF5825a2",
     "tokenSymbol": "SUT",
-    "payerAddress": "0x...",
-    "treasuryAddress": "0xMerchantWallet...",
-    "transactionHash": "0xdef789...",
-    "releaseTxHash": null,
+    "tokenDecimals": 18,
+    "tokenPermitSupported": true,
+    "gatewayAddress": "0x...",
+    "forwarderAddress": "0x...",
+    "amount": "10500000000000000000",
+    "recipientAddress": "0xMerchantWallet...",
+    "merchantId": "0x...",
     "deadline": "1706281200",
-    "escrowDuration": "300",
+    "successUrl": "https://example.com/success",
+    "failUrl": "https://example.com/fail",
+    "expiresAt": "2024-01-26T12:35:00.000Z",
+    "txHash": "0xdef789...",
+    "payerAddress": "0x...",
     "createdAt": "2024-01-26T12:30:00Z",
-    "updatedAt": "2024-01-26T12:35:42Z",
-    "payment_hash": "0xabc123...",
-    "network_id": 80002,
-    "token_symbol": "SUT"
+    "currency": "USD",
+    "fiatAmount": 10.5,
+    "tokenPrice": 1.0
   }
 }
 ```
 
-- **transactionHash** — 에스크로(결제) 트랜잭션 해시.
-- **releaseTxHash** — 확정 또는 취소 트랜잭션 해시. 상태가 FINALIZE_SUBMITTED, FINALIZED, CANCEL_SUBMITTED, CANCELLED일 때 존재합니다.
-- **escrowDuration** — 에스크로 유지 시간(초). API는 에스크로 기한의 정확한 일시(ISO)를 반환하지 않으며, 이 값으로 결제 에스크로 후 머천트가 확정할 수 있는 기간을 알 수 있습니다.
+- **txHash** -- 결제 트랜잭션 해시. 사용자가 결제를 완료하여 PAID 이후 상태일 때 존재합니다.
 
 ## 상태 흐름
 
 ```
-CREATED ──► ESCROWED ──► FINALIZE_SUBMITTED ──► FINALIZED
-                    └──► CANCEL_SUBMITTED   ──► CANCELLED ──► REFUND_SUBMITTED ──► REFUNDED
-
+CREATED ──► PAID
+CREATED ──► INVALID
 CREATED ──► EXPIRED
 CREATED ──► FAILED
+PAID    ──► REFUND_SUBMITTED ──► REFUNDED
 ```
 
 ## 상태 설명
 
-| 상태                 | 설명                              | 다음 액션                                                                |
-| -------------------- | --------------------------------- | ------------------------------------------------------------------------ |
-| `CREATED`            | 결제 생성됨, 온체인 트랜잭션 대기 | 사용자가 결제 진행                                                       |
-| `ESCROWED`           | 결제 에스크로됨 (온체인)          | 머천트: [결제 확정 및 취소](/ko/payments/finalize) 호출로 자금 해제/환불 |
-| `FINALIZE_SUBMITTED` | 확정 트랜잭션 제출됨              | FINALIZED 될 때까지 대기 (폴링 또는 웹훅)                                |
-| `FINALIZED`          | 자금이 머천트로 해제됨            | 없음 (종료)                                                              |
-| `CANCEL_SUBMITTED`   | 취소 트랜잭션 제출됨              | CANCELLED 될 때까지 대기                                                 |
-| `CANCELLED`          | 자금이 구매자에게 환불됨          | 없음 (종료)                                                              |
-| `REFUND_SUBMITTED`   | 환불 트랜잭션 제출됨              | REFUNDED 될 때까지 대기                                                  |
-| `REFUNDED`           | 환불 완료                         | 없음 (종료)                                                              |
-| `FAILED`             | 트랜잭션 실패                     | 새 결제 생성                                                             |
-| `EXPIRED`            | 만료 (30분 초과)                  | 새 결제 생성                                                             |
+| 상태               | 설명                                            | 다음 액션               |
+| ------------------ | ----------------------------------------------- | ----------------------- |
+| `CREATED`          | 결제 생성됨, 온체인 트랜잭션 대기               | 사용자가 결제 진행      |
+| `PAID`             | 온체인 결제 확인됨                              | 없음 (종료 - 성공)      |
+| `REFUND_SUBMITTED` | 환불 요청 제출됨 (개발 중)                      | REFUNDED 될 때까지 대기 |
+| `REFUNDED`         | 환불 완료됨 (개발 중)                           | 없음 (종료)             |
+| `INVALID`          | 온체인 결제 검증 실패 (금액/토큰/수신자 불일치) | 새 결제 생성            |
+| `EXPIRED`          | 만료 (5분 초과)                                 | 새 결제 생성            |
+| `FAILED`           | 트랜잭션 실패                                   | 새 결제 생성            |
 
 ::: tip 온체인 동기화
-GET /payments/:id 호출 시 블록체인과 DB 상태를 실시간으로 동기화합니다. 결제 성공 시 상태는 **ESCROWED**(사용자 결제 완료, 에스크로) 또는 **FINALIZED**(자금 머천트 해제)입니다.
+GET /payments/:id 호출 시 블록체인과 DB 상태를 실시간으로 동기화합니다. 결제 성공 시 상태는 **PAID**(온체인 결제 확인, 자금이 상점으로 직접 전송됨)가 됩니다.
 :::
 
 ## 다음 단계
 
-- [결제 확정 및 취소](/ko/payments/finalize) - 에스크로 결제 확정/취소
+- [환불](/ko/payments/refunds) - 결제 환불 처리
 - [결제 동작 원리](/ko/developer/how-it-works) - 가스리스 아키텍처
 - [에러 코드](/ko/api/errors) - 에러 처리

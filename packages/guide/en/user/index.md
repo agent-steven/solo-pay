@@ -17,7 +17,7 @@ SoloPay covers blockchain gas fees on your behalf. You don't need POL or any oth
 
 When the payment widget opens, select the wallet you want to use.
 
-![Select wallet](/images/user-guide/01-wallet-connect.png)
+![Select wallet](/images/user-guide/en/01-wallet-connect.png)
 
 ## Paying with MetaMask
 
@@ -25,37 +25,37 @@ When the payment widget opens, select the wallet you want to use.
 
 A MetaMask popup will appear. Select your account and click **Connect**.
 
-![Approve MetaMask connection](/images/user-guide/02-metamask-connect.png)
+![Approve MetaMask connection](/images/user-guide/en/02-metamask-connect.png)
 
 ### Step 3: Approve Token Usage
 
-To approve the transaction of tokens to be used for payment, click **Approve Token** in the widget.
+To approve the transaction of tokens to be used for payment, click **APPROVE TOKEN** in the widget.
 
-![Approve token usage](/images/user-guide/03-token-approve.png)
+![Approve token usage](/images/user-guide/en/03-token-approve.png)
 
 ### Step 4: Approval Transaction
 
 A **Spending cap request** popup will appear. This is the process of authorizing SoloPay to process your tokens. Follow the on-screen instructions and click **Confirm**.
 
-![Approve MetaMask token usage](/images/user-guide/04-metamask-approve.png)
+![Approve MetaMask token usage](/images/user-guide/en/04-metamask-approve.png)
 
 ### Step 5: Review Payment Details & Proceed
 
-Once token approval is complete, you will proceed to the payment screen. Review the amount, network, and gas fee. The gas fee shows **Free (Covered by Solo Pay)**. Click **Pay Now**.
+Once token approval is complete, you will proceed to the payment screen. Review the amount, network, and gas fee. The gas fee shows **Free (Covered by Solo Pay)**. Click **PAY NOW**.
 
-![Review payment details](/images/user-guide/05-payment-confirm.png)
+![Review payment details](/images/user-guide/en/05-payment-confirm.png)
 
 ### Step 6: Sign the Payment Request
 
 A **Signature request** popup will appear. This is the final payment authorization signature. No gas fee is charged. Click **Confirm**.
 
-![Sign payment request](/images/user-guide/06-metamask-sign-request.png)
+![Sign payment request](/images/user-guide/en/06-metamask-sign-request.png)
 
 ### Step 7: Payment Complete
 
-When the **Payment Complete** screen appears, your payment is processed, and the funds are held securely. Click **Confirm** to return to the merchant page.
+When the **Payment Completed** screen appears, your payment is processed, and the funds are held securely. Click **RETURN TO MERCHANT** to return to the merchant page.
 
-![Payment complete](/images/user-guide/07-payment-complete.png)
+![Payment complete](/images/user-guide/en/07-payment-complete.png)
 
 ## Paying with Trust Wallet
 
@@ -63,38 +63,38 @@ When the **Payment Complete** screen appears, your payment is processed, and the
 
 A Trust Wallet popup will appear. Confirm your account and click **Connect**.
 
-![Approve Trust Wallet connection](/images/user-guide/02-trustwallet-connect.png)
+![Approve Trust Wallet connection](/images/user-guide/en/02-trustwallet-connect.png)
 
 ### Step 3: Approve Token Usage
 
-To approve the transaction of tokens to be used for payment, click **Approve Token** in the widget.
+To approve the transaction of tokens to be used for payment, click **APPROVE TOKEN** in the widget.
 
-![Approve token usage](/images/user-guide/03-token-approve.png)
+![Approve token usage](/images/user-guide/en/03-token-approve.png)
 
 ### Step 4: Approval Transaction
 
 A token approval transaction popup will appear. This is the process of authorizing SoloPay to process your tokens. Follow the on-screen instructions and click **Confirm**.
 
-![Approve Trust Wallet token usage](/images/user-guide/04-trustwallet-approve.png)
+![Approve Trust Wallet token usage](/images/user-guide/en/04-trustwallet-approve.png)
 
 (If a security risk warning message appears, review the content and click **Continue** to proceed.)
 <br>
-![Approve Trust Wallet additional usage](/images/user-guide/04-trustwallet-approve2.png)
+![Approve Trust Wallet additional usage](/images/user-guide/en/04-trustwallet-approve2.png)
 
 ### Step 5: Review Payment Details & Proceed
 
-Once token approval is complete, you will proceed to the payment screen. Review the amount, network, and gas fee. The gas fee shows **Free (Covered by Solo Pay)**. Click **Pay Now**.
+Once token approval is complete, you will proceed to the payment screen. Review the amount, network, and gas fee. The gas fee shows **Free (Covered by Solo Pay)**. Click **PAY NOW**.
 
-![Review payment details](/images/user-guide/05-payment-confirm.png)
+![Review payment details](/images/user-guide/en/05-payment-confirm.png)
 
 ### Step 6: Sign the Payment Request
 
 A **Signature request** popup will appear. This is the final payment authorization signature. No gas fee is charged. Click **Confirm**.
 
-![Sign payment request](/images/user-guide/06-trustwallet-sign-request.png)
+![Sign payment request](/images/user-guide/en/06-trustwallet-sign-request.png)
 
 ### Step 7: Payment Complete
 
-When the **Payment Complete** screen appears, your payment is processed, and the funds are held securely. Click **Confirm** to return to the merchant page.
+When the **Payment Completed** screen appears, your payment is processed, and the funds are held securely. Click **RETURN TO MERCHANT** to return to the merchant page.
 
-![Payment complete](/images/user-guide/07-payment-complete.png)
+![Payment complete](/images/user-guide/en/07-payment-complete.png)

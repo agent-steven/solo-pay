@@ -143,6 +143,38 @@ Response example:
 
 For detailed API documentation, refer to [docs/reference/api.md](../../docs/reference/api.md).
 
+## Error Codes
+
+All API errors return a JSON body with `code`, `message`, and optional `details`. Error codes are defined in [`src/error-codes.ts`](src/error-codes.ts).
+
+| Category   | Code                       | HTTP | Description                              |
+| ---------- | -------------------------- | ---- | ---------------------------------------- |
+| Auth       | `UNAUTHORIZED`             | 401  | Missing or invalid API key / public key  |
+|            | `FORBIDDEN`                | 403  | Access denied                            |
+| Validation | `VALIDATION_ERROR`         | 400  | Input validation failed                  |
+|            | `INVALID_REQUEST`          | 400  | Malformed or missing parameters          |
+|            | `INVALID_CURRENCY`         | 400  | Unsupported fiat currency code           |
+| Payment    | `PAYMENT_NOT_FOUND`        | 404  | Payment ID does not exist                |
+|            | `PAYMENT_EXPIRED`          | 400  | Payment has expired                      |
+|            | `INVALID_PAYMENT_STATUS`   | 400  | Operation not allowed for current status |
+|            | `DUPLICATE_ORDER`          | 409  | Order ID already processed               |
+|            | `AMOUNT_MISMATCH`          | 400  | Amount does not match expected value     |
+|            | `CONFLICT`                 | 409  | Concurrent modification conflict         |
+| Chain      | `CHAIN_NOT_FOUND`          | 404  | Chain ID not in database                 |
+|            | `CHAIN_NOT_CONFIGURED`     | 400  | Chain not configured for use             |
+|            | `UNSUPPORTED_CHAIN`        | 400  | Chain not supported                      |
+| Token      | `TOKEN_NOT_FOUND`          | 404  | Token not found on chain                 |
+|            | `TOKEN_NOT_ENABLED`        | 400  | Token not enabled for merchant           |
+|            | `UNSUPPORTED_TOKEN`        | 400  | Token not supported                      |
+| Relay      | `RELAY_ALREADY_SUBMITTED`  | 400  | Relay already in-flight                  |
+|            | `RELAYER_NOT_CONFIGURED`   | 400  | No relayer for this chain                |
+|            | `INVALID_SIGNATURE`        | 400  | Signature validation failed              |
+| Merchant   | `RECIPIENT_NOT_CONFIGURED` | 400  | Recipient address not set                |
+| Refund     | `REFUND_NOT_FOUND`         | 404  | Refund not found                         |
+|            | `REFUND_IN_PROGRESS`       | 400  | Refund already processing                |
+| General    | `NOT_FOUND`                | 404  | Resource not found                       |
+|            | `INTERNAL_ERROR`           | 500  | Unexpected server error                  |
+
 ## Project Structure
 
 ```

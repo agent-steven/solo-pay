@@ -50,7 +50,7 @@ describe('PaymentService', () => {
       status: PaymentStatus.CREATED,
       payer_address: null,
       tx_hash: null,
-      release_tx_hash: null,
+
       order_id: null,
       success_url: null,
       fail_url: null,
@@ -62,9 +62,8 @@ describe('PaymentService', () => {
       currency_code: null,
       fiat_amount: null,
       token_price: null,
-      escrow_deadline: null,
-      finalized_at: null,
-      cancelled_at: null,
+      recipient_address: null,
+      token_address: null,
     };
 
     mockPrisma.payment.create.mockResolvedValue(mockResult);
@@ -99,7 +98,7 @@ describe('PaymentService', () => {
       status: PaymentStatus.CREATED,
       payer_address: null,
       tx_hash: null,
-      release_tx_hash: null,
+
       order_id: null,
       success_url: null,
       fail_url: null,
@@ -112,9 +111,8 @@ describe('PaymentService', () => {
       currency_code: null,
       fiat_amount: null,
       token_price: null,
-      escrow_deadline: null,
-      finalized_at: null,
-      cancelled_at: null,
+      recipient_address: null,
+      token_address: null,
     };
 
     mockPrisma.payment.findUnique.mockResolvedValue(mockPayment);
@@ -140,7 +138,7 @@ describe('PaymentService', () => {
       status: PaymentStatus.CREATED,
       payer_address: null,
       tx_hash: null,
-      release_tx_hash: null,
+
       order_id: null,
       success_url: null,
       fail_url: null,
@@ -153,9 +151,8 @@ describe('PaymentService', () => {
       currency_code: null,
       fiat_amount: null,
       token_price: null,
-      escrow_deadline: null,
-      finalized_at: null,
-      cancelled_at: null,
+      recipient_address: null,
+      token_address: null,
     };
 
     mockPrisma.payment.findUnique.mockResolvedValue(mockPayment);
@@ -184,7 +181,7 @@ describe('PaymentService', () => {
       status: PaymentStatus.CREATED,
       payer_address: null,
       tx_hash: null,
-      release_tx_hash: null,
+
       order_id: null,
       success_url: null,
       fail_url: null,
@@ -197,14 +194,13 @@ describe('PaymentService', () => {
       currency_code: null,
       fiat_amount: null,
       token_price: null,
-      escrow_deadline: null,
-      finalized_at: null,
-      cancelled_at: null,
+      recipient_address: null,
+      token_address: null,
     };
 
     const mockUpdated = {
       ...mockExisting,
-      status: PaymentStatus.FINALIZED,
+      status: PaymentStatus.PAID,
       confirmed_at: new Date(),
     };
 
@@ -213,14 +209,14 @@ describe('PaymentService', () => {
     mockPrisma.paymentEvent.create.mockResolvedValue({
       id: 2,
       payment_id: 4,
-      event_type: 'FINALIZED',
+      event_type: 'PAID',
       metadata: null,
       created_at: new Date(),
     });
 
-    const updated = await paymentService.updateStatus(4, 'FINALIZED');
+    const updated = await paymentService.updateStatus(4, 'PAID');
 
-    expect(updated.status).toBe('FINALIZED');
+    expect(updated.status).toBe('PAID');
     expect(updated.confirmed_at).toBeDefined();
     expect(mockPrisma.payment.update).toHaveBeenCalledOnce();
   });
@@ -236,10 +232,10 @@ describe('PaymentService', () => {
         token_decimals: 6,
         token_symbol: 'USDC',
         network_id: 31337,
-        status: PaymentStatus.FINALIZED,
+        status: PaymentStatus.PAID,
         payer_address: null,
         tx_hash: null,
-        release_tx_hash: null,
+
         order_id: null,
         success_url: null,
         fail_url: null,
@@ -252,18 +248,17 @@ describe('PaymentService', () => {
         currency_code: null,
         fiat_amount: null,
         token_price: null,
-        escrow_deadline: null,
-        finalized_at: null,
-        cancelled_at: null,
+        recipient_address: null,
+        token_address: null,
       },
     ];
 
     mockPrisma.payment.findMany.mockResolvedValue(mockPayments);
 
-    const result = await paymentService.findByStatus('FINALIZED');
+    const result = await paymentService.findByStatus('PAID');
 
     expect(result.length).toBe(1);
-    expect(result[0].status).toBe('FINALIZED');
+    expect(result[0].status).toBe('PAID');
     expect(mockPrisma.payment.findMany).toHaveBeenCalledOnce();
   });
 
@@ -286,7 +281,7 @@ describe('PaymentService', () => {
       status: PaymentStatus.CREATED,
       payer_address: null,
       tx_hash: null,
-      release_tx_hash: null,
+
       order_id: null,
       success_url: null,
       fail_url: null,
@@ -298,9 +293,8 @@ describe('PaymentService', () => {
       currency_code: null,
       fiat_amount: null,
       token_price: null,
-      escrow_deadline: null,
-      finalized_at: null,
-      cancelled_at: null,
+      recipient_address: null,
+      token_address: null,
     };
 
     mockPrisma.payment.create.mockResolvedValue(mockResult);
@@ -332,7 +326,7 @@ describe('PaymentService', () => {
       status: PaymentStatus.CREATED,
       payer_address: null,
       tx_hash: null,
-      release_tx_hash: null,
+
       order_id: null,
       success_url: null,
       fail_url: null,
@@ -345,9 +339,8 @@ describe('PaymentService', () => {
       currency_code: null,
       fiat_amount: null,
       token_price: null,
-      escrow_deadline: null,
-      finalized_at: null,
-      cancelled_at: null,
+      recipient_address: null,
+      token_address: null,
     };
 
     mockPrisma.payment.findUnique.mockResolvedValue(mockPayment);
@@ -372,9 +365,7 @@ describe('PaymentService', () => {
   it('should throw error when updating status of non-existent payment', async () => {
     mockPrisma.payment.findUnique.mockResolvedValue(null);
 
-    await expect(paymentService.updateStatus(999, 'FINALIZED')).rejects.toThrow(
-      'Payment not found'
-    );
+    await expect(paymentService.updateStatus(999, 'PAID')).rejects.toThrow('Payment not found');
   });
 
   describe('updateStatusByHash', () => {
@@ -392,7 +383,7 @@ describe('PaymentService', () => {
         status: PaymentStatus.CREATED,
         payer_address: null,
         tx_hash: null,
-        release_tx_hash: null,
+
         order_id: null,
         success_url: null,
         fail_url: null,
@@ -405,16 +396,15 @@ describe('PaymentService', () => {
         currency_code: null,
         fiat_amount: null,
         token_price: null,
-        escrow_deadline: null,
-        finalized_at: null,
-        cancelled_at: null,
+        recipient_address: null,
+        token_address: null,
       };
 
       const mockUpdated = {
         ...mockExisting,
-        status: PaymentStatus.FINALIZED,
+        status: PaymentStatus.PAID,
         tx_hash: '0x' + 'h'.repeat(64),
-        release_tx_hash: null,
+
         confirmed_at: new Date(),
       };
 
@@ -423,18 +413,18 @@ describe('PaymentService', () => {
       mockPrisma.paymentEvent.create.mockResolvedValue({
         id: 4,
         payment_id: 9,
-        event_type: 'FINALIZED',
+        event_type: 'PAID',
         metadata: null,
         created_at: new Date(),
       });
 
       const result = await paymentService.updateStatusByHash(
         paymentHash,
-        'FINALIZED',
+        'PAID',
         '0x' + 'h'.repeat(64)
       );
 
-      expect(result.status).toBe('FINALIZED');
+      expect(result.status).toBe('PAID');
       expect(result.tx_hash).toBe('0x' + 'h'.repeat(64));
       expect(result.confirmed_at).toBeDefined();
     });
@@ -443,7 +433,7 @@ describe('PaymentService', () => {
       mockPrisma.payment.findUnique.mockResolvedValue(null);
 
       await expect(
-        paymentService.updateStatusByHash('0x' + 'z'.repeat(64), 'FINALIZED')
+        paymentService.updateStatusByHash('0x' + 'z'.repeat(64), 'PAID')
       ).rejects.toThrow('Payment not found');
     });
 
@@ -461,7 +451,7 @@ describe('PaymentService', () => {
         status: PaymentStatus.CREATED,
         payer_address: null,
         tx_hash: null,
-        release_tx_hash: null,
+
         order_id: null,
         success_url: null,
         fail_url: null,
@@ -474,9 +464,8 @@ describe('PaymentService', () => {
         currency_code: null,
         fiat_amount: null,
         token_price: null,
-        escrow_deadline: null,
-        finalized_at: null,
-        cancelled_at: null,
+        recipient_address: null,
+        token_address: null,
       };
 
       const mockUpdated = {
@@ -517,7 +506,7 @@ describe('PaymentService', () => {
         status: PaymentStatus.CREATED,
         payer_address: null,
         tx_hash: null,
-        release_tx_hash: null,
+
         order_id: null,
         success_url: null,
         fail_url: null,
@@ -530,9 +519,8 @@ describe('PaymentService', () => {
         currency_code: null,
         fiat_amount: null,
         token_price: null,
-        escrow_deadline: null,
-        finalized_at: null,
-        cancelled_at: null,
+        recipient_address: null,
+        token_address: null,
       };
 
       const mockUpdated = {
@@ -576,7 +564,7 @@ describe('PaymentService', () => {
         status: PaymentStatus.CREATED,
         payer_address: null,
         tx_hash: null,
-        release_tx_hash: null,
+
         order_id: null,
         success_url: null,
         fail_url: null,
@@ -589,9 +577,8 @@ describe('PaymentService', () => {
         currency_code: null,
         fiat_amount: null,
         token_price: null,
-        escrow_deadline: null,
-        finalized_at: null,
-        cancelled_at: null,
+        recipient_address: null,
+        token_address: null,
       };
 
       mockPrisma.payment.findUnique.mockResolvedValue(mockPayment);
@@ -629,7 +616,7 @@ describe('PaymentService', () => {
         status: PaymentStatus.CREATED,
         payer_address: null,
         tx_hash: null,
-        release_tx_hash: null,
+
         order_id: orderId,
         success_url: null,
         fail_url: null,
@@ -642,9 +629,8 @@ describe('PaymentService', () => {
         currency_code: null,
         fiat_amount: null,
         token_price: null,
-        escrow_deadline: null,
-        finalized_at: null,
-        cancelled_at: null,
+        recipient_address: null,
+        token_address: null,
       };
 
       mockPrisma.payment.findFirst.mockResolvedValue(mockPayment);
@@ -689,7 +675,7 @@ describe('PaymentService', () => {
         status: PaymentStatus.CREATED,
         payer_address: null,
         tx_hash: null,
-        release_tx_hash: null,
+
         order_id: null,
         success_url: null,
         fail_url: null,
@@ -702,9 +688,8 @@ describe('PaymentService', () => {
         currency_code: null,
         fiat_amount: null,
         token_price: null,
-        escrow_deadline: null,
-        finalized_at: null,
-        cancelled_at: null,
+        recipient_address: null,
+        token_address: null,
       };
 
       const mockUpdated = {
@@ -758,7 +743,7 @@ describe('PaymentService', () => {
         status: PaymentStatus.CREATED,
         payer_address: null,
         tx_hash: null,
-        release_tx_hash: null,
+
         order_id: null,
         success_url: null,
         fail_url: null,
@@ -770,9 +755,8 @@ describe('PaymentService', () => {
         currency_code: null,
         fiat_amount: null,
         token_price: null,
-        escrow_deadline: null,
-        finalized_at: null,
-        cancelled_at: null,
+        recipient_address: null,
+        token_address: null,
       };
 
       mockPrisma.payment.create.mockResolvedValue(mockResult);
@@ -808,7 +792,7 @@ describe('PaymentService', () => {
           status: PaymentStatus.CREATED,
           payer_address: null,
           tx_hash: null,
-          release_tx_hash: null,
+
           order_id: null,
           success_url: null,
           fail_url: null,
@@ -821,9 +805,8 @@ describe('PaymentService', () => {
           currency_code: null,
           fiat_amount: null,
           token_price: null,
-          escrow_deadline: null,
-          finalized_at: null,
-          cancelled_at: null,
+          recipient_address: null,
+          token_address: null,
         },
       ];
 
@@ -850,7 +833,7 @@ describe('PaymentService', () => {
         status: PaymentStatus.CREATED,
         payer_address: null,
         tx_hash: null,
-        release_tx_hash: null,
+
         order_id: null,
         success_url: null,
         fail_url: null,
@@ -863,9 +846,8 @@ describe('PaymentService', () => {
         currency_code: null,
         fiat_amount: null,
         token_price: null,
-        escrow_deadline: null,
-        finalized_at: null,
-        cancelled_at: null,
+        recipient_address: null,
+        token_address: null,
       };
 
       mockPrisma.payment.findUnique.mockResolvedValue(mockPayment);
@@ -894,7 +876,7 @@ describe('PaymentService', () => {
           status: PaymentStatus.FAILED,
           payer_address: null,
           tx_hash: null,
-          release_tx_hash: null,
+
           order_id: orderId,
           success_url: null,
           fail_url: null,
@@ -907,9 +889,8 @@ describe('PaymentService', () => {
           currency_code: null,
           fiat_amount: null,
           token_price: null,
-          escrow_deadline: null,
-          finalized_at: null,
-          cancelled_at: null,
+          recipient_address: null,
+          token_address: null,
         },
         {
           id: 202,
@@ -923,7 +904,7 @@ describe('PaymentService', () => {
           status: PaymentStatus.CREATED,
           payer_address: null,
           tx_hash: null,
-          release_tx_hash: null,
+
           order_id: orderId,
           success_url: null,
           fail_url: null,
@@ -936,9 +917,8 @@ describe('PaymentService', () => {
           currency_code: null,
           fiat_amount: null,
           token_price: null,
-          escrow_deadline: null,
-          finalized_at: null,
-          cancelled_at: null,
+          recipient_address: null,
+          token_address: null,
         },
       ];
 
@@ -968,7 +948,7 @@ describe('PaymentService', () => {
         status: PaymentStatus.CREATED,
         payer_address: null,
         tx_hash: null,
-        release_tx_hash: null,
+
         order_id: orderId,
         success_url: null,
         fail_url: null,
@@ -981,9 +961,8 @@ describe('PaymentService', () => {
         currency_code: null,
         fiat_amount: null,
         token_price: null,
-        escrow_deadline: null,
-        finalized_at: null,
-        cancelled_at: null,
+        recipient_address: null,
+        token_address: null,
       };
 
       mockPrisma.payment.findFirst.mockResolvedValue(latestPayment);
@@ -1004,10 +983,10 @@ describe('PaymentService', () => {
         token_decimals: 6,
         token_symbol: 'USDC',
         network_id: 31337,
-        status: PaymentStatus.FINALIZED,
+        status: PaymentStatus.PAID,
         payer_address: '0x' + 'payer'.padEnd(40, '0'),
         tx_hash: '0x' + 'tx'.padEnd(64, '0'),
-        release_tx_hash: null,
+
         order_id: orderId,
         success_url: null,
         fail_url: null,
@@ -1020,9 +999,8 @@ describe('PaymentService', () => {
         currency_code: null,
         fiat_amount: null,
         token_price: null,
-        escrow_deadline: null,
-        finalized_at: null,
-        cancelled_at: null,
+        recipient_address: null,
+        token_address: null,
       };
 
       mockPrisma.payment.findFirst.mockResolvedValue(merchant1Payment);

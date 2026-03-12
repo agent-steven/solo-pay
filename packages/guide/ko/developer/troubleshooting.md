@@ -26,7 +26,7 @@ Relay API에 서명 제출 시 `INVALID_SIGNATURE` 응답이 발생하는 경우
 
 - EIP-712 데이터의 도메인 파라미터 중 `chainId`가 현재 사용자 메타마스크에 접속된 네트워크 체인 ID와 동일한지 확인하세요.
 - 사용 중인 `forwarderAddress` 값이 API 결제 세션 응답에서 받은 값과 일치하는지 점검하세요.
-- 서명 시 포함된 `data` 구조에 결제 금액, `paymentId`, `serverSignature` 등 하나라도 값이 변경될 경우 서명은 유효하지 않게 됩니다.
+- 서명 시 포함된 data 구조에 결제 금액, `paymentId` 등 하나라도 값이 변경될 경우 서명은 유효하지 않게 됩니다.
 
 ### 2. Relay 전송 후 Revert 발생 (결제 상태 FAILED)
 

@@ -81,20 +81,20 @@ describe('Currency Conversion', () => {
       const response = await client.createPayment(params);
 
       // Verify conversion fields are present
-      expect(response.currency).toBe('USD');
-      expect(response.fiatAmount).toBe(10);
-      expect(response.tokenPrice).toBeDefined();
-      expect(response.tokenPrice).toBeGreaterThan(0);
+      expect(response.data.currency).toBe('USD');
+      expect(response.data.fiatAmount).toBe(10);
+      expect(response.data.tokenPrice).toBeDefined();
+      expect(response.data.tokenPrice).toBeGreaterThan(0);
 
       // Verify amount is in wei and non-zero
-      expect(response.amount).toBeDefined();
-      expect(BigInt(response.amount)).toBeGreaterThan(0n);
+      expect(response.data.amount).toBeDefined();
+      expect(BigInt(response.data.amount)).toBeGreaterThan(0n);
 
       // Verify standard fields still present
-      expect(response.paymentId).toBeDefined();
-      expect(response.serverSignature).toBeDefined();
-      expect(response.chainId).toBeDefined();
-      expect(response.tokenAddress.toLowerCase()).toBe(DEFAULT_TOKEN_ADDRESS.toLowerCase());
+      expect(response.data.paymentId).toBeDefined();
+      expect(response.data.deadline).toBeDefined();
+      expect(response.data.chainId).toBeDefined();
+      expect(response.data.tokenAddress.toLowerCase()).toBe(DEFAULT_TOKEN_ADDRESS.toLowerCase());
     });
 
     it('should create payment with currency: KRW and return conversion fields', async () => {
@@ -114,11 +114,11 @@ describe('Currency Conversion', () => {
 
       const response = await client.createPayment(params);
 
-      expect(response.currency).toBe('KRW');
-      expect(response.fiatAmount).toBe(10000);
-      expect(response.tokenPrice).toBeDefined();
-      expect(response.tokenPrice).toBeGreaterThan(0);
-      expect(BigInt(response.amount)).toBeGreaterThan(0n);
+      expect(response.data.currency).toBe('KRW');
+      expect(response.data.fiatAmount).toBe(10000);
+      expect(response.data.tokenPrice).toBeDefined();
+      expect(response.data.tokenPrice).toBeGreaterThan(0);
+      expect(BigInt(response.data.amount)).toBeGreaterThan(0n);
     });
 
     it('should verify conversion math: fiatAmount / tokenPrice ≈ token amount', async () => {
@@ -137,10 +137,10 @@ describe('Currency Conversion', () => {
       };
 
       const response = await client.createPayment(params);
-      const fiatAmount = response.fiatAmount as number;
-      const tokenPrice = response.tokenPrice as number;
-      const amountInWei = BigInt(response.amount);
-      const decimals = response.tokenDecimals;
+      const fiatAmount = response.data.fiatAmount as number;
+      const tokenPrice = response.data.tokenPrice as number;
+      const amountInWei = BigInt(response.data.amount);
+      const decimals = response.data.tokenDecimals;
 
       // Expected token amount = fiatAmount / tokenPrice
       const expectedTokenAmount = fiatAmount / tokenPrice;
@@ -174,13 +174,13 @@ describe('Currency Conversion', () => {
       const response = await client.createPayment(params);
 
       // Currency fields should be absent
-      expect(response.currency).toBeUndefined();
-      expect(response.fiatAmount).toBeUndefined();
-      expect(response.tokenPrice).toBeUndefined();
+      expect(response.data.currency).toBeUndefined();
+      expect(response.data.fiatAmount).toBeUndefined();
+      expect(response.data.tokenPrice).toBeUndefined();
 
       // Amount should be the direct token amount in wei
       const expectedWei = BigInt(50) * BigInt(10 ** token.decimals);
-      expect(BigInt(response.amount)).toBe(expectedWei);
+      expect(BigInt(response.data.amount)).toBe(expectedWei);
     });
   });
 
@@ -230,7 +230,7 @@ describe('Currency Conversion', () => {
       if (res.ok) {
         // If accepted, currency fields should not be present
         const body = (await res.json()) as CreatePaymentResponse;
-        expect(body.currency).toBeUndefined();
+        expect(body.data.currency).toBeUndefined();
       } else {
         expect(res.status).toBeGreaterThanOrEqual(400);
         expect(res.status).toBeLessThan(500);

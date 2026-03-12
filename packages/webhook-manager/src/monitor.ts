@@ -1,14 +1,11 @@
 import { Queue, Worker } from 'bullmq';
 import type { Redis } from 'ioredis';
 import type { PrismaClient } from '@solo-pay/database';
+import { keccak256, encodePacked } from 'viem';
 import type { ChainClient } from './blockchain';
 import { getOnChainStatus, OnChainPaymentStatus } from './blockchain';
 import type { WebhookJobData, PaymentWebhookBody } from './types';
-import {
-  JOB_NAME_PAYMENT_ESCROWED,
-  JOB_NAME_PAYMENT_FINALIZED,
-  JOB_NAME_PAYMENT_CANCELLED,
-} from './types';
+import { JOB_NAME_PAYMENT_PAID, JOB_NAME_PAYMENT_INVALID } from './types';
 
 const MONITOR_QUEUE_NAME = 'solo-pay-payment-monitor';
 
@@ -16,19 +13,21 @@ interface MonitorJobData {
   paymentHash: string;
   paymentId: number;
   merchantId: number;
+  merchantIdHash: string;
   networkId: number;
   amount: string;
   tokenSymbol: string;
+  tokenAddress: string;
+  recipientAddress: string;
   orderId: string | null;
   webhookUrl: string | null;
   status: string;
   txHash: string | null;
+  expiresAt: string;
 }
 
 export interface WebhookQueueForMonitor {
   addPaymentEvent(jobName: string, data: WebhookJobData): Promise<void>;
-  /** @deprecated Use addPaymentEvent */
-  addPaymentConfirmed(data: WebhookJobData): Promise<void>;
 }
 
 export interface MonitorOptions {
@@ -40,32 +39,26 @@ export interface MonitorOptions {
   pollingIntervalMs: number;
   /** Blockchain check retry delay in ms (default 1000) */
   blockchainCheckIntervalMs: number;
-  /** Only monitor payments created within this window (default 1800000 = 30min) */
-  timeoutMs: number;
 }
 
 function buildWebhookBody(
   data: MonitorJobData,
   newStatus: string,
-  txHash: string | null,
-  releaseTxHash?: string | null
+  txHash: string | null
 ): PaymentWebhookBody {
   return {
     paymentId: data.paymentHash,
     orderId: data.orderId,
     status: newStatus,
     txHash,
-    releaseTxHash: releaseTxHash ?? undefined,
     amount: data.amount,
     tokenSymbol: data.tokenSymbol,
-    escrowedAt: newStatus === 'ESCROWED' ? new Date().toISOString() : undefined,
-    finalizedAt: newStatus === 'FINALIZED' ? new Date().toISOString() : undefined,
-    cancelledAt: newStatus === 'CANCELLED' ? new Date().toISOString() : undefined,
+    paidAt: newStatus === 'PAID' ? new Date().toISOString() : undefined,
   };
 }
 
 /**
- * Multi-status payment monitor backed by BullMQ:
+ * Payment monitor backed by BullMQ:
  *
  *   Stage 1 (DB poll, every pollingIntervalMs):
  *     query payments in monitored statuses → enqueue to monitor queue
@@ -74,11 +67,7 @@ function buildWebhookBody(
  *     check on-chain status → update DB + enqueue webhook
  *
  *   Monitored transitions:
- *     CREATED/PENDING      → on-chain Escrowed  → DB ESCROWED   + webhook
- *     ESCROWED             → on-chain Finalized → DB FINALIZED  + webhook
- *                          → on-chain Cancelled → DB CANCELLED  + webhook
- *     FINALIZE_SUBMITTED   → on-chain Finalized → DB FINALIZED  + webhook
- *     CANCEL_SUBMITTED     → on-chain Cancelled → DB CANCELLED  + webhook
+ *     CREATED → on-chain Paid → DB PAID + webhook
  */
 export function startPaymentMonitor(options: MonitorOptions): { stop: () => Promise<void> } {
   const {
@@ -88,7 +77,6 @@ export function startPaymentMonitor(options: MonitorOptions): { stop: () => Prom
     webhookQueue,
     pollingIntervalMs,
     blockchainCheckIntervalMs,
-    timeoutMs,
   } = options;
 
   let running = true;
@@ -130,12 +118,11 @@ export function startPaymentMonitor(options: MonitorOptions): { stop: () => Prom
     data: MonitorJobData,
     jobName: string,
     newStatus: string,
-    txHash: string | null,
-    releaseTxHash?: string | null
+    txHash: string | null
   ): Promise<void> {
     const webhookUrl = await resolveWebhookUrl(data);
     if (!webhookUrl) return;
-    const body = buildWebhookBody(data, newStatus, txHash, releaseTxHash);
+    const body = buildWebhookBody(data, newStatus, txHash);
     await webhookQueue.addPaymentEvent(jobName, { url: webhookUrl, body });
   }
 
@@ -159,18 +146,6 @@ export function startPaymentMonitor(options: MonitorOptions): { stop: () => Prom
           await handleCreatedPending(data, onChainStatus, details);
           break;
 
-        case 'ESCROWED':
-          await handleEscrowed(data, onChainStatus, details);
-          break;
-
-        case 'FINALIZE_SUBMITTED':
-          await handleFinalizeSubmitted(data, onChainStatus, details);
-          break;
-
-        case 'CANCEL_SUBMITTED':
-          await handleCancelSubmitted(data, onChainStatus, details);
-          break;
-
         default:
           break;
       }
@@ -181,28 +156,133 @@ export function startPaymentMonitor(options: MonitorOptions): { stop: () => Prom
     }
   );
 
-  // ── CREATED/PENDING → ESCROWED ─────────────────────────────────────
+  // ── Validate on-chain payment data against DB ────────────────────────
+  function validateOnChainPayment(
+    data: MonitorJobData,
+    details: import('./blockchain').OnChainPaymentDetails
+  ): string | null {
+    // Amount (wei-level precision)
+    if (BigInt(details.amount) !== BigInt(data.amount)) {
+      return `amount mismatch: on-chain=${details.amount}, expected=${data.amount}`;
+    }
+
+    // Token address
+    if (!data.tokenAddress) {
+      return `token validation failed: expected token address is missing`;
+    }
+    if (!details.tokenAddress) {
+      return `token validation failed: on-chain token address is missing`;
+    }
+    if (details.tokenAddress.toLowerCase() !== data.tokenAddress.toLowerCase()) {
+      return `token mismatch: on-chain=${details.tokenAddress}, expected=${data.tokenAddress}`;
+    }
+
+    // Recipient address: must match merchant's wallet
+    if (!data.recipientAddress) {
+      return `recipient validation failed: expected recipient address is missing`;
+    }
+    if (!details.recipientAddress) {
+      return `invalid recipient: on-chain recipient is missing`;
+    }
+    if (details.recipientAddress.toLowerCase() === '0x0000000000000000000000000000000000000000') {
+      return `invalid recipient: on-chain recipient is zero address`;
+    }
+    if (details.recipientAddress.toLowerCase() !== data.recipientAddress.toLowerCase()) {
+      return `recipient mismatch: on-chain=${details.recipientAddress}, expected=${data.recipientAddress}`;
+    }
+
+    // Merchant ID (bytes32)
+    if (!data.merchantIdHash) {
+      return `merchant validation failed: expected merchant ID hash is missing`;
+    }
+    if (!details.merchantId) {
+      return `merchant validation failed: on-chain merchant ID is missing`;
+    }
+    if (details.merchantId.toLowerCase() !== data.merchantIdHash.toLowerCase()) {
+      return `merchant mismatch: on-chain=${details.merchantId}, expected=${data.merchantIdHash}`;
+    }
+
+    // Deadline: event timestamp vs DB expires_at
+    if (data.expiresAt) {
+      const eventTimestamp = new Date(details.timestamp).getTime();
+      const expiresAt = new Date(data.expiresAt).getTime();
+      if (eventTimestamp > expiresAt) {
+        return `deadline exceeded: paid at ${details.timestamp}, expired at ${data.expiresAt}`;
+      }
+    }
+
+    return null;
+  }
+
+  // ── Mark payment as INVALID ──────────────────────────────────────────
+  async function markInvalid(
+    data: MonitorJobData,
+    details: import('./blockchain').OnChainPaymentDetails,
+    reason: string
+  ): Promise<void> {
+    console.error(
+      '[monitor] INVALID payment=%s reason=%s tx=%s',
+      data.paymentHash,
+      reason,
+      details.transactionHash
+    );
+
+    const updated = await prisma.payment.updateMany({
+      where: {
+        payment_hash: data.paymentHash,
+        status: { in: ['CREATED'] },
+      },
+      data: {
+        status: 'INVALID',
+        tx_hash: details.transactionHash,
+        ...(details.payerAddress && { payer_address: details.payerAddress }),
+        ...(details.tokenAddress && { token_address: details.tokenAddress }),
+      },
+    });
+
+    if (updated.count === 0) return;
+    await invalidatePaymentCache(data.paymentHash);
+
+    await prisma.paymentEvent.create({
+      data: {
+        payment_id: data.paymentId,
+        event_type: 'INVALID',
+      },
+    });
+
+    await enqueueWebhook(data, JOB_NAME_PAYMENT_INVALID, 'INVALID', details.transactionHash);
+  }
+
+  // ── CREATED → PAID, INVALID, or EXPIRED ─────────────────────────────
   async function handleCreatedPending(
     data: MonitorJobData,
     onChainStatus: number,
     details: import('./blockchain').OnChainPaymentDetails | null
   ): Promise<void> {
     if (onChainStatus === OnChainPaymentStatus.None) {
+      // If deadline has passed and still no on-chain payment, mark as EXPIRED
+      if (data.expiresAt && Date.now() > new Date(data.expiresAt).getTime()) {
+        const updated = await prisma.payment.updateMany({
+          where: {
+            payment_hash: data.paymentHash,
+            status: { in: ['CREATED'] },
+          },
+          data: { status: 'EXPIRED' },
+        });
+        if (updated.count > 0) {
+          await invalidatePaymentCache(data.paymentHash);
+          console.log('[monitor] expired payment=%s', data.paymentHash);
+        }
+        return;
+      }
       throw new Error('not_confirmed');
     }
 
-    if (onChainStatus >= OnChainPaymentStatus.Escrowed && details) {
-      // Amount verification
-      const onChainAmount = BigInt(details.amount);
-      const dbAmount = BigInt(data.amount);
-      if (onChainAmount !== dbAmount) {
-        console.error(
-          '[monitor] amount mismatch payment=%s db=%s onchain=%s tx=%s',
-          data.paymentHash,
-          data.amount,
-          onChainAmount.toString(),
-          details.transactionHash
-        );
+    if (onChainStatus >= OnChainPaymentStatus.Paid && details) {
+      // Validate on-chain data against DB
+      const invalidReason = validateOnChainPayment(data, details);
+      if (invalidReason) {
+        await markInvalid(data, details, invalidReason);
         return;
       }
 
@@ -212,11 +292,11 @@ export function startPaymentMonitor(options: MonitorOptions): { stop: () => Prom
           status: { in: ['CREATED'] },
         },
         data: {
-          status: 'ESCROWED',
+          status: 'PAID',
           tx_hash: details.transactionHash,
           confirmed_at: new Date(),
-          ...(details.escrowDeadline && { escrow_deadline: new Date(details.escrowDeadline) }),
           ...(details.payerAddress && { payer_address: details.payerAddress }),
+          ...(details.tokenAddress && { token_address: details.tokenAddress }),
         },
       });
 
@@ -226,164 +306,13 @@ export function startPaymentMonitor(options: MonitorOptions): { stop: () => Prom
       await prisma.paymentEvent.create({
         data: {
           payment_id: data.paymentId,
-          event_type: 'ESCROWED',
+          event_type: 'PAID',
         },
       });
 
-      console.log('[monitor] escrowed payment=%s tx=%s', data.paymentHash, details.transactionHash);
+      console.log('[monitor] paid payment=%s tx=%s', data.paymentHash, details.transactionHash);
 
-      await enqueueWebhook(data, JOB_NAME_PAYMENT_ESCROWED, 'ESCROWED', details.transactionHash);
-    }
-  }
-
-  // ── ESCROWED → detect payer-initiated cancel or direct finalize ────
-  async function handleEscrowed(
-    data: MonitorJobData,
-    onChainStatus: number,
-    details: import('./blockchain').OnChainPaymentDetails | null
-  ): Promise<void> {
-    if (onChainStatus === OnChainPaymentStatus.Finalized) {
-      const txHash = details?.transactionHash ?? null;
-      const updated = await prisma.payment.updateMany({
-        where: { payment_hash: data.paymentHash, status: 'ESCROWED' },
-        data: {
-          status: 'FINALIZED',
-          finalized_at: new Date(),
-          ...(txHash && { release_tx_hash: txHash }),
-        },
-      });
-      if (updated.count === 0) return;
-      await invalidatePaymentCache(data.paymentHash);
-
-      await prisma.paymentEvent.create({
-        data: {
-          payment_id: data.paymentId,
-          event_type: 'FINALIZED',
-        },
-      });
-
-      console.log(
-        '[monitor] escrowed→finalized payment=%s release_tx=%s',
-        data.paymentHash,
-        txHash
-      );
-      await enqueueWebhook(data, JOB_NAME_PAYMENT_FINALIZED, 'FINALIZED', data.txHash, txHash);
-      return;
-    }
-
-    if (onChainStatus === OnChainPaymentStatus.Cancelled) {
-      const txHash = details?.transactionHash ?? null;
-      const updated = await prisma.payment.updateMany({
-        where: { payment_hash: data.paymentHash, status: 'ESCROWED' },
-        data: {
-          status: 'CANCELLED',
-          cancelled_at: new Date(),
-          ...(txHash && { release_tx_hash: txHash }),
-        },
-      });
-      if (updated.count === 0) return;
-      await invalidatePaymentCache(data.paymentHash);
-
-      await prisma.paymentEvent.create({
-        data: {
-          payment_id: data.paymentId,
-          event_type: 'CANCELLED',
-        },
-      });
-
-      console.log(
-        '[monitor] escrowed→cancelled payment=%s release_tx=%s',
-        data.paymentHash,
-        txHash
-      );
-      await enqueueWebhook(data, JOB_NAME_PAYMENT_CANCELLED, 'CANCELLED', data.txHash, txHash);
-      return;
-    }
-
-    // Still ESCROWED on-chain — nothing to do, waiting for merchant or payer action
-  }
-
-  // ── FINALIZE_SUBMITTED → FINALIZED ─────────────────────────────────
-  async function handleFinalizeSubmitted(
-    data: MonitorJobData,
-    onChainStatus: number,
-    details: import('./blockchain').OnChainPaymentDetails | null
-  ): Promise<void> {
-    if (onChainStatus === OnChainPaymentStatus.Finalized) {
-      const txHash = details?.transactionHash ?? null;
-
-      const updated = await prisma.payment.updateMany({
-        where: {
-          payment_hash: data.paymentHash,
-          status: 'FINALIZE_SUBMITTED',
-        },
-        data: {
-          status: 'FINALIZED',
-          finalized_at: new Date(),
-          ...(txHash && { release_tx_hash: txHash }),
-        },
-      });
-
-      if (updated.count === 0) return;
-      await invalidatePaymentCache(data.paymentHash);
-
-      await prisma.paymentEvent.create({
-        data: {
-          payment_id: data.paymentId,
-          event_type: 'FINALIZED',
-        },
-      });
-
-      console.log('[monitor] finalized payment=%s release_tx=%s', data.paymentHash, txHash);
-      await enqueueWebhook(data, JOB_NAME_PAYMENT_FINALIZED, 'FINALIZED', data.txHash, txHash);
-      return;
-    }
-
-    // Still escrowed — retry
-    if (onChainStatus === OnChainPaymentStatus.Escrowed) {
-      throw new Error('not_finalized');
-    }
-  }
-
-  // ── CANCEL_SUBMITTED → CANCELLED ───────────────────────────────────
-  async function handleCancelSubmitted(
-    data: MonitorJobData,
-    onChainStatus: number,
-    details: import('./blockchain').OnChainPaymentDetails | null
-  ): Promise<void> {
-    if (onChainStatus === OnChainPaymentStatus.Cancelled) {
-      const txHash = details?.transactionHash ?? null;
-
-      const updated = await prisma.payment.updateMany({
-        where: {
-          payment_hash: data.paymentHash,
-          status: 'CANCEL_SUBMITTED',
-        },
-        data: {
-          status: 'CANCELLED',
-          cancelled_at: new Date(),
-          ...(txHash && { release_tx_hash: txHash }),
-        },
-      });
-
-      if (updated.count === 0) return;
-      await invalidatePaymentCache(data.paymentHash);
-
-      await prisma.paymentEvent.create({
-        data: {
-          payment_id: data.paymentId,
-          event_type: 'CANCELLED',
-        },
-      });
-
-      console.log('[monitor] cancelled payment=%s release_tx=%s', data.paymentHash, txHash);
-      await enqueueWebhook(data, JOB_NAME_PAYMENT_CANCELLED, 'CANCELLED', data.txHash, txHash);
-      return;
-    }
-
-    // Still escrowed — retry
-    if (onChainStatus === OnChainPaymentStatus.Escrowed) {
-      throw new Error('not_cancelled');
+      await enqueueWebhook(data, JOB_NAME_PAYMENT_PAID, 'PAID', details.transactionHash);
     }
   }
 
@@ -392,17 +321,28 @@ export function startPaymentMonitor(options: MonitorOptions): { stop: () => Prom
     if (!running) return;
 
     try {
-      const cutoff = new Date(Date.now() - timeoutMs);
       const payments = await prisma.payment.findMany({
         where: {
           status: {
-            in: ['CREATED', 'ESCROWED', 'FINALIZE_SUBMITTED', 'CANCEL_SUBMITTED'],
+            in: ['CREATED'],
           },
-          created_at: { gt: cutoff },
         },
         orderBy: { created_at: 'asc' },
         take: 100,
       });
+
+      // Resolve merchant_key → bytes32 merchantIdHash for on-chain validation
+      const uniqueMerchantIds = [...new Set(payments.map((p) => p.merchant_id))];
+      const merchantKeyMap = new Map<number, string>();
+      if (uniqueMerchantIds.length > 0) {
+        const merchants = await prisma.merchant.findMany({
+          where: { id: { in: uniqueMerchantIds } },
+          select: { id: true, merchant_key: true },
+        });
+        for (const m of merchants) {
+          merchantKeyMap.set(m.id, keccak256(encodePacked(['string'], [m.merchant_key])));
+        }
+      }
 
       for (const payment of payments) {
         // jobId includes status to avoid dedup conflicts across different status monitors
@@ -412,13 +352,17 @@ export function startPaymentMonitor(options: MonitorOptions): { stop: () => Prom
             paymentHash: payment.payment_hash,
             paymentId: payment.id,
             merchantId: payment.merchant_id,
+            merchantIdHash: merchantKeyMap.get(payment.merchant_id) ?? '',
             networkId: payment.network_id,
             amount: payment.amount.toString(),
             tokenSymbol: payment.token_symbol,
+            tokenAddress: payment.token_address ?? '',
+            recipientAddress: payment.recipient_address ?? '',
             orderId: payment.order_id ?? null,
             webhookUrl: payment.webhook_url ?? null,
             status: payment.status,
             txHash: payment.tx_hash ?? null,
+            expiresAt: payment.expires_at.toISOString(),
           },
           { jobId: `${payment.payment_hash}-${payment.status}` }
         );

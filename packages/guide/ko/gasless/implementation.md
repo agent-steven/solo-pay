@@ -29,10 +29,10 @@
 `x-public-key` 헤더와 함께 `POST /payments`를 호출합니다. 브라우저에서 직접 호출할 수 있습니다.
 
 ```typescript
-const response = await fetch('https://pay-api.staging.sut.com/api/v1/payments', {
+const response = await fetch('https://gateway.dev.solonetwork.io/api/v1/payments', {
   method: 'POST',
   headers: {
-    'x-public-key': 'pk_test_xxxxx',
+    'x-public-key': 'pk_xxxxx',
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
@@ -44,8 +44,8 @@ const response = await fetch('https://pay-api.staging.sut.com/api/v1/payments', 
   }),
 });
 
-const payment = await response.json();
-// payment: paymentId, forwarderAddress, gatewayAddress, amount, serverSignature 등 포함
+const { data: payment } = await response.json();
+// payment: paymentId, forwarderAddress, gatewayAddress, amount, deadline 등 포함
 ```
 
 ::: warning forwarderAddress 확인
@@ -105,7 +105,7 @@ const nonce = await publicClient.readContract({
   args: [userAddress],
 });
 
-// Forward Request 구성 (PaymentGateway.pay — deadline/escrowDuration은 API 응답에서 사용)
+// Forward Request 구성 (PaymentGateway.pay — deadline은 API 응답에서 사용)
 const forwardRequest = {
   from: userAddress,
   to: gatewayAddress,
@@ -123,8 +123,6 @@ const forwardRequest = {
       recipientAddress,
       merchantId,
       BigInt(deadline), // payment.deadline (API)
-      BigInt(escrowDuration), // payment.escrowDuration (API)
-      serverSignature,
       permitData, // EIP-2612 permit, 또는 zero permit { deadline: 0, v: 0, r: '0x00...', s: '0x00...' }
     ],
   }),
@@ -156,7 +154,7 @@ const signature = await signTypedDataAsync({
 
 ::: warning 중요
 서명은 트랜잭션이 아니므로 **가스비가 부과되지 않습니다**.
-`pay` 함수는 API 응답의 `deadline`, `escrowDuration`, `serverSignature`가 필요합니다. EIP-2612를 사용하지 않을 때는 zero permit을 전달하세요.
+`pay` 함수는 API 응답의 `deadline`이 필요합니다. EIP-2612를 사용하지 않을 때는 zero permit을 전달하세요.
 :::
 
 ## Step 4: 가스리스 요청 제출
@@ -165,11 +163,11 @@ const signature = await signTypedDataAsync({
 
 ```typescript
 const result = await fetch(
-  `https://pay-api.staging.sut.com/api/v1/payments/${payment.paymentId}/relay`,
+  `https://gateway.dev.solonetwork.io/api/v1/payments/${payment.paymentId}/relay`,
   {
     method: 'POST',
     headers: {
-      'x-public-key': 'pk_test_xxxxx',
+      'x-public-key': 'pk_xxxxx',
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -195,16 +193,19 @@ const result = await fetch(
 ```typescript
 // 릴레이 상태 (paymentId 기준)
 const relayStatus = await fetch(
-  `https://pay-api.staging.sut.com/api/v1/payments/${paymentId}/relay`,
-  { headers: { 'x-public-key': 'pk_test_xxxxx' } }
+  `https://gateway.dev.solonetwork.io/api/v1/payments/${paymentId}/relay`,
+  { headers: { 'x-public-key': 'pk_xxxxx' } }
 ).then((r) => r.json());
 // relayStatus.data.status: 'QUEUED' | 'SUBMITTED' | 'CONFIRMED' | 'FAILED'
 
 // 결제 상태
-const paymentStatus = await fetch(`https://pay-api.staging.sut.com/api/v1/payments/${paymentId}`, {
-  headers: { 'x-public-key': 'pk_test_xxxxx' },
-}).then((r) => r.json());
-// paymentStatus.data.status: 'CREATED' | 'ESCROWED' | 'FINALIZE_SUBMITTED' | 'FINALIZED' | 'CANCEL_SUBMITTED' | 'CANCELLED' | 'REFUND_SUBMITTED' | 'REFUNDED' | 'EXPIRED' | 'FAILED'
+const paymentStatus = await fetch(
+  `https://gateway.dev.solonetwork.io/api/v1/payments/${paymentId}`,
+  {
+    headers: { 'x-public-key': 'pk_xxxxx' },
+  }
+).then((r) => r.json());
+// paymentStatus.data.status: 'CREATED' | 'PAID' | 'REFUND_SUBMITTED' | 'REFUNDED' | 'INVALID' | 'EXPIRED' | 'FAILED'
 ```
 
 ## 전체 예시 (React + wagmi)
@@ -216,7 +217,7 @@ function GaslessPayment({ payment }) {
   const { signTypedDataAsync } = useSignTypedData();
 
   const { paymentId, forwarderAddress, gatewayAddress, amount, tokenAddress,
-          recipientAddress, merchantId, deadline, escrowDuration, serverSignature, chainId } = payment;
+          recipientAddress, merchantId, deadline, chainId } = payment;
 
   const handleGaslessPayment = async () => {
     const nonce = await publicClient.readContract({
@@ -225,7 +226,6 @@ function GaslessPayment({ payment }) {
     });
 
     const payDeadline = BigInt(deadline);
-    const payEscrowDuration = BigInt(escrowDuration);
     const zeroPermit = { deadline: 0, v: 0, r: '0x0000000000000000000000000000000000000000000000000000000000000000' as const, s: '0x0000000000000000000000000000000000000000000000000000000000000000' as const };
 
     const forwardRequest = {
@@ -233,7 +233,7 @@ function GaslessPayment({ payment }) {
       deadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
       data: encodeFunctionData({
         abi: PaymentGatewayABI, functionName: 'pay',
-        args: [paymentId, tokenAddress, BigInt(amount), recipientAddress, merchantId, payDeadline, payEscrowDuration, serverSignature, zeroPermit],
+        args: [paymentId, tokenAddress, BigInt(amount), recipientAddress, merchantId, payDeadline, zeroPermit],
       }),
     };
 
@@ -251,10 +251,10 @@ function GaslessPayment({ payment }) {
     });
 
     const result = await fetch(
-      `https://pay-api.staging.sut.com/api/v1/payments/${paymentId}/relay`,
+      `https://gateway.dev.solonetwork.io/api/v1/payments/${paymentId}/relay`,
       {
         method: 'POST',
-        headers: { 'x-public-key': 'pk_test_xxxxx', 'Content-Type': 'application/json' },
+        headers: { 'x-public-key': 'pk_xxxxx', 'Content-Type': 'application/json' },
         body: JSON.stringify({
           paymentId, forwarderAddress,
           forwardRequest: {
@@ -277,13 +277,13 @@ function GaslessPayment({ payment }) {
 
 ## 에러 처리
 
-| 에러 코드                | 원인                                                 | 해결 방법                                          |
-| ------------------------ | ---------------------------------------------------- | -------------------------------------------------- |
-| `INVALID_SIGNATURE`      | 잘못된 서명 형식                                     | 서명이 `0x`로 시작하는 hex 문자열인지 확인         |
-| `INVALID_PAYMENT_STATUS` | 결제가 종료 상태(예: ESCROWED, FINALIZED, CANCELLED) | status가 CREATED일 때만 relay 전송; 중복 요청 방지 |
-| `PAYMENT_EXPIRED`        | 결제 만료                                            | 새 결제 생성 후 재시도                             |
-| `RELAYER_NOT_CONFIGURED` | 해당 체인에 릴레이어 없음                            | 지원 체인 확인                                     |
-| `VALIDATION_ERROR`       | 입력 검증 실패                                       | forwardRequest 금액이 결제 금액과 일치하는지 확인  |
+| 에러 코드                | 원인                                             | 해결 방법                                          |
+| ------------------------ | ------------------------------------------------ | -------------------------------------------------- |
+| `INVALID_SIGNATURE`      | 잘못된 서명 형식                                 | 서명이 `0x`로 시작하는 hex 문자열인지 확인         |
+| `INVALID_PAYMENT_STATUS` | 결제가 종료 상태(예: PAID, REFUNDED, EXPIRED 등) | status가 CREATED일 때만 relay 전송; 중복 요청 방지 |
+| `PAYMENT_EXPIRED`        | 결제 만료                                        | 새 결제 생성 후 재시도                             |
+| `RELAYER_NOT_CONFIGURED` | 해당 체인에 릴레이어 없음                        | 지원 체인 확인                                     |
+| `VALIDATION_ERROR`       | 입력 검증 실패                                   | forwardRequest 금액이 결제 금액과 일치하는지 확인  |
 
 ## 다음 단계
 

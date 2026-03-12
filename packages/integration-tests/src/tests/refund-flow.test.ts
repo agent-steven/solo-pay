@@ -14,24 +14,24 @@ import { HARDHAT_ACCOUNTS, CONTRACT_ADDRESSES, TEST_CHAIN_ID } from '../setup/wa
 import { getToken } from '../fixtures/token';
 import {
   generatePaymentId,
-  signPaymentRequest,
-  signRefundRequest,
-  signFinalizeRequest,
   signForwardRequest,
   encodeRefundFunctionData,
   buildForwardRequestData,
   merchantKeyToId,
   getDeadline,
   ZERO_PERMIT,
-  DEFAULT_ESCROW_DURATION,
-  type PaymentParams,
   type ForwardRequest,
 } from '../helpers/signature';
+import {
+  createTestClient,
+  waitForPaymentStatus,
+  TEST_MERCHANT,
+  makeCreatePaymentParams,
+} from '../helpers/sdk';
 
 describe('Refund Flow Integration', () => {
   const token = getToken('mockUSDT');
   const payerPrivateKey = HARDHAT_ACCOUNTS.payer.privateKey;
-  const signerPrivateKey = HARDHAT_ACCOUNTS.signer.privateKey;
   const relayerPrivateKey = HARDHAT_ACCOUNTS.relayer.privateKey;
   const recipientPrivateKey = HARDHAT_ACCOUNTS.recipient.privateKey;
   const payerAddress = HARDHAT_ACCOUNTS.payer.address;
@@ -42,7 +42,27 @@ describe('Refund Flow Integration', () => {
   const merchantKey = 'merchant_demo_001';
   const merchantId = merchantKeyToId(merchantKey);
 
+  const GATEWAY_BASE = (process.env.GATEWAY_URL || 'http://localhost:3001').replace(/\/$/, '');
+  const RELAYER_BASE = (
+    process.env.RELAY_API_URL ||
+    process.env.RELAYER_URL ||
+    'http://localhost:3002'
+  ).replace(/\/$/, '');
+
   let blockchainRunning = false;
+  let gatewayAndRelayerReady = false;
+
+  async function checkGatewayAndRelayer(): Promise<boolean> {
+    try {
+      const [gw, rly] = await Promise.all([
+        fetch(`${GATEWAY_BASE}/health`, { signal: AbortSignal.timeout(3000) }),
+        fetch(`${RELAYER_BASE}/health`, { signal: AbortSignal.timeout(3000) }),
+      ]);
+      return gw.ok && rly.ok;
+    } catch {
+      return false;
+    }
+  }
 
   async function checkBlockchain(): Promise<boolean> {
     try {
@@ -55,23 +75,13 @@ describe('Refund Flow Integration', () => {
   }
 
   /**
-   * Helper: Execute a payment (payer -> escrow -> finalize -> recipient) and return the paymentId.
-   * All payments go through escrow, then finalize to release to recipient.
+   * Helper: Execute a direct payment (payer -> recipient) and return the paymentId.
+   * In the direct payment model, funds go directly to the recipient -- no finalize step.
    */
   async function executePayment(orderId: string, amount: bigint): Promise<string> {
     const paymentId = generatePaymentId(orderId);
 
     const deadline = getDeadline(1);
-    const paymentParams: PaymentParams = {
-      paymentId,
-      tokenAddress: token.address,
-      amount,
-      recipientAddress,
-      merchantId,
-      deadline,
-      escrowDuration: DEFAULT_ESCROW_DURATION,
-    };
-    const serverSignature = await signPaymentRequest(paymentParams, signerPrivateKey);
 
     await approveToken(token.address, gatewayAddress, amount, payerPrivateKey);
 
@@ -84,18 +94,9 @@ describe('Refund Flow Integration', () => {
       recipientAddress,
       merchantId,
       deadline,
-      DEFAULT_ESCROW_DURATION,
-      serverSignature,
       ZERO_PERMIT
     );
     await tx.wait();
-
-    // Finalize the payment so it can be refunded (server calls finalize)
-    const signerWallet = getWallet(signerPrivateKey);
-    const gatewayAsSigner = getContract(gatewayAddress, PaymentGatewayABI, signerWallet);
-    const finalizeSignature = await signFinalizeRequest(paymentId, signerPrivateKey);
-    const finalizeTx = await gatewayAsSigner.finalize(paymentId, finalizeSignature);
-    await finalizeTx.wait();
 
     return paymentId;
   }
@@ -104,10 +105,9 @@ describe('Refund Flow Integration', () => {
    * Helper: Execute a refund from recipient (merchant) to payer.
    * Refund reads token, amount, payer from on-chain storage.
    * Recipient must approve the gateway for the full payment amount.
+   * In the new contract, refund takes 2 args: (paymentId, permit).
    */
   async function executeRefund(paymentId: string, amount: bigint): Promise<void> {
-    const refundSignature = await signRefundRequest(paymentId, signerPrivateKey);
-
     // Recipient approves gateway to spend tokens for the refund
     await approveToken(token.address, gatewayAddress, amount, recipientPrivateKey);
 
@@ -115,15 +115,16 @@ describe('Refund Flow Integration', () => {
     const recipientWallet = getWallet(recipientPrivateKey);
     const gateway = getContract(gatewayAddress, PaymentGatewayABI, recipientWallet);
 
-    const tx = await gateway.refund(paymentId, refundSignature, ZERO_PERMIT);
+    const tx = await gateway.refund(paymentId, ZERO_PERMIT);
     await tx.wait();
   }
 
   beforeAll(async () => {
     blockchainRunning = await checkBlockchain();
+    gatewayAndRelayerReady = await checkGatewayAndRelayer();
     if (!blockchainRunning) {
       console.warn(
-        '\n⚠️  Hardhat node is not running. Refund flow tests will be skipped.\n' +
+        '\n  Hardhat node is not running. Refund flow tests will be skipped.\n' +
           '   Run: pnpm --filter @solo-pay/integration-tests test:setup\n'
       );
       return;
@@ -194,36 +195,12 @@ describe('Refund Flow Integration', () => {
       await executeRefund(paymentId, amount);
 
       // Second refund with same paymentId should revert
-      const refundSignature = await signRefundRequest(paymentId, signerPrivateKey);
-
       await approveToken(token.address, gatewayAddress, amount, recipientPrivateKey);
 
       const recipientWallet = getWallet(recipientPrivateKey);
       const gateway = getContract(gatewayAddress, PaymentGatewayABI, recipientWallet);
 
-      await expect(gateway.refund(paymentId, refundSignature, ZERO_PERMIT)).rejects.toThrow();
-    });
-  });
-
-  describe('Signature Validation', () => {
-    it('should reject refund with invalid server signature', async () => {
-      if (!blockchainRunning) return;
-
-      const amount = parseUnits('50', token.decimals);
-      const paymentId = await executePayment(`ORDER_REFUND_BADSIG_${Date.now()}`, amount);
-
-      // Sign with wrong key (relayer instead of signer)
-      const wrongSignature = await signRefundRequest(
-        paymentId,
-        HARDHAT_ACCOUNTS.relayer.privateKey
-      );
-
-      await approveToken(token.address, gatewayAddress, amount, recipientPrivateKey);
-
-      const recipientWallet = getWallet(recipientPrivateKey);
-      const gateway = getContract(gatewayAddress, PaymentGatewayABI, recipientWallet);
-
-      await expect(gateway.refund(paymentId, wrongSignature, ZERO_PERMIT)).rejects.toThrow();
+      await expect(gateway.refund(paymentId, ZERO_PERMIT)).rejects.toThrow();
     });
   });
 
@@ -233,12 +210,10 @@ describe('Refund Flow Integration', () => {
 
       const fakePaymentId = generatePaymentId(`ORDER_FAKE_${Date.now()}`);
 
-      const refundSignature = await signRefundRequest(fakePaymentId, signerPrivateKey);
-
       const recipientWallet = getWallet(recipientPrivateKey);
       const gateway = getContract(gatewayAddress, PaymentGatewayABI, recipientWallet);
 
-      await expect(gateway.refund(fakePaymentId, refundSignature, ZERO_PERMIT)).rejects.toThrow();
+      await expect(gateway.refund(fakePaymentId, ZERO_PERMIT)).rejects.toThrow();
     });
 
     it('should reject refund from non-recipient', async () => {
@@ -247,13 +222,11 @@ describe('Refund Flow Integration', () => {
       const amount = parseUnits('50', token.decimals);
       const paymentId = await executePayment(`ORDER_REFUND_NOTRECIP_${Date.now()}`, amount);
 
-      const refundSignature = await signRefundRequest(paymentId, signerPrivateKey);
-
       // Payer (not recipient) tries to call refund
       const payerWallet = getWallet(payerPrivateKey);
       const gateway = getContract(gatewayAddress, PaymentGatewayABI, payerWallet);
 
-      await expect(gateway.refund(paymentId, refundSignature, ZERO_PERMIT)).rejects.toThrow();
+      await expect(gateway.refund(paymentId, ZERO_PERMIT)).rejects.toThrow();
     });
   });
 
@@ -266,14 +239,12 @@ describe('Refund Flow Integration', () => {
 
       const initialPayerBalance = await getTokenBalance(token.address, payerAddress);
 
-      const refundSignature = await signRefundRequest(paymentId, signerPrivateKey);
-
       // Recipient (merchant) approves gateway for the refund amount
       // In meta-tx, _msgSender() = recipient (from ForwardRequest.from)
       await approveToken(token.address, gatewayAddress, amount, recipientPrivateKey);
 
-      // Encode refund calldata
-      const refundCalldata = encodeRefundFunctionData(paymentId, refundSignature);
+      // Encode refund calldata (2 args: paymentId, permit)
+      const refundCalldata = encodeRefundFunctionData(paymentId);
 
       // Build ForwardRequest - from = recipient (merchant)
       // The forwarder will set _msgSender() to recipientAddress
@@ -318,6 +289,110 @@ describe('Refund Flow Integration', () => {
     });
   });
 
+  /**
+   * Scenario: create payment via API -> pay on-chain -> wait for PAID ->
+   * create refund -> merchant signs ForwardRequest -> call relay API.
+   */
+  describe('Refund via Relay API', () => {
+    it('should complete refund via Gateway create refund + merchant sign + relayer submit', async () => {
+      if (!blockchainRunning || !gatewayAndRelayerReady) return;
+
+      const orderId = `ORDER_REFUND_RELAY_API_${Date.now()}`;
+      const client = createTestClient(TEST_MERCHANT);
+      const params = makeCreatePaymentParams(25, orderId, token.address);
+
+      // 1. Create payment via Gateway API
+      const createResponse = await client.createPayment(params);
+      const paymentData = createResponse.data;
+      const paymentId = paymentData.paymentId;
+      const amountWei = BigInt(paymentData.amount);
+
+      await approveToken(token.address, gatewayAddress, amountWei, payerPrivateKey);
+
+      // 2. Pay direct on-chain (payer) - 7 args, no escrowDuration/serverSignature
+      const payerWallet = getWallet(payerPrivateKey);
+      const gateway = getContract(gatewayAddress, PaymentGatewayABI, payerWallet);
+      const payTx = await gateway.pay(
+        paymentId,
+        paymentData.tokenAddress,
+        amountWei,
+        paymentData.recipientAddress,
+        paymentData.merchantId,
+        BigInt(paymentData.deadline),
+        ZERO_PERMIT
+      );
+      await payTx.wait();
+
+      // 3. Sync gateway DB from chain, wait for PAID status (no finalize needed)
+      await client.getPaymentStatus(paymentId);
+      await waitForPaymentStatus(client, paymentId, 'PAID', 30000);
+
+      const initialPayerBalance = await getTokenBalance(token.address, payerAddress);
+
+      // 4. Merchant (recipient) approves gateway for refund amount
+      await approveToken(token.address, gatewayAddress, amountWei, recipientPrivateKey);
+
+      // 5. Encode refund calldata (2 args: paymentId, permit) and build ForwardRequest (from = recipient)
+      const refundCalldata = encodeRefundFunctionData(paymentId);
+      const forwarder = getContract(forwarderAddress, ERC2771ForwarderABI);
+      const recipientNonce = await forwarder.nonces(recipientAddress);
+      const forwardDeadline = getDeadline(1);
+
+      const forwardRequest: ForwardRequest = {
+        from: recipientAddress,
+        to: gatewayAddress,
+        value: 0n,
+        gas: 500000n,
+        nonce: recipientNonce,
+        deadline: forwardDeadline,
+        data: refundCalldata,
+      };
+
+      // 6. Merchant signs ForwardRequest
+      const forwardSignature = await signForwardRequest(
+        forwardRequest,
+        recipientPrivateKey,
+        forwarderAddress,
+        TEST_CHAIN_ID
+      );
+
+      // 7. Call relay API (simple-relayer gasless endpoint)
+      const relayBody = {
+        request: {
+          from: forwardRequest.from,
+          to: forwardRequest.to,
+          value: '0',
+          gas: forwardRequest.gas.toString(),
+          nonce: forwardRequest.nonce.toString(),
+          deadline: forwardRequest.deadline.toString(),
+          data: forwardRequest.data,
+        },
+        signature: forwardSignature,
+      };
+      const relayRes = await fetch(`${RELAYER_BASE}/api/v1/relay/gasless`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(relayBody),
+        signal: AbortSignal.timeout(15000),
+      });
+      expect(relayRes.ok).toBe(true);
+
+      const relayJson = (await relayRes.json()) as { transactionId?: string; status?: string };
+      expect(relayJson.transactionId).toBeDefined();
+
+      // 8. Wait for confirmation (poll relayer status or short sleep)
+      await new Promise((r) => setTimeout(r, 5000));
+
+      // 9. Verify refund completed on-chain and payer balance
+      const gatewayContract = getContract(gatewayAddress, PaymentGatewayABI);
+      const isRefunded = await gatewayContract.isPaymentRefunded(paymentId);
+      expect(isRefunded).toBe(true);
+
+      const finalPayerBalance = await getTokenBalance(token.address, payerAddress);
+      expect(finalPayerBalance).toBe(initialPayerBalance + amountWei);
+    });
+  });
+
   describe('Payment-Refund Full Lifecycle', () => {
     it('should handle complete payment -> refund cycle with balance verification', async () => {
       if (!blockchainRunning) return;
@@ -327,10 +402,10 @@ describe('Refund Flow Integration', () => {
       const initialPayerBalance = await getTokenBalance(token.address, payerAddress);
       const initialRecipientBalance = await getTokenBalance(token.address, recipientAddress);
 
-      // Step 1: Execute payment (payer -> escrow -> finalize -> recipient)
+      // Step 1: Execute payment (payer -> recipient directly)
       const paymentId = await executePayment(`ORDER_LIFECYCLE_${Date.now()}`, amount);
 
-      // Verify payment deducted from payer, sent to recipient (after finalize)
+      // Verify payment deducted from payer, sent to recipient directly
       const afterPaymentPayerBalance = await getTokenBalance(token.address, payerAddress);
       const afterPaymentRecipientBalance = await getTokenBalance(token.address, recipientAddress);
       expect(afterPaymentPayerBalance).toBe(initialPayerBalance - amount);

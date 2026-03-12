@@ -16,10 +16,11 @@ export interface CreatePaymentInput {
   fail_url?: string;
   webhook_url?: string;
   origin?: string;
+  recipient_address?: string;
+  token_address?: string;
   currency_code?: string;
   fiat_amount?: Decimal;
   token_price?: Decimal;
-  escrow_deadline?: Date;
 }
 
 export class PaymentService {
@@ -46,10 +47,11 @@ export class PaymentService {
         fail_url: input.fail_url,
         webhook_url: input.webhook_url,
         origin: input.origin,
+        recipient_address: input.recipient_address,
+        token_address: input.token_address,
         currency_code: input.currency_code,
         fiat_amount: input.fiat_amount,
         token_price: input.token_price,
-        escrow_deadline: input.escrow_deadline,
       },
     });
 
@@ -121,10 +123,7 @@ export class PaymentService {
       where: { id },
       data: {
         status: newStatus,
-        ...(newStatus === 'FINALIZED' && { confirmed_at: new Date() }),
-        ...(newStatus === 'ESCROWED' && { confirmed_at: new Date() }),
-        ...(newStatus === 'FINALIZED' && { finalized_at: new Date() }),
-        ...(newStatus === 'CANCELLED' && { cancelled_at: new Date() }),
+        ...(newStatus === 'PAID' && { confirmed_at: new Date() }),
       },
     });
 
@@ -155,24 +154,14 @@ export class PaymentService {
       throw new Error('Payment not found');
     }
 
-    // Determine which tx_hash column to write:
-    // ESCROWED/PENDING → tx_hash (escrow tx), FINALIZED/CANCELLED → release_tx_hash
-    const isRelease = newStatus === 'FINALIZED' || newStatus === 'CANCELLED';
-    const txHashField = txHash
-      ? isRelease
-        ? { release_tx_hash: txHash }
-        : { tx_hash: txHash }
-      : {};
+    const txHashField = txHash ? { tx_hash: txHash } : {};
 
     const updatedPayment = await this.prisma.payment.update({
       where: { payment_hash: paymentHash },
       data: {
         status: newStatus,
         ...txHashField,
-        ...(newStatus === 'FINALIZED' && { confirmed_at: new Date() }),
-        ...(newStatus === 'ESCROWED' && { confirmed_at: new Date() }),
-        ...(newStatus === 'FINALIZED' && { finalized_at: new Date() }),
-        ...(newStatus === 'CANCELLED' && { cancelled_at: new Date() }),
+        ...(newStatus === 'PAID' && { confirmed_at: new Date() }),
       },
     });
 

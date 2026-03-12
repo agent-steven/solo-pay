@@ -25,15 +25,12 @@ export class Decimal {
 // Prisma enums
 export const PaymentStatus = {
   CREATED: 'CREATED',
-  ESCROWED: 'ESCROWED',
-  FINALIZE_SUBMITTED: 'FINALIZE_SUBMITTED',
-  FINALIZED: 'FINALIZED',
-  CANCEL_SUBMITTED: 'CANCEL_SUBMITTED',
-  CANCELLED: 'CANCELLED',
+  PAID: 'PAID',
   REFUND_SUBMITTED: 'REFUND_SUBMITTED',
   REFUNDED: 'REFUNDED',
   EXPIRED: 'EXPIRED',
   FAILED: 'FAILED',
+  INVALID: 'INVALID',
 } as const;
 export type PaymentStatus = (typeof PaymentStatus)[keyof typeof PaymentStatus];
 
@@ -55,15 +52,12 @@ export type RefundStatus = (typeof RefundStatus)[keyof typeof RefundStatus];
 
 export const EventType = {
   CREATED: 'CREATED',
-  ESCROWED: 'ESCROWED',
-  FINALIZE_SUBMITTED: 'FINALIZE_SUBMITTED',
-  FINALIZED: 'FINALIZED',
-  CANCEL_SUBMITTED: 'CANCEL_SUBMITTED',
-  CANCELLED: 'CANCELLED',
+  PAID: 'PAID',
   REFUND_SUBMITTED: 'REFUND_SUBMITTED',
   REFUNDED: 'REFUNDED',
   EXPIRED: 'EXPIRED',
   FAILED: 'FAILED',
+  INVALID: 'INVALID',
 } as const;
 export type EventType = (typeof EventType)[keyof typeof EventType];
 

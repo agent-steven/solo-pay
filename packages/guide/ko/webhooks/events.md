@@ -2,159 +2,63 @@
 
 각 Webhook 이벤트의 상세 정보입니다.
 
-## payment.created
+## payment.paid
 
-결제가 생성되었을 때 발생합니다.
-
-```json
-{
-  "event": "payment.created",
-  "timestamp": "2024-01-26T12:30:00Z",
-  "data": {
-    "paymentId": "0xabc123...",
-    "status": "CREATED",
-    "amount": "10500000000000000000",
-    "tokenAddress": "0xE4C687167705Abf55d709395f92e254bdF5825a2",
-    "tokenSymbol": "SUT",
-    "orderId": "order-001",
-    "expiresAt": "2024-01-26T13:00:00Z",
-    "createdAt": "2024-01-26T12:30:00Z"
-  }
-}
-```
-
-## payment.escrowed
-
-결제가 에스크로된 상태입니다. 사용자가 결제를 완료했고 자금이 에스크로에 보관됩니다. 머천트는 확정(자금 해제) 또는 취소(구매자 환불)를 선택할 수 있습니다.
+온체인 결제가 확인된 상태입니다. 사용자가 결제를 완료했고 자금이 상점으로 직접 전송되었습니다.
 
 ```json
 {
-  "event": "payment.escrowed",
-  "timestamp": "2024-01-26T12:35:00Z",
-  "data": {
-    "paymentId": "0xabc123...",
-    "status": "ESCROWED",
-    "amount": "10500000000000000000",
-    "tokenSymbol": "SUT",
-    "payerAddress": "0x1234567890abcdef...",
-    "txHash": "0xdef789...",
-    "orderId": "order-001",
-    "escrowedAt": "2024-01-26T12:35:00Z"
-  }
+  "paymentId": "0xabc123...",
+  "orderId": "order-001",
+  "status": "PAID",
+  "txHash": "0xdef789...",
+  "amount": "10500000000000000000",
+  "tokenSymbol": "SUT",
+  "paidAt": "2024-01-26T12:35:42.000Z"
 }
 ```
 
-## payment.finalized
+## payment.invalid
 
-자금이 머천트로 해제되었습니다. 확정 플로우의 최종 성공 상태입니다.
+온체인에서 결제 트랜잭션이 감지되었으나, 검증에 실패한 상태입니다. 금액, 토큰, 수신자 주소 등이 기대 값과 일치하지 않을 때 발생합니다.
 
 ```json
 {
-  "event": "payment.finalized",
-  "timestamp": "2024-01-26T12:36:00Z",
-  "data": {
-    "paymentId": "0xabc123...",
-    "status": "FINALIZED",
-    "amount": "10500000000000000000",
-    "tokenSymbol": "SUT",
-    "payerAddress": "0x1234567890abcdef...",
-    "txHash": "0xdef789...",
-    "orderId": "order-001",
-    "finalizedAt": "2024-01-26T12:36:00Z"
-  }
+  "paymentId": "0xabc123...",
+  "orderId": "order-001",
+  "status": "INVALID",
+  "txHash": "0xdef789...",
+  "amount": "10500000000000000000",
+  "tokenSymbol": "SUT",
+  "paidAt": "2024-01-26T12:35:42.000Z"
 }
 ```
 
-## payment.cancelled
+## Payload 필드
 
-에스크로 결제가 취소되어 자금이 구매자에게 환불되었습니다.
-
-```json
-{
-  "event": "payment.cancelled",
-  "timestamp": "2024-01-26T12:36:00Z",
-  "data": {
-    "paymentId": "0xabc123...",
-    "status": "CANCELLED",
-    "orderId": "order-001",
-    "cancelledAt": "2024-01-26T12:36:00Z"
-  }
-}
-```
-
-## payment.failed
-
-트랜잭션이 실패했을 때 발생합니다.
-
-```json
-{
-  "event": "payment.failed",
-  "timestamp": "2024-01-26T12:35:00Z",
-  "data": {
-    "paymentId": "0xabc123...",
-    "status": "FAILED",
-    "amount": "10500000000000000000",
-    "tokenAddress": "0xE4C687167705Abf55d709395f92e254bdF5825a2",
-    "payerAddress": "0x1234567890abcdef...",
-    "txHash": "0xdef789...",
-    "orderId": "order-001",
-    "failureReason": "Transaction reverted"
-  }
-}
-```
-
-## payment.expired
-
-결제가 만료되었을 때 발생합니다. (30분 초과 시)
-
-```json
-{
-  "event": "payment.expired",
-  "timestamp": "2024-01-26T13:00:00Z",
-  "data": {
-    "paymentId": "0xabc123...",
-    "status": "EXPIRED",
-    "orderId": "order-001",
-    "expiredAt": "2024-01-26T13:00:00Z"
-  }
-}
-```
+| 필드          | 타입     | 설명                                            |
+| ------------- | -------- | ----------------------------------------------- |
+| `paymentId`   | `string` | 결제 고유 식별자 (bytes32 해시)                 |
+| `orderId`     | `string` | 가맹점 주문 ID (미제공 시 null)                 |
+| `status`      | `string` | 이벤트 시점의 결제 상태 (`PAID` 또는 `INVALID`) |
+| `txHash`      | `string` | 결제 트랜잭션 해시                              |
+| `amount`      | `string` | wei 단위 금액 (정밀도 유지를 위해 문자열)       |
+| `tokenSymbol` | `string` | 토큰 심볼 (예: USDC, SUT)                       |
+| `paidAt`      | `string` | ISO-8601 타임스탬프                             |
 
 ## 이벤트 핸들러 예시
 
 ```typescript
-async function handleWebhook(event: any) {
-  const { event: eventType, data } = event;
+async function handleWebhook(payload: any) {
+  const { status, orderId, paymentId } = payload;
 
-  switch (eventType) {
-    case 'payment.created':
-      await updateOrderStatus(data.orderId, 'PENDING_PAYMENT');
+  switch (status) {
+    case 'PAID':
+      await completeOrder(orderId);
       break;
-
-    case 'payment.escrowed':
-      await updateOrderStatus(data.orderId, 'PAID_ESCROW');
-      // 여기서 주문 완료 처리하거나 payment.finalized 대기
+    case 'INVALID':
+      await flagOrderForReview(orderId);
       break;
-
-    case 'payment.finalized':
-      await completeOrder(data.orderId);
-      await sendNotification(data.payerAddress, '결제 완료');
-      break;
-
-    case 'payment.cancelled':
-      await cancelOrder(data.orderId);
-      break;
-
-    case 'payment.failed':
-      await updateOrderStatus(data.orderId, 'PAYMENT_FAILED');
-      break;
-
-    case 'payment.expired':
-      await cancelOrder(data.orderId);
-      break;
-
-    default:
-      console.log('Unknown event:', eventType);
   }
 }
 ```
@@ -162,6 +66,6 @@ async function handleWebhook(event: any) {
 ## 다음 단계
 
 - [결제 상태](/ko/payments/status) - 전체 상태 값
-- [결제 확정 및 취소](/ko/payments/finalize) - 에스크로 후 확정/취소
+- [환불](/ko/payments/refunds) - 결제 환불 처리
 - [API Reference](/ko/api/) - 전체 API 명세
 - [에러 코드](/ko/api/errors) - 에러 처리

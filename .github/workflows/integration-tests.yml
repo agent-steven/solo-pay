@@ -2,11 +2,11 @@ name: Integration Tests
 
 on:
   pull_request:
-    branches: ['main']
+    branches: ["main"]
     paths:
-      - 'packages/**'
-      - 'docker/**'
-      - '.github/workflows/integration-tests.yml'
+      - "packages/**"
+      - "docker/**"
+      - ".github/workflows/integration-tests.yml"
   workflow_dispatch:
 
 jobs:
@@ -25,9 +25,9 @@ jobs:
       RPC_URL: http://127.0.0.1:8545
       CHAIN_ID: 31337
       # Hardhat Account #2 - Relayer (DO NOT use on mainnet/testnet)
-      RELAYER_PRIVATE_KEY: '0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a'
+      RELAYER_PRIVATE_KEY: "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a"
       # Hardhat Account #4 - Signer (DO NOT use on mainnet/testnet)
-      SIGNER_PRIVATE_KEY: '0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a'
+      SIGNER_PRIVATE_KEY: "0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a"
 
     services:
       mysql:
@@ -64,8 +64,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'pnpm'
+          node-version: "20"
+          cache: "pnpm"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -126,12 +126,23 @@ jobs:
           NODE_ENV: test
           PORT: 3002
           HOST: 0.0.0.0
-          FORWARDER_ADDRESS: '0x5FbDB2315678afecb367f032d93F642f64180aa3'
+          FORWARDER_ADDRESS: "0x5FbDB2315678afecb367f032d93F642f64180aa3"
         run: |
           cd packages/simple-relayer
           pnpm start > /tmp/simple-relayer.log 2>&1 &
           sleep 5
           echo "simple-relayer started (pid=$!)"
+
+      - name: Start webhook-manager
+        env:
+          NODE_ENV: test
+          POLLING_INTERVAL_MS: "3000"
+          BLOCKCHAIN_CHECK_INTERVAL_MS: "1000"
+        run: |
+          cd packages/webhook-manager
+          pnpm start > /tmp/webhook-manager.log 2>&1 &
+          sleep 3
+          echo "webhook-manager started (pid=$!)"
 
       - name: Wait for services
         run: |
@@ -166,6 +177,14 @@ jobs:
           echo "Checking simple-relayer..."
           curl -sf $RELAY_API_URL/health
 
+          echo "Checking webhook-manager..."
+          if ! grep -q "worker started" /tmp/webhook-manager.log 2>/dev/null; then
+            echo "::error::webhook-manager failed to start"
+            cat /tmp/webhook-manager.log 2>/dev/null || true
+            exit 1
+          fi
+          echo "webhook-manager started successfully"
+
           echo "All services healthy!"
 
       - name: Run integration tests
@@ -183,3 +202,6 @@ jobs:
 
           echo "=== Simple-relayer logs (if any) ==="
           cat /tmp/simple-relayer.log 2>/dev/null || true
+
+          echo "=== Webhook-manager logs (if any) ==="
+          cat /tmp/webhook-manager.log 2>/dev/null || true

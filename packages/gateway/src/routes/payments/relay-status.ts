@@ -5,6 +5,7 @@ import { PaymentService } from '../../services/payment.service';
 import { MerchantService } from '../../services/merchant.service';
 import { createPublicAuthMiddleware } from '../../middleware/public-auth.middleware';
 import { ErrorResponseSchema } from '../../docs/schemas';
+import { ErrorCodes } from '../../error-codes';
 
 type RelayStatusDb = 'QUEUED' | 'SUBMITTED' | 'CONFIRMED' | 'FAILED';
 
@@ -113,7 +114,7 @@ Returns the latest relay transaction status for a payment.
         const payment = await paymentService.findByHash(id);
         if (!payment) {
           return reply.code(404).send({
-            code: 'PAYMENT_NOT_FOUND',
+            code: ErrorCodes.PAYMENT_NOT_FOUND,
             message: 'Payment not found',
           });
         }
@@ -122,7 +123,7 @@ Returns the latest relay transaction status for a payment.
         const merchant = request.merchant;
         if (merchant && payment.merchant_id !== merchant.id) {
           return reply.code(403).send({
-            code: 'FORBIDDEN',
+            code: ErrorCodes.FORBIDDEN,
             message: 'Payment does not belong to this merchant',
           });
         }
@@ -131,7 +132,7 @@ Returns the latest relay transaction status for a payment.
         let relayRequests = await relayService.findByPaymentId(payment.id);
         if (relayRequests.length === 0) {
           return reply.code(404).send({
-            code: 'RELAY_NOT_FOUND',
+            code: ErrorCodes.RELAY_NOT_FOUND,
             message: 'No relay request found for this payment',
           });
         }
@@ -170,14 +171,14 @@ Returns the latest relay transaction status for a payment.
             status: latest.status,
             transactionHash: latest.tx_hash ?? null,
             errorMessage: latest.error_message ?? null,
-            createdAt: latest.created_at.toISOString(),
-            updatedAt: latest.updated_at.toISOString(),
+            createdAt: new Date(latest.created_at).toISOString(),
+            updatedAt: new Date(latest.updated_at).toISOString(),
           },
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to get relay status';
         return reply.code(500).send({
-          code: 'INTERNAL_ERROR',
+          code: ErrorCodes.INTERNAL_ERROR,
           message,
         });
       }

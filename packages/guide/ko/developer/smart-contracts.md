@@ -10,10 +10,10 @@ SoloPay 결제 시스템을 구성하는 스마트 컨트랙트의 주소 및 �
 
 ### Polygon Amoy (80002)
 
-| 컨트랙트             | 주소                                           |
-| -------------------- | ---------------------------------------------- |
-| **PaymentGateway**   | `GET /payments` 응답의 `gatewayAddress` 참조   |
-| **ERC2771Forwarder** | `GET /payments` 응답의 `forwarderAddress` 참조 |
+| 컨트랙트             | 주소                                            |
+| -------------------- | ----------------------------------------------- |
+| **PaymentGateway**   | `POST /payments` 응답의 `gatewayAddress` 참조   |
+| **ERC2771Forwarder** | `POST /payments` 응답의 `forwarderAddress` 참조 |
 
 ::: tip 왜 주소를 직접 하드코딩하지 않나요?
 컨트랙트 주소는 체인별/가맹점별로 다를 수 있으며, 업그레이드 시 변경될 수 있습니다. **결제 생성 API 응답**에 항상 최신 주소가 포함되므로, 해당 값을 신뢰하세요.
@@ -33,7 +33,7 @@ SoloPay 결제 시스템을 구성하는 스마트 컨트랙트의 주소 및 �
 
 결제의 핵심 컨트랙트입니다. 직접 결제(사용자 전송)와 가스리스 결제(릴레이어 전송) 모두 동일한 `pay()` 함수를 사용합니다.
 
-#### `pay()` — 에스크로 결제 (직접 결제 / 가스리스)
+#### `pay()` — 결제 실행 (직접 결제 / 가스리스)
 
 ```solidity
 function pay(
@@ -42,14 +42,12 @@ function pay(
     uint256 amount,          // 결제 금액 (wei 단위)
     address recipientAddress,// 수령 주소 (가맹점 지갑)
     bytes32 merchantId,      // 가맹점 ID
-    uint256 deadline,       // 서명 기한 (Unix timestamp, API 응답)
-    uint256 escrowDuration,  // 에스크로 기간(초), API 응답
-    bytes calldata serverSignature,  // 서버 EIP-712 서명 (위변조 방지)
+    uint256 deadline,        // 결제 기한 (Unix timestamp, API 응답)
     PermitSignature calldata permit // EIP-2612 permit; 미사용 시 zero (deadline=0)
 ) external
 ```
 
-`deadline`, `escrowDuration`, `serverSignature`는 결제 생성/상태 API 응답에서 제공됩니다. 수수료는 컨트랙트 설정에 따라 온체인에서 적용되며, 인자로 전달하지 않습니다.
+`deadline`은 결제 생성/상태 API 응답에서 제공됩니다. 수수료는 컨트랙트 설정에 따라 온체인에서 적용되며, 인자로 전달하지 않습니다.
 
 **프론트엔드 호출 예시 (wagmi) — 직접 결제**
 
@@ -71,8 +69,6 @@ await writeContract({
     recipientAddress,
     merchantId,
     BigInt(deadline),
-    BigInt(escrowDuration),
-    serverSignature,
     zeroPermit,
   ],
 });
@@ -122,17 +118,6 @@ const domain = {
   verifyingContract: forwarderAddress,
 };
 ```
-
-## serverSignature의 역할
-
-결제 생성 응답에 포함된 `serverSignature`는 SoloPay 서버가 해당 결제를 인증했음을 증명하는 EIP-712 서명입니다.
-
-- **위변조 방지**: 가맹점이나 사용자가 `paymentId`, `amount`, `recipient` 등을 임의로 변조할 수 없습니다.
-- **컨트랙트 검증**: `PaymentGateway`는 트랜잭션 실행 시 이 서명이 SoloPay 서버의 것임을 온체인에서 직접 검증합니다.
-
-::: warning 주의
-`serverSignature`는 결제 생성 시 단 한 번만 발급됩니다. 결제가 만료되거나 새 결제를 생성하면 이전 서명은 무효입니다.
-:::
 
 ## 다음 단계
 

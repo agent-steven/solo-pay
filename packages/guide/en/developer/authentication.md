@@ -4,20 +4,20 @@ SoloPay API uses two authentication methods depending on the endpoint type.
 
 ## Authentication Overview
 
-| Method     | Header         | Endpoints                                                   |
-| ---------- | -------------- | ----------------------------------------------------------- |
-| Public Key | `x-public-key` | POST /payments, GET /payments/:id, POST /payments/:id/relay |
-| API Key    | `x-api-key`    | GET /merchant/\*, POST /refunds, GET /refunds               |
-| None       | -              | GET /chains, GET /chains/tokens                             |
+| Method     | Header         | Endpoints                                                                            |
+| ---------- | -------------- | ------------------------------------------------------------------------------------ |
+| Public Key | `x-public-key` | POST /payments, GET /payments/:id, POST /payments/:id/relay, GET /payments/:id/relay |
+| API Key    | `x-api-key`    | GET /merchant/\*, POST /refunds, GET /refunds                                        |
+| None       | -              | GET /chains, GET /chains/tokens                                                      |
 
 ## Getting Your Keys
 
 Request both keys from your administrator.
 
-| Type       | Prefix                  | Purpose                             |
-| ---------- | ----------------------- | ----------------------------------- |
-| API Key    | `sk_...`                | Merchant management, refunds        |
-| Public Key | `pk_live_` / `pk_test_` | Payment creation and status queries |
+| Type       | Prefix   | Purpose                             |
+| ---------- | -------- | ----------------------------------- |
+| API Key    | `sk_...` | Merchant management, refunds        |
+| Public Key | `pk_...` | Payment creation and status queries |
 
 ::: warning Security Notice
 
@@ -30,7 +30,7 @@ Request both keys from your administrator.
 The API Key is used for server-side management operations such as merchant info queries, webhook verification, and payment history.
 
 ```bash
-curl https://pay-api.staging.sut.com/api/v1/merchant \
+curl https://gateway.dev.solonetwork.io/api/v1/merchant \
   -H "x-api-key: sk_xxxxx"
 ```
 
@@ -38,7 +38,7 @@ curl https://pay-api.staging.sut.com/api/v1/merchant \
 
 ```bash
 SOLO_PAY_API_KEY=sk_xxxxx
-SOLO_PAY_PUBLIC_KEY=pk_test_xxxxx
+SOLO_PAY_PUBLIC_KEY=pk_xxxxx
 ```
 
 ## Origin Verification

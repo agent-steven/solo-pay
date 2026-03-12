@@ -4,20 +4,20 @@ SoloPay API는 엔드포인트 종류에 따라 두 가지 인증 방식을 사�
 
 ## 인증 방식 개요
 
-| 방식       | 헤더           | 사용 엔드포인트                                             |
-| ---------- | -------------- | ----------------------------------------------------------- |
-| Public Key | `x-public-key` | POST /payments, GET /payments/:id, POST /payments/:id/relay |
-| API Key    | `x-api-key`    | GET /merchant/\*, POST /refunds, GET /refunds               |
-| 인증 없음  | 없음           | GET /chains, GET /chains/tokens                             |
+| 방식       | 헤더           | 사용 엔드포인트                                                                      |
+| ---------- | -------------- | ------------------------------------------------------------------------------------ |
+| Public Key | `x-public-key` | POST /payments, GET /payments/:id, POST /payments/:id/relay, GET /payments/:id/relay |
+| API Key    | `x-api-key`    | GET /merchant/\*, POST /refunds, GET /refunds                                        |
+| 인증 없음  | 없음           | GET /chains, GET /chains/tokens                                                      |
 
 ## API Key와 Public Key 발급
 
 관리자로부터 두 가지 키를 발급받습니다.
 
-| 종류       | 접두사                  | 용도                        |
-| ---------- | ----------------------- | --------------------------- |
-| API Key    | `sk_...`                | 가맹점 정보, 환불 등 관리용 |
-| Public Key | `pk_live_` / `pk_test_` | 결제 생성, 상태 조회        |
+| 종류       | 접두사   | 용도                        |
+| ---------- | -------- | --------------------------- |
+| API Key    | `sk_...` | 가맹점 정보, 환불 등 관리용 |
+| Public Key | `pk_...` | 결제 생성, 상태 조회        |
 
 ::: warning 보안 주의
 
@@ -30,7 +30,7 @@ SoloPay API는 엔드포인트 종류에 따라 두 가지 인증 방식을 사�
 API Key는 가맹점 정보 조회, Webhook 검증, 결제 내역 조회 등 서버 사이드 관리 작업에 사용합니다.
 
 ```bash
-curl https://pay-api.staging.sut.com/api/v1/merchant \
+curl https://gateway.dev.solonetwork.io/api/v1/merchant \
   -H "x-api-key: sk_xxxxx"
 ```
 
@@ -38,7 +38,7 @@ curl https://pay-api.staging.sut.com/api/v1/merchant \
 
 ```bash
 SOLO_PAY_API_KEY=sk_xxxxx
-SOLO_PAY_PUBLIC_KEY=pk_test_xxxxx
+SOLO_PAY_PUBLIC_KEY=pk_xxxxx
 ```
 
 ## Origin 검증

@@ -112,23 +112,24 @@ export async function POST(request: NextRequest) {
       failUrl: `${baseUrl}/payment/fail?orderId=${orderId}`,
     });
 
-    // 클라이언트에 결제 정보 반환
+    // Return full create response so gasless pay() uses same deadline/escrowDuration as server signature (required for signature verification on-chain)
+    const pd = payment.data;
     return NextResponse.json(
       {
         success: true,
-        paymentId: payment.paymentId,
-        orderId: payment.orderId,
+        paymentId: pd.paymentId,
+        orderId: pd.orderId,
         products: productInfos,
         totalAmount: totalAmount.toString(),
-        chainId: payment.chainId,
-        tokenSymbol: payment.tokenSymbol,
-        tokenAddress: payment.tokenAddress,
-        decimals: payment.tokenDecimals,
-        gatewayAddress: payment.gatewayAddress,
-        forwarderAddress: payment.forwarderAddress,
-        recipientAddress: payment.recipientAddress,
-        merchantId: payment.merchantId,
-        serverSignature: payment.serverSignature,
+        chainId: pd.chainId,
+        tokenSymbol: pd.tokenSymbol,
+        tokenAddress: pd.tokenAddress,
+        decimals: pd.tokenDecimals,
+        gatewayAddress: pd.gatewayAddress,
+        forwarderAddress: pd.forwarderAddress,
+        recipientAddress: pd.recipientAddress,
+        merchantId: pd.merchantId,
+        deadline: pd.deadline,
       },
       { status: 201 }
     );

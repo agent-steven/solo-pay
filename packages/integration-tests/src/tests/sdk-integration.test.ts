@@ -22,16 +22,14 @@ import {
 } from '../helpers/signature';
 
 /**
- * SDK 통합 테스트
+ * SDK Integration Tests
  *
- * 전체 스택 테스트를 위해서는 다음이 필요합니다:
+ * Prerequisites:
  * pnpm --filter @solo-pay/integration-tests test:setup
  *
- * 이 테스트는 gateway, simple-relayer, hardhat node가 Docker로 실행 중일 때 동작합니다.
- *
- * Note: 머천트는 특정 체인에 바인딩됨
- * - Demo Merchant (chain_id=1) → Localhost (31337) → TEST 토큰
- * - MetaStar Merchant (chain_id=3) → Amoy (80002) → SUT 토큰
+ * Note: Merchants are bound to specific chains
+ * - Demo Merchant (chain_id=1) -> Localhost (31337) -> TEST token
+ * - MetaStar Merchant (chain_id=3) -> Amoy (80002) -> SUT token
  */
 
 const GATEWAY_URL = process.env.GATEWAY_URL || 'http://localhost:3001';
@@ -62,7 +60,7 @@ describe('SDK Integration', () => {
     const serverRunning = await isGatewayRunning();
     if (!serverRunning) {
       console.warn(
-        '\n⚠️  gateway is not running. SDK integration tests will be skipped.\n' +
+        '\n  gateway is not running. SDK integration tests will be skipped.\n' +
           '   Run: pnpm --filter @solo-pay/integration-tests test:setup\n'
       );
     }
@@ -112,13 +110,13 @@ describe('SDK Integration', () => {
 
       const response = await client.createPayment(params);
 
-      expect(response.paymentId).toBeDefined();
-      expect(response.paymentId.startsWith('0x')).toBe(true);
-      expect(response.chainId).toBe(token.networkId);
-      expect(response.tokenAddress.toLowerCase()).toBe(token.address.toLowerCase());
-      expect(response.serverSignature).toBeDefined();
-      expect(response.recipientAddress).toBeDefined();
-      expect(response.merchantId).toBeDefined();
+      expect(response.data.paymentId).toBeDefined();
+      expect(response.data.paymentId.startsWith('0x')).toBe(true);
+      expect(response.data.chainId).toBe(token.networkId);
+      expect(response.data.tokenAddress.toLowerCase()).toBe(token.address.toLowerCase());
+      expect(response.data.deadline).toBeDefined();
+      expect(response.data.recipientAddress).toBeDefined();
+      expect(response.data.merchantId).toBeDefined();
     });
 
     it('should return payment hash and gateway address', async () => {
@@ -133,11 +131,11 @@ describe('SDK Integration', () => {
 
       const response = await client.createPayment(params);
 
-      expect(response.gatewayAddress).toBeDefined();
-      expect(response.gatewayAddress.toLowerCase()).toBe(
+      expect(response.data.gatewayAddress).toBeDefined();
+      expect(response.data.gatewayAddress.toLowerCase()).toBe(
         CONTRACT_ADDRESSES.paymentGateway.toLowerCase()
       );
-      const forwarderAddress = response.forwarderAddress;
+      const forwarderAddress = response.data.forwarderAddress;
       expect(forwarderAddress).toBeDefined();
       if (!forwarderAddress) return;
       expect(forwarderAddress.toLowerCase()).toBe(CONTRACT_ADDRESSES.forwarder.toLowerCase());
@@ -155,7 +153,7 @@ describe('SDK Integration', () => {
 
       const createParams = makeCreatePaymentParams(25);
       const createResponse = await client.createPayment(createParams);
-      const paymentId = createResponse.paymentId;
+      const paymentId = createResponse.data.paymentId;
 
       const statusResponse = await client.getPaymentStatus(paymentId);
 
@@ -176,27 +174,30 @@ describe('SDK Integration', () => {
       const amount = parseUnits('10', token.decimals);
 
       const createResponse = await client.createPayment(makeCreatePaymentParams(10));
-      const paymentId = createResponse.paymentId;
+      const paymentId = createResponse.data.paymentId;
 
-      await approveToken(token.address, createResponse.gatewayAddress, amount, payerPrivateKey);
+      await approveToken(
+        token.address,
+        createResponse.data.gatewayAddress,
+        amount,
+        payerPrivateKey
+      );
 
       const wallet = getWallet(payerPrivateKey);
-      const gateway = getContract(createResponse.gatewayAddress, PaymentGatewayABI, wallet);
+      const gateway = getContract(createResponse.data.gatewayAddress, PaymentGatewayABI, wallet);
 
       const tx = await gateway.pay(
         paymentId,
         token.address,
         amount,
-        createResponse.recipientAddress,
-        createResponse.merchantId,
-        BigInt(createResponse.deadline),
-        BigInt(createResponse.escrowDuration),
-        createResponse.serverSignature,
+        createResponse.data.recipientAddress,
+        createResponse.data.merchantId,
+        BigInt(createResponse.data.deadline),
         ZERO_PERMIT
       );
       await tx.wait();
 
-      // 4. Verify on-chain
+      // Verify on-chain
       const isProcessed = await gateway.isPaymentProcessed(paymentId);
       expect(isProcessed).toBe(true);
     });
@@ -213,18 +214,23 @@ describe('SDK Integration', () => {
       const amount = parseUnits('5', token.decimals);
 
       const createResponse = await client.createPayment(makeCreatePaymentParams(5));
-      const paymentId = createResponse.paymentId;
+      const paymentId = createResponse.data.paymentId;
 
-      const { recipientAddress, merchantId: respMerchantId, serverSignature } = createResponse;
-      if (!recipientAddress || !respMerchantId || !serverSignature) {
-        throw new Error('Server signature fields missing from response');
+      const { recipientAddress, merchantId: respMerchantId } = createResponse.data;
+      if (!recipientAddress || !respMerchantId) {
+        throw new Error('Required fields missing from response');
       }
-      const forwarderAddress = createResponse.forwarderAddress;
+      const forwarderAddress = createResponse.data.forwarderAddress;
       if (!forwarderAddress) {
         throw new Error('forwarderAddress missing from create response');
       }
 
-      await approveToken(token.address, createResponse.gatewayAddress, amount, payerPrivateKey);
+      await approveToken(
+        token.address,
+        createResponse.data.gatewayAddress,
+        amount,
+        payerPrivateKey
+      );
 
       const forwarder = getContract(forwarderAddress, ERC2771ForwarderABI);
       const nonce = await forwarder.nonces(payerAddress);
@@ -235,14 +241,12 @@ describe('SDK Integration', () => {
         amount,
         recipientAddress,
         respMerchantId,
-        BigInt(createResponse.deadline),
-        BigInt(createResponse.escrowDuration),
-        serverSignature
+        BigInt(createResponse.data.deadline)
       );
 
       const request: ForwardRequest = {
         from: payerAddress,
-        to: createResponse.gatewayAddress,
+        to: createResponse.data.gatewayAddress,
         value: 0n,
         gas: 500000n,
         nonce,
@@ -252,7 +256,7 @@ describe('SDK Integration', () => {
 
       const signature = await signForwardRequest(request, payerPrivateKey);
 
-      // 4. Submit gasless via SDK
+      // Submit gasless via SDK
       const gaslessResponse = await client.submitGasless({
         paymentId,
         forwarderAddress,
@@ -269,7 +273,7 @@ describe('SDK Integration', () => {
       });
 
       expect(gaslessResponse.success).toBe(true);
-      expect(gaslessResponse.status).toBeDefined();
+      expect(gaslessResponse.data.status).toBeDefined();
     });
 
     it('should track relay status', async () => {
@@ -283,13 +287,18 @@ describe('SDK Integration', () => {
 
       const createResponse = await client.createPayment(makeCreatePaymentParams(3));
 
-      await approveToken(token.address, createResponse.gatewayAddress, amount, payerPrivateKey);
+      await approveToken(
+        token.address,
+        createResponse.data.gatewayAddress,
+        amount,
+        payerPrivateKey
+      );
 
-      const { recipientAddress, merchantId: respMerchantId, serverSignature } = createResponse;
-      if (!recipientAddress || !respMerchantId || !serverSignature) {
-        throw new Error('Server signature fields missing from response');
+      const { recipientAddress, merchantId: respMerchantId } = createResponse.data;
+      if (!recipientAddress || !respMerchantId) {
+        throw new Error('Required fields missing from response');
       }
-      const forwarderAddress = createResponse.forwarderAddress;
+      const forwarderAddress = createResponse.data.forwarderAddress;
       if (!forwarderAddress) {
         throw new Error('forwarderAddress missing from create response');
       }
@@ -298,19 +307,17 @@ describe('SDK Integration', () => {
       const nonce = await forwarder.nonces(payerAddress);
       const forwardDeadline = getDeadline(1);
       const data = encodePayFunctionData(
-        createResponse.paymentId,
+        createResponse.data.paymentId,
         token.address,
         amount,
         recipientAddress,
         respMerchantId,
-        BigInt(createResponse.deadline),
-        BigInt(createResponse.escrowDuration),
-        serverSignature
+        BigInt(createResponse.data.deadline)
       );
 
       const request: ForwardRequest = {
         from: payerAddress,
-        to: createResponse.gatewayAddress,
+        to: createResponse.data.gatewayAddress,
         value: 0n,
         gas: 500000n,
         nonce,
@@ -321,7 +328,7 @@ describe('SDK Integration', () => {
       const signature = await signForwardRequest(request, payerPrivateKey);
 
       await client.submitGasless({
-        paymentId: createResponse.paymentId,
+        paymentId: createResponse.data.paymentId,
         forwarderAddress,
         forwardRequest: {
           from: request.from,
@@ -335,23 +342,14 @@ describe('SDK Integration', () => {
         },
       });
 
-      // Gateway no longer exposes GET /payments/relay/:id/status; poll payment status instead
-      const paymentId = createResponse.paymentId;
+      // Poll payment status
+      const paymentId = createResponse.data.paymentId;
       const statusResponse = await client.getPaymentStatus(paymentId);
       expect(statusResponse.success).toBe(true);
       expect(statusResponse.data?.paymentId).toBe(paymentId);
-      expect([
-        'CREATED',
-        'PENDING',
-        'CONFIRMED',
-        'FAILED',
-        'EXPIRED',
-        'ESCROWED',
-        'FINALIZE_SUBMITTED',
-        'CANCEL_SUBMITTED',
-        'FINALIZED',
-        'CANCELLED',
-      ]).toContain(statusResponse.data?.status);
+      expect(['CREATED', 'PAID', 'REFUND_SUBMITTED', 'REFUNDED', 'EXPIRED', 'FAILED']).toContain(
+        statusResponse.data?.status
+      );
     });
   });
 

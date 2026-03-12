@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { parseUnits, keccak256, toHex, Hex, Address } from 'viem';
+import { parseUnits, keccak256, toHex, Address } from 'viem';
 import { Decimal } from '@solo-pay/database';
 import { randomBytes } from 'crypto';
 import { ZodError } from 'zod';
@@ -15,6 +15,7 @@ import { CurrencyService } from '../../services/currency.service';
 import { PriceClient } from '../../services/price-client.service';
 import { createPublicAuthMiddleware } from '../../middleware/public-auth.middleware';
 import { ErrorResponseSchema } from '../../docs/schemas';
+import { ErrorCodes } from '../../error-codes';
 
 export interface CreatePaymentBody {
   orderId: string;
@@ -33,7 +34,6 @@ export async function createPaymentRoute(
   tokenService: TokenService,
   paymentMethodService: PaymentMethodService,
   paymentService: PaymentService,
-  signingServices?: Map<number, ServerSigningService>,
   currencyService?: CurrencyService,
   priceClient?: PriceClient
 ) {
@@ -55,7 +55,7 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
 
 **Currency conversion:** When \`currency\` is provided (e.g., USD, KRW), \`amount\` is treated as fiat amount and converted to token amount using price-service. Without \`currency\`, \`amount\` is the token amount (existing behavior).
 
-**Response:** paymentId, serverSignature, chainId, tokenAddress, gatewayAddress, amount (wei), tokenDecimals, tokenSymbol, successUrl, failUrl, expiresAt, recipientAddress, merchantId, forwarderAddress, currency, fiatAmount, tokenPrice.
+**Response:** paymentId, chainId, tokenAddress, gatewayAddress, amount (wei), tokenDecimals, tokenSymbol, successUrl, failUrl, expiresAt, recipientAddress, merchantId, forwarderAddress, currency, fiatAmount, tokenPrice.
         `,
         headers: {
           type: 'object',
@@ -107,55 +107,53 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
                 example: true,
                 description: 'Indicates the request succeeded',
               },
-              paymentId: { type: 'string' },
-              orderId: { type: 'string', description: 'Merchant order ID' },
-              serverSignature: {
-                type: 'string',
-                description: 'Server EIP-712 signature for payment authorization',
-              },
-              chainId: { type: 'integer' },
-              tokenAddress: { type: 'string' },
-              gatewayAddress: { type: 'string' },
-              amount: { type: 'string', description: 'Wei' },
-              tokenDecimals: { type: 'integer' },
-              tokenSymbol: { type: 'string' },
-              successUrl: { type: 'string' },
-              failUrl: { type: 'string' },
-              expiresAt: { type: 'string', format: 'date-time' },
-              recipientAddress: {
-                type: 'string',
-                description: 'Merchant recipient wallet address',
-              },
-              merchantId: { type: 'string', description: 'Merchant ID (bytes32)' },
-              deadline: {
-                type: 'string',
-                description: 'Deadline timestamp for server signature expiration',
-              },
-              escrowDuration: {
-                type: 'string',
-                description: 'Escrow duration in seconds (passed to contract pay())',
-              },
-              forwarderAddress: {
-                type: 'string',
-                description: 'ERC2771Forwarder address for gasless payments',
-              },
-              tokenPermitSupported: {
-                type: 'boolean',
-                description: 'Whether the token supports EIP-2612 permit (gasless approval)',
-              },
-              currency: {
-                type: 'string',
-                description:
-                  'Fiat currency code used for conversion (only when currency was provided)',
-              },
-              fiatAmount: {
-                type: 'number',
-                description:
-                  'Original fiat amount before conversion (only when currency was provided)',
-              },
-              tokenPrice: {
-                type: 'number',
-                description: 'Token price at creation time (only when currency was provided)',
+              data: {
+                type: 'object',
+                properties: {
+                  paymentId: { type: 'string' },
+                  orderId: { type: 'string', description: 'Merchant order ID' },
+                  chainId: { type: 'integer' },
+                  tokenAddress: { type: 'string' },
+                  gatewayAddress: { type: 'string' },
+                  amount: { type: 'string', description: 'Wei' },
+                  tokenDecimals: { type: 'integer' },
+                  tokenSymbol: { type: 'string' },
+                  successUrl: { type: 'string' },
+                  failUrl: { type: 'string' },
+                  expiresAt: { type: 'string', format: 'date-time' },
+                  recipientAddress: {
+                    type: 'string',
+                    description: 'Merchant recipient wallet address',
+                  },
+                  merchantId: { type: 'string', description: 'Merchant ID (bytes32)' },
+                  deadline: {
+                    type: 'string',
+                    description:
+                      'Payment expiration timestamp (unix seconds) for on-chain validation',
+                  },
+                  forwarderAddress: {
+                    type: 'string',
+                    description: 'ERC2771Forwarder address for gasless payments',
+                  },
+                  tokenPermitSupported: {
+                    type: 'boolean',
+                    description: 'Whether the token supports EIP-2612 permit (gasless approval)',
+                  },
+                  currency: {
+                    type: 'string',
+                    description:
+                      'Fiat currency code used for conversion (only when currency was provided)',
+                  },
+                  fiatAmount: {
+                    type: 'number',
+                    description:
+                      'Original fiat amount before conversion (only when currency was provided)',
+                  },
+                  tokenPrice: {
+                    type: 'number',
+                    description: 'Token price at creation time (only when currency was provided)',
+                  },
+                },
               },
             },
           },
@@ -186,19 +184,20 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
               merchant_key: string;
               chain_id: number;
               recipient_address: string | null;
-              escrow_duration: number | null;
             };
           }
         ).merchant;
         if (!merchant) {
-          return reply.code(403).send({ code: 'UNAUTHORIZED', message: 'Merchant required' });
+          return reply
+            .code(403)
+            .send({ code: ErrorCodes.UNAUTHORIZED, message: 'Merchant required' });
         }
 
         const origin = (request.headers['origin'] as string) ?? '';
 
         if (!merchant.chain_id) {
           return reply.code(400).send({
-            code: 'CHAIN_NOT_CONFIGURED',
+            code: ErrorCodes.CHAIN_NOT_CONFIGURED,
             message: 'Merchant chain is not configured',
           });
         }
@@ -206,7 +205,7 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
         const chain = await chainService.findById(merchant.chain_id);
         if (!chain || !chain.gateway_address) {
           return reply.code(404).send({
-            code: 'CHAIN_NOT_FOUND',
+            code: ErrorCodes.CHAIN_NOT_FOUND,
             message: 'Merchant chain or gateway not found',
           });
         }
@@ -214,7 +213,7 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
         const chainId = chain.network_id;
         if (!blockchainService.isChainSupported(chainId)) {
           return reply.code(400).send({
-            code: 'UNSUPPORTED_CHAIN',
+            code: ErrorCodes.UNSUPPORTED_CHAIN,
             message: 'Unsupported chain',
           });
         }
@@ -223,13 +222,13 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
         const token = await tokenService.findByAddress(chain.id, validated.tokenAddress);
         if (!token) {
           return reply.code(404).send({
-            code: 'TOKEN_NOT_FOUND',
+            code: ErrorCodes.TOKEN_NOT_FOUND,
             message: 'Token not found or not whitelisted for this chain',
           });
         }
         if (token.chain_id !== merchant.chain_id) {
           return reply.code(400).send({
-            code: 'CHAIN_MISMATCH',
+            code: ErrorCodes.CHAIN_MISMATCH,
             message: 'Token does not belong to merchant chain',
           });
         }
@@ -239,7 +238,7 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
         );
         if (!paymentMethod || !paymentMethod.is_enabled) {
           return reply.code(400).send({
-            code: 'TOKEN_NOT_ENABLED',
+            code: ErrorCodes.TOKEN_NOT_ENABLED,
             message:
               'Token is not enabled for this merchant. Add and enable it in payment methods first.',
           });
@@ -248,7 +247,7 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
         const tokenAddress = token.address;
         if (!blockchainService.validateTokenByAddress(chainId, tokenAddress)) {
           return reply.code(400).send({
-            code: 'UNSUPPORTED_TOKEN',
+            code: ErrorCodes.UNSUPPORTED_TOKEN,
             message: 'Unsupported token',
           });
         }
@@ -262,10 +261,21 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
         let fiatAmount: number | undefined;
         let tokenPrice: number | undefined;
 
+        // When no currency, amount is the token amount directly — enforce 2 decimal places
+        if (!validated.currency) {
+          const decimalPart = validated.amount.toString().split('.')[1];
+          if (decimalPart && decimalPart.length > 2) {
+            return reply.code(400).send({
+              code: ErrorCodes.VALIDATION_ERROR,
+              message: 'amount must have at most 2 decimal places',
+            });
+          }
+        }
+
         if (validated.currency) {
           if (!currencyService || !priceClient) {
             return reply.code(500).send({
-              code: 'PRICE_SERVICE_NOT_CONFIGURED',
+              code: ErrorCodes.PRICE_SERVICE_NOT_CONFIGURED,
               message: 'Price service is not configured',
             });
           }
@@ -273,7 +283,7 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
           const currency = await currencyService.findByCode(validated.currency);
           if (!currency) {
             return reply.code(400).send({
-              code: 'INVALID_CURRENCY',
+              code: ErrorCodes.INVALID_CURRENCY,
               message: `Unsupported currency: ${validated.currency}`,
             });
           }
@@ -283,7 +293,7 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
           currencyCode = currency.code;
           fiatAmount = validated.amount;
           tokenPrice = priceData.price;
-          tokenAmount = fiatAmount / tokenPrice;
+          tokenAmount = Math.max(0.01, Math.floor((fiatAmount / tokenPrice) * 100) / 100);
         }
 
         const amountInWei = parseUnits(tokenAmount.toString(), tokenDecimals);
@@ -297,49 +307,23 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
         const recipientAddress = (merchant.recipient_address ?? '') as Address;
         if (!recipientAddress) {
           return reply.code(400).send({
-            code: 'RECIPIENT_NOT_CONFIGURED',
+            code: ErrorCodes.RECIPIENT_NOT_CONFIGURED,
             message: 'Merchant recipient address is not configured',
           });
         }
 
-        // Check for duplicate orderId BEFORE generating signature (avoid wasting resources)
+        // Check for duplicate orderId BEFORE creating payment
         const existingPayment = await paymentService.findByOrderId(validated.orderId, merchant.id);
         if (existingPayment) {
           return reply.code(409).send({
-            code: 'DUPLICATE_ORDER',
+            code: ErrorCodes.DUPLICATE_ORDER,
             message: 'Order ID already used for this merchant.',
           });
         }
 
-        // Generate server signature if signing service is available for this chain
-        const deadlineTtl = Number(process.env.PAYMENT_DEADLINE_SECONDS) || 3600;
-        const deadline = BigInt(Math.floor(Date.now() / 1000) + deadlineTtl);
-        const defaultEscrowDuration = Number(process.env.DEFAULT_ESCROW_DURATION) || 300;
-        const escrowDuration = BigInt(merchant.escrow_duration ?? defaultEscrowDuration);
-        let serverSignature: Hex | undefined;
-        const signingService = signingServices?.get(chainId);
-        if (signingService) {
-          try {
-            serverSignature = await signingService.signPaymentRequest(
-              paymentHash as Hex,
-              tokenAddress as Address,
-              amountInWei,
-              recipientAddress,
-              merchantId,
-              deadline,
-              escrowDuration
-            );
-          } catch (err) {
-            app.log.error({ err }, 'Failed to generate server signature');
-            return reply.code(500).send({
-              code: 'SIGNATURE_ERROR',
-              message: 'Failed to generate payment signature',
-            });
-          }
-        }
-
-        const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
-        const escrowDeadline = new Date(Date.now() + Number(escrowDuration) * 1000);
+        const paymentExpirySeconds = Number(process.env.PAYMENT_EXPIRY_SECONDS) || 300;
+        const expiresAt = new Date(Date.now() + paymentExpirySeconds * 1000);
+        const deadline = Math.floor(expiresAt.getTime() / 1000);
         await paymentService.create({
           payment_hash: paymentHash,
           merchant_id: merchant.id,
@@ -353,52 +337,53 @@ Creates a payment. Single endpoint for both widget and backend. Uses Public Key 
           success_url: validated.successUrl,
           fail_url: validated.failUrl,
           origin,
+          recipient_address: recipientAddress,
+          token_address: tokenAddress,
           currency_code: currencyCode,
           fiat_amount: fiatAmount !== undefined ? new Decimal(fiatAmount.toString()) : undefined,
           token_price: tokenPrice !== undefined ? new Decimal(tokenPrice.toString()) : undefined,
-          escrow_deadline: escrowDeadline,
         });
 
         return reply.code(201).send({
           success: true,
-          paymentId: paymentHash,
-          orderId: validated.orderId,
-          serverSignature: serverSignature ?? '',
-          chainId,
-          tokenAddress,
-          gatewayAddress: contracts?.gateway ?? '',
-          amount: amountInWei.toString(),
-          tokenDecimals,
-          tokenSymbol,
-          successUrl: validated.successUrl,
-          failUrl: validated.failUrl,
-          expiresAt: expiresAt.toISOString(),
-          recipientAddress,
-          merchantId,
-          deadline: deadline.toString(),
-          escrowDuration: escrowDuration.toString(),
-          forwarderAddress: chain.forwarder_address ?? undefined,
-          tokenPermitSupported: token.permit_enabled ?? false,
-          currency: currencyCode,
-          fiatAmount,
-          tokenPrice,
+          data: {
+            paymentId: paymentHash,
+            orderId: validated.orderId,
+            chainId,
+            tokenAddress,
+            gatewayAddress: contracts?.gateway ?? '',
+            amount: amountInWei.toString(),
+            tokenDecimals,
+            tokenSymbol,
+            successUrl: validated.successUrl,
+            failUrl: validated.failUrl,
+            expiresAt: expiresAt.toISOString(),
+            recipientAddress,
+            merchantId,
+            deadline: deadline.toString(),
+            forwarderAddress: chain.forwarder_address ?? undefined,
+            tokenPermitSupported: token.permit_enabled ?? false,
+            currency: currencyCode,
+            fiatAmount,
+            tokenPrice,
+          },
         });
       } catch (err) {
         if (err instanceof ZodError) {
           return reply.code(400).send({
-            code: 'VALIDATION_ERROR',
+            code: ErrorCodes.VALIDATION_ERROR,
             message: 'Input validation failed',
             details: err.errors,
           });
         }
         if (err && typeof err === 'object' && 'code' in err && err.code === 'P2002') {
           return reply.code(409).send({
-            code: 'DUPLICATE_ORDER',
+            code: ErrorCodes.DUPLICATE_ORDER,
             message: 'A payment with this orderId already exists',
           });
         }
         const message = err instanceof Error ? err.message : 'Failed to create payment';
-        return reply.code(500).send({ code: 'INTERNAL_ERROR', message });
+        return reply.code(500).send({ code: ErrorCodes.INTERNAL_ERROR, message });
       }
     }
   );

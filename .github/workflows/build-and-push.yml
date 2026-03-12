@@ -28,8 +28,8 @@ jobs:
             echo "tag=${GITHUB_SHA:0:7}" >> $GITHUB_OUTPUT
             echo "overlay=dev" >> $GITHUB_OUTPUT
           fi
-          echo 'targets=["hardhat","contracts","database-sync","gateway","demo","simple-relayer","guide","webhook-manager","sample-merchant","sample-merchant-init","price-service","widget"]' >> $GITHUB_OUTPUT
-          echo 'kustomize_targets=["gateway","demo","guide","webhook-manager","sample-merchant","sample-merchant-init","price-service","database-sync","widget"]' >> $GITHUB_OUTPUT
+          echo 'targets=["hardhat","contracts","database-sync","gateway","demo","simple-relayer","guide","webhook-manager","sample-merchant","sample-merchant-init","price-service","widget","admin-dashboard"]' >> $GITHUB_OUTPUT
+          echo 'kustomize_targets=["gateway","demo","guide","webhook-manager","sample-merchant","sample-merchant-init","price-service","database-sync","widget","admin-dashboard"]' >> $GITHUB_OUTPUT
 
   build:
     name: Build ${{ matrix.target }} (${{ matrix.arch }})
@@ -48,7 +48,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -74,6 +74,8 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.target }}-${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=${{ matrix.target }}-${{ matrix.arch }}
           provenance: false
+          build-args: |
+            NEXT_PUBLIC_WC_PROJECT_ID=${{ secrets.NEXT_PUBLIC_WC_PROJECT_ID }}
 
   manifest:
     name: Create manifest ${{ matrix.target }}
@@ -84,7 +86,7 @@ jobs:
         target: ${{ fromJSON(needs.setup.outputs.targets) }}
     steps:
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

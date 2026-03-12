@@ -2,6 +2,7 @@
  * OpenAPI JSON Schemas for API documentation
  * These schemas are used by @fastify/swagger to generate API documentation
  */
+import { ErrorCodes } from '../error-codes';
 
 // ============================================
 // Common Schemas
@@ -10,7 +11,12 @@
 export const ErrorResponseSchema = {
   type: 'object',
   properties: {
-    code: { type: 'string', description: 'Error code', example: 'INVALID_REQUEST' },
+    code: {
+      type: 'string',
+      description: 'Error code (see error-codes.ts for full list)',
+      example: 'INVALID_REQUEST',
+      enum: Object.values(ErrorCodes),
+    },
     message: { type: 'string', description: 'Error message' },
     details: {
       type: 'object',
@@ -28,9 +34,12 @@ export const EthereumAddressSchema = {
   description: 'Ethereum address (0x + 40 hex characters)',
 } as const;
 
+/** Regex pattern for bytes32 (payment/refund hash). Use for params and body validation. */
+export const BYTES32_PATTERN = '^0x[a-fA-F0-9]{64}$';
+
 export const PaymentHashSchema = {
   type: 'string',
-  pattern: '^0x[a-fA-F0-9]{64}$',
+  pattern: BYTES32_PATTERN,
   example: '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890',
   description: 'Payment hash (bytes32)',
 } as const;
@@ -134,66 +143,66 @@ export const CreatePaymentResponseSchema = {
   type: 'object',
   properties: {
     success: { type: 'boolean', example: true },
-    paymentId: {
-      type: 'string',
-      description: 'Unique payment hash (bytes32)',
-      example: '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890',
+    data: {
+      type: 'object',
+      properties: {
+        paymentId: {
+          type: 'string',
+          description: 'Unique payment hash (bytes32)',
+          example: '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890',
+        },
+        chainId: { type: 'integer', example: 31337 },
+        tokenAddress: {
+          type: 'string',
+          example: '0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582',
+        },
+        tokenSymbol: { type: 'string', example: 'USDT' },
+        tokenDecimals: { type: 'integer', example: 6 },
+        gatewayAddress: {
+          type: 'string',
+          description: 'PaymentGateway contract address',
+          example: '0x1234567890abcdef1234567890abcdef12345678',
+        },
+        forwarderAddress: {
+          type: 'string',
+          description: 'ERC2771 Forwarder contract address',
+          example: '0x1234567890abcdef1234567890abcdef12345678',
+        },
+        amount: {
+          type: 'string',
+          description: 'Amount in wei (smallest unit)',
+          example: '10500000',
+        },
+        status: {
+          type: 'string',
+          enum: ['created', 'pending', 'confirmed', 'failed'],
+          example: 'created',
+        },
+        expiresAt: {
+          type: 'string',
+          format: 'date-time',
+          description: 'Payment expiration time (ISO 8601)',
+          example: '2024-01-20T12:30:00.000Z',
+        },
+        recipientAddress: {
+          type: 'string',
+          description: 'Recipient address (merchant wallet to receive payment)',
+          example: '0x1234567890abcdef1234567890abcdef12345678',
+        },
+        merchantId: {
+          type: 'string',
+          description: 'Merchant identifier (bytes32, keccak256 of merchant_key)',
+          example: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+        },
+        orderId: {
+          type: 'string',
+          description: 'Merchant order identifier',
+          example: 'order_001',
+        },
+        successUrl: { type: 'string', format: 'uri', example: 'https://example.com/success' },
+        failUrl: { type: 'string', format: 'uri', example: 'https://example.com/fail' },
+      },
     },
-    chainId: { type: 'integer', example: 31337 },
-    tokenAddress: {
-      type: 'string',
-      example: '0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582',
-    },
-    tokenSymbol: { type: 'string', example: 'USDT' },
-    tokenDecimals: { type: 'integer', example: 6 },
-    gatewayAddress: {
-      type: 'string',
-      description: 'PaymentGateway contract address',
-      example: '0x1234567890abcdef1234567890abcdef12345678',
-    },
-    forwarderAddress: {
-      type: 'string',
-      description: 'ERC2771 Forwarder contract address',
-      example: '0x1234567890abcdef1234567890abcdef12345678',
-    },
-    amount: {
-      type: 'string',
-      description: 'Amount in wei (smallest unit)',
-      example: '10500000',
-    },
-    status: {
-      type: 'string',
-      enum: ['created', 'pending', 'confirmed', 'failed'],
-      example: 'created',
-    },
-    expiresAt: {
-      type: 'string',
-      format: 'date-time',
-      description: 'Payment expiration time (ISO 8601)',
-      example: '2024-01-20T12:30:00.000Z',
-    },
-    recipientAddress: {
-      type: 'string',
-      description: 'Recipient address (merchant wallet to receive payment)',
-      example: '0x1234567890abcdef1234567890abcdef12345678',
-    },
-    merchantId: {
-      type: 'string',
-      description: 'Merchant identifier (bytes32, keccak256 of merchant_key)',
-      example: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
-    },
-    serverSignature: {
-      type: 'string',
-      description: 'Server EIP-712 signature for payment authorization',
-      example: '0x1234...abcd',
-    },
-    orderId: {
-      type: 'string',
-      description: 'Merchant order identifier',
-      example: 'order_001',
-    },
-    successUrl: { type: 'string', format: 'uri', example: 'https://example.com/success' },
-    failUrl: { type: 'string', format: 'uri', example: 'https://example.com/fail' },
   },
 } as const;
 
@@ -215,29 +224,17 @@ export const PaymentStatusResponseSchema = {
         },
         status: {
           type: 'string',
-          enum: [
-            'CREATED',
-            'ESCROWED',
-            'FINALIZE_SUBMITTED',
-            'FINALIZED',
-            'CANCEL_SUBMITTED',
-            'CANCELLED',
-            'REFUND_SUBMITTED',
-            'REFUNDED',
-            'EXPIRED',
-            'FAILED',
-          ],
+          enum: ['CREATED', 'PAID', 'REFUND_SUBMITTED', 'REFUNDED', 'EXPIRED', 'FAILED'],
           description:
-            'Payment status. Source of truth: blockchain when on-chain state is available (escrowed/finalized/cancelled); otherwise DB (CREATED, PENDING, etc.).',
+            'Payment status. Source of truth: blockchain when on-chain state is available (paid/refunded); otherwise DB (CREATED, etc.).',
         },
         createdAt: { type: 'string', description: 'Creation timestamp' },
         updatedAt: { type: 'string', description: 'Last update timestamp' },
         chainId: { type: 'integer', description: 'Network/Chain ID' },
-        transactionHash: { type: 'string', nullable: true, description: 'Escrow transaction hash' },
-        releaseTxHash: {
+        transactionHash: {
           type: 'string',
           nullable: true,
-          description: 'Finalize/cancel transaction hash',
+          description: 'Payment transaction hash',
         },
         payment_hash: { type: 'string', description: 'Payment hash (bytes32)' },
         network_id: { type: 'integer', description: 'Network/Chain ID' },
@@ -246,14 +243,12 @@ export const PaymentStatusResponseSchema = {
           type: 'boolean',
           description: 'Whether the token supports EIP-2612 permit (gasless approval)',
         },
-        serverSignature: { type: 'string', description: 'Server EIP-712 signature' },
         orderId: { type: 'string', description: 'Merchant order identifier' },
         gatewayAddress: { type: 'string', description: 'Gateway contract address' },
         tokenDecimals: { type: 'integer', description: 'Token decimals' },
         recipientAddress: { type: 'string', description: 'Merchant recipient address' },
         merchantId: { type: 'string', description: 'Merchant identifier (bytes32)' },
-        deadline: { type: 'string', description: 'Signature deadline (unix timestamp)' },
-        escrowDuration: { type: 'string', description: 'Escrow duration in seconds' },
+        deadline: { type: 'string', description: 'Payment expiration timestamp (unix seconds)' },
         forwarderAddress: { type: 'string', description: 'Forwarder contract address' },
         successUrl: { type: 'string', description: 'Success redirect URL' },
         failUrl: { type: 'string', description: 'Fail redirect URL' },
@@ -318,14 +313,19 @@ export const GaslessResponseSchema = {
   type: 'object',
   properties: {
     success: { type: 'boolean', example: true },
-    status: {
-      type: 'string',
-      enum: ['submitted', 'pending'],
-      description: 'Relay submission status',
-    },
-    message: {
-      type: 'string',
-      description: 'Status message',
+    data: {
+      type: 'object',
+      properties: {
+        status: {
+          type: 'string',
+          enum: ['submitted', 'pending'],
+          description: 'Relay submission status',
+        },
+        message: {
+          type: 'string',
+          description: 'Status message',
+        },
+      },
     },
   },
 } as const;

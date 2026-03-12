@@ -108,6 +108,11 @@ const POLYGON_GAS_CONFIG = {
   maxFeePerGas: parseGwei('100'), // 100 gwei max
 };
 
+// Explicit gas limits so the tx never exceeds chain gas cap (e.g. 16777216 on some L2s).
+// Without these, viem may use estimated/default limits that exceed the cap and cause revert.
+const APPROVE_GAS_LIMIT = 150000n;
+const PAY_GAS_LIMIT = 500000n;
+
 interface Product {
   id: string;
   name: string;
@@ -268,7 +273,8 @@ export function PaymentModal({ product, onClose, onSuccess }: PaymentModalProps)
     }
   );
 
-  // Poll server for payment status (Contract = Source of Truth)
+  // Poll server for payment status (Contract = Source of Truth).
+  // After pay(), status becomes PAID (funds transferred directly to merchant wallet).
   const pollPaymentStatus = useCallback(
     async (paymentId: string): Promise<void> => {
       if (!serverConfig) {
@@ -282,10 +288,11 @@ export function PaymentModal({ product, onClose, onSuccess }: PaymentModalProps)
         const response = await getPaymentStatus(paymentId);
 
         if (response.success && response.data) {
-          if (response.data.status === 'FINALIZED') {
-            return;
+          const status = response.data.status.toUpperCase();
+          if (status === 'PAID') {
+            return; // Success - funds transferred to merchant
           }
-          if (response.data.status === 'FAILED' || response.data.status === 'failed') {
+          if (status === 'FAILED' || status === 'INVALID') {
             throw new Error('Payment failed on server');
           }
         }
@@ -335,6 +342,7 @@ export function PaymentModal({ product, onClose, onSuccess }: PaymentModalProps)
         abi: ERC20_ABI,
         functionName: 'approve',
         args: [serverConfig.gatewayAddress as Address, maxUint256],
+        gas: APPROVE_GAS_LIMIT,
         ...gasConfig,
       });
 
@@ -384,11 +392,12 @@ export function PaymentModal({ product, onClose, onSuccess }: PaymentModalProps)
           amount,
           serverConfig.recipientAddress as Address,
           serverConfig.merchantId as `0x${string}`,
-          BigInt(serverConfig.deadline ?? Math.floor(Date.now() / 1000) + 3600),
-          BigInt(serverConfig.escrowDuration ?? 86400),
+          BigInt(serverConfig.deadline ?? Math.floor(Date.now() / 1000) + 300),
+          BigInt(serverConfig.escrowDuration ?? 300),
           serverConfig.serverSignature as `0x${string}`,
           EMPTY_PERMIT,
         ],
+        gas: PAY_GAS_LIMIT,
         ...gasConfig,
       });
 
@@ -451,8 +460,8 @@ export function PaymentModal({ product, onClose, onSuccess }: PaymentModalProps)
           amount,
           serverConfig.recipientAddress as Address,
           serverConfig.merchantId as `0x${string}`,
-          BigInt(serverConfig.deadline ?? Math.floor(Date.now() / 1000) + 3600),
-          BigInt(serverConfig.escrowDuration ?? 86400),
+          BigInt(serverConfig.deadline ?? Math.floor(Date.now() / 1000) + 300),
+          BigInt(serverConfig.escrowDuration ?? 300),
           serverConfig.serverSignature as `0x${string}`,
           EMPTY_PERMIT,
         ],
@@ -524,7 +533,7 @@ export function PaymentModal({ product, onClose, onSuccess }: PaymentModalProps)
         throw new Error(submitResponse.message || 'Failed to submit gasless payment');
       }
 
-      // 6. Poll payment status until CONFIRMED
+      // 6. Poll payment status until PAID (funds transferred to merchant)
       await pollPaymentStatus(paymentId);
 
       // 7. Get final status for txHash

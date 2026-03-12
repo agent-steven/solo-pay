@@ -5,6 +5,7 @@ import { TokenService } from '../../services/token.service';
 import { ChainService } from '../../services/chain.service';
 import { createAuthMiddleware } from '../../middleware/auth.middleware';
 import { ErrorResponseSchema } from '../../docs/schemas';
+import { ErrorCodes } from '../../error-codes';
 
 export async function getMerchantRoute(
   app: FastifyInstance,
@@ -31,86 +32,91 @@ export async function getMerchantRoute(
             type: 'object',
             properties: {
               success: { type: 'boolean', example: true },
-              merchant: {
+              data: {
                 type: 'object',
                 properties: {
-                  id: { type: 'integer' },
-                  merchant_key: { type: 'string' },
-                  name: { type: 'string' },
-                  chain_id: { type: 'integer', nullable: true },
-                  chain: {
+                  merchant: {
                     type: 'object',
-                    nullable: true,
                     properties: {
                       id: { type: 'integer' },
-                      network_id: { type: 'integer' },
+                      merchant_key: { type: 'string' },
                       name: { type: 'string' },
-                      is_testnet: { type: 'boolean' },
-                    },
-                  },
-                  webhook_url: { type: 'string', nullable: true },
-                  public_key: {
-                    type: 'string',
-                    nullable: true,
-                    description:
-                      'Public key for client-side integration (pk_live_xxx or pk_test_xxx)',
-                  },
-                  is_enabled: { type: 'boolean' },
-                  created_at: { type: 'string', format: 'date-time' },
-                  updated_at: { type: 'string', format: 'date-time' },
-                  payment_methods: {
-                    type: 'array',
-                    items: {
-                      type: 'object',
-                      properties: {
-                        id: { type: 'integer' },
-                        is_enabled: { type: 'boolean' },
-                        created_at: { type: 'string', format: 'date-time' },
-                        updated_at: { type: 'string', format: 'date-time' },
-                        token: {
-                          type: 'object',
-                          properties: {
-                            id: { type: 'integer' },
-                            address: { type: 'string' },
-                            symbol: { type: 'string' },
-                            decimals: { type: 'integer' },
-                            chain_id: { type: 'integer' },
-                          },
+                      chain_id: { type: 'integer', nullable: true },
+                      chain: {
+                        type: 'object',
+                        nullable: true,
+                        properties: {
+                          id: { type: 'integer' },
+                          network_id: { type: 'integer' },
+                          name: { type: 'string' },
+                          is_testnet: { type: 'boolean' },
                         },
-                        chain: {
+                      },
+                      webhook_url: { type: 'string', nullable: true },
+                      public_key: {
+                        type: 'string',
+                        nullable: true,
+                        description:
+                          'Public key for client-side integration (pk_live_xxx or pk_test_xxx)',
+                      },
+                      is_enabled: { type: 'boolean' },
+                      created_at: { type: 'string', format: 'date-time' },
+                      updated_at: { type: 'string', format: 'date-time' },
+                      payment_methods: {
+                        type: 'array',
+                        items: {
                           type: 'object',
                           properties: {
                             id: { type: 'integer' },
-                            network_id: { type: 'integer' },
-                            name: { type: 'string' },
-                            is_testnet: { type: 'boolean' },
+                            is_enabled: { type: 'boolean' },
+                            created_at: { type: 'string', format: 'date-time' },
+                            updated_at: { type: 'string', format: 'date-time' },
+                            token: {
+                              type: 'object',
+                              properties: {
+                                id: { type: 'integer' },
+                                address: { type: 'string' },
+                                symbol: { type: 'string' },
+                                decimals: { type: 'integer' },
+                                chain_id: { type: 'integer' },
+                              },
+                            },
+                            chain: {
+                              type: 'object',
+                              properties: {
+                                id: { type: 'integer' },
+                                network_id: { type: 'integer' },
+                                name: { type: 'string' },
+                                is_testnet: { type: 'boolean' },
+                              },
+                            },
                           },
                         },
                       },
                     },
                   },
-                },
-              },
-              chainTokens: {
-                type: 'array',
-                description:
-                  'All chains with their tokens (for add payment method). Same format as GET /chains/tokens.',
-                items: {
-                  type: 'object',
-                  properties: {
-                    id: { type: 'integer' },
-                    network_id: { type: 'integer' },
-                    name: { type: 'string' },
-                    is_testnet: { type: 'boolean' },
-                    tokens: {
-                      type: 'array',
-                      items: {
-                        type: 'object',
-                        properties: {
-                          id: { type: 'integer' },
-                          address: { type: 'string' },
-                          symbol: { type: 'string' },
-                          decimals: { type: 'integer' },
+                  chainTokens: {
+                    type: 'array',
+                    description:
+                      'All chains with their tokens (for add payment method). Same format as GET /chains/tokens.',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'integer' },
+                        network_id: { type: 'integer' },
+                        name: { type: 'string' },
+                        is_testnet: { type: 'boolean' },
+                        tokens: {
+                          type: 'array',
+                          items: {
+                            type: 'object',
+                            properties: {
+                              id: { type: 'integer' },
+                              address: { type: 'string' },
+                              symbol: { type: 'string' },
+                              decimals: { type: 'integer' },
+                            },
+                          },
                         },
                       },
                     },
@@ -130,9 +136,9 @@ export async function getMerchantRoute(
         // Merchant is guaranteed to exist after auth middleware
         const merchant = request.merchant;
         if (!merchant) {
-          return reply.code(500).send({
-            code: 'INTERNAL_ERROR',
-            message: 'Authentication context is missing',
+          return reply.code(401).send({
+            code: ErrorCodes.UNAUTHORIZED,
+            message: 'Authentication required',
           });
         }
 
@@ -178,33 +184,35 @@ export async function getMerchantRoute(
         // Return merchant information with payment methods and chainTokens
         return reply.code(200).send({
           success: true,
-          merchant: {
-            id: merchant.id,
-            merchant_key: merchant.merchant_key,
-            name: merchant.name,
-            chain_id: merchant.chain_id,
-            chain: chain
-              ? {
-                  id: chain.id,
-                  network_id: chain.network_id,
-                  name: chain.name,
-                  is_testnet: chain.is_testnet,
-                }
-              : null,
-            webhook_url: merchant.webhook_url,
-            public_key: merchant.public_key ?? null,
-            is_enabled: merchant.is_enabled,
-            created_at: merchant.created_at.toISOString(),
-            updated_at: merchant.updated_at.toISOString(),
-            payment_methods: validPaymentMethods,
+          data: {
+            merchant: {
+              id: merchant.id,
+              merchant_key: merchant.merchant_key,
+              name: merchant.name,
+              chain_id: merchant.chain_id,
+              chain: chain
+                ? {
+                    id: chain.id,
+                    network_id: chain.network_id,
+                    name: chain.name,
+                    is_testnet: chain.is_testnet,
+                  }
+                : null,
+              webhook_url: merchant.webhook_url,
+              public_key: merchant.public_key ?? null,
+              is_enabled: merchant.is_enabled,
+              created_at: new Date(merchant.created_at).toISOString(),
+              updated_at: new Date(merchant.updated_at).toISOString(),
+              payment_methods: validPaymentMethods,
+            },
+            chainTokens,
           },
-          chainTokens,
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to get merchant';
         request.log.error(error, 'Failed to get merchant');
         return reply.code(500).send({
-          code: 'INTERNAL_ERROR',
+          code: ErrorCodes.INTERNAL_ERROR,
           message,
         });
       }

@@ -19,18 +19,11 @@ const GATEWAY_API_URL = `${GATEWAY_BASE}/api/v1`;
 /**
  * Webhook Monitor Integration Tests
  *
- * These tests verify the full payment lifecycle including:
+ * These tests verify the direct payment lifecycle including:
  *   1. Gateway creates payment (DB: CREATED)
- *   2. On-chain pay() → PaymentEscrowed event
- *   3. Webhook-manager detects on-chain status → DB: ESCROWED
- *   4. Gateway finalize API → submits finalize tx via relayer → DB: FINALIZE_SUBMITTED
- *   5. On-chain finalize() → PaymentFinalized event
- *   6. Webhook-manager detects → DB: FINALIZED
- *
- * And the cancel flow:
- *   3b. Gateway cancel API → submits cancel tx via relayer → DB: CANCEL_SUBMITTED
- *   4b. On-chain cancel() → PaymentCancelled event
- *   5b. Webhook-manager detects → DB: CANCELLED
+ *   2. On-chain pay() -> PaymentPaid event
+ *   3. Webhook-manager detects on-chain status -> DB: PAID
+ *   4. Funds go directly to recipient (no finalize/cancel steps)
  *
  * Prerequisites:
  *   - Hardhat node running (port 8545)
@@ -74,7 +67,7 @@ describe('Webhook Monitor Integration', () => {
     }
   });
 
-  // ── Helpers ──────────────────────────────────────────────────────────
+  // -- Helpers --
 
   async function checkBlockchain(): Promise<boolean> {
     try {
@@ -103,20 +96,21 @@ describe('Webhook Monitor Integration', () => {
 
   /**
    * Create a payment via gateway API and execute pay() on-chain.
-   * Uses the server signature and params from the gateway response directly.
+   * Uses the deadline and params from the gateway response directly.
+   * In direct payment model, funds go directly to recipient.
    */
   async function createAndPayOnChain(
     orderId: string,
     tokenAmount: bigint
   ): Promise<{ paymentHash: string }> {
-    // 1. Create payment via gateway API (returns server signature + all params)
+    // 1. Create payment via gateway API (returns all params)
     const client = createTestClient();
     const params = makeCreatePaymentParams(
       Number(tokenAmount / BigInt(10 ** token.decimals)),
       orderId
     );
     const createRes = await client.createPayment(params);
-    const paymentHash = createRes.paymentId;
+    const paymentHash = createRes.data.paymentId;
 
     // 2. Approve token and execute on-chain pay() using gateway response data
     await approveToken(token.address, gatewayAddress, tokenAmount, payerPrivateKey);
@@ -127,11 +121,9 @@ describe('Webhook Monitor Integration', () => {
       paymentHash,
       token.address,
       tokenAmount,
-      createRes.recipientAddress,
-      createRes.merchantId,
-      BigInt(createRes.deadline),
-      BigInt(createRes.escrowDuration),
-      createRes.serverSignature,
+      createRes.data.recipientAddress,
+      createRes.data.merchantId,
+      BigInt(createRes.data.deadline),
       ZERO_PERMIT
     );
     await tx.wait();
@@ -147,7 +139,7 @@ describe('Webhook Monitor Integration', () => {
     expectedStatus: string,
     timeoutMs: number = 30000,
     intervalMs: number = 1000
-  ): Promise<{ status: string; txHash?: string; releaseTxHash?: string }> {
+  ): Promise<{ status: string; txHash?: string }> {
     const startTime = Date.now();
 
     while (Date.now() - startTime < timeoutMs) {
@@ -158,12 +150,14 @@ describe('Webhook Monitor Integration', () => {
         });
         if (res.ok) {
           const body = (await res.json()) as {
-            status: string;
-            txHash?: string;
-            releaseTxHash?: string;
+            success: boolean;
+            data: {
+              status: string;
+              txHash?: string;
+            };
           };
-          if (body.status === expectedStatus) {
-            return body;
+          if (body.data.status === expectedStatus) {
+            return body.data;
           }
         }
       } catch {
@@ -181,153 +175,28 @@ describe('Webhook Monitor Integration', () => {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  // ── Tests ──────────────────────────────────────────────────────────
+  // -- Tests --
 
-  describe('ESCROWED detection', () => {
-    it('should detect on-chain PaymentEscrowed and update DB to ESCROWED', async () => {
+  describe('PAID detection', () => {
+    it('should detect on-chain PaymentPaid and update DB to PAID', async () => {
       if (!isReady) return;
 
-      const orderId = `WH_ESCROW_${Date.now()}`;
+      const orderId = `WH_PAID_${Date.now()}`;
       const amount = parseUnits('100', token.decimals);
 
       const { paymentHash } = await createAndPayOnChain(orderId, amount);
 
-      // Wait for webhook-manager to detect the on-chain Escrowed status
-      const result = await waitForDbStatus(paymentHash, 'ESCROWED', 30000);
-      expect(result.status).toBe('ESCROWED');
-      // txHash = escrow tx (pay)
+      // Wait for webhook-manager to detect the on-chain Paid status
+      const result = await waitForDbStatus(paymentHash, 'PAID', 30000);
+      expect(result.status).toBe('PAID');
+      // txHash = pay tx
       expect(result.txHash).toBeDefined();
       expect(result.txHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-      // No releaseTxHash for ESCROWED
-      expect(result.releaseTxHash).toBeUndefined();
     });
   });
 
-  describe('FINALIZED detection (full escrow → finalize flow)', () => {
-    it('should detect on-chain PaymentFinalized and update DB to FINALIZED', async () => {
-      if (!isReady) return;
-
-      const orderId = `WH_FINALIZE_${Date.now()}`;
-      const amount = parseUnits('100', token.decimals);
-
-      // 1. Pay on-chain
-      const { paymentHash } = await createAndPayOnChain(orderId, amount);
-
-      // 2. Wait for ESCROWED
-      await waitForDbStatus(paymentHash, 'ESCROWED', 30000);
-
-      // 3. Call gateway finalize API → gateway signs + submits tx via relayer
-      const finalizeRes = await fetch(`${GATEWAY_API_URL}/payments/${paymentHash}/finalize`, {
-        method: 'POST',
-        headers: {
-          'x-api-key': TEST_MERCHANT.apiKey,
-        },
-      });
-      expect(finalizeRes.ok).toBe(true);
-      const finalizeBody = (await finalizeRes.json()) as {
-        success: boolean;
-        data: { paymentId: string; relayRequestId: string; status: string };
-      };
-      expect(finalizeBody.success).toBe(true);
-
-      // 4. Wait for webhook-manager to detect FINALIZED (relayer submits tx automatically)
-      const result = await waitForDbStatus(paymentHash, 'FINALIZED', 30000);
-      expect(result.status).toBe('FINALIZED');
-    });
-
-    it('should record finalize txHash in DB', async () => {
-      if (!isReady) return;
-
-      const orderId = `WH_FIN_TX_${Date.now()}`;
-      const amount = parseUnits('50', token.decimals);
-
-      const { paymentHash } = await createAndPayOnChain(orderId, amount);
-      await waitForDbStatus(paymentHash, 'ESCROWED', 30000);
-
-      const finalizeRes = await fetch(`${GATEWAY_API_URL}/payments/${paymentHash}/finalize`, {
-        method: 'POST',
-        headers: { 'x-api-key': TEST_MERCHANT.apiKey },
-      });
-      expect(finalizeRes.ok).toBe(true);
-
-      const result = await waitForDbStatus(paymentHash, 'FINALIZED', 30000);
-      expect(result.status).toBe('FINALIZED');
-      // txHash = escrow tx (pay)
-      expect(result.txHash).toBeDefined();
-      expect(result.txHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-      // releaseTxHash = finalize tx (separate from escrow tx)
-      expect(result.releaseTxHash).toBeDefined();
-      expect(result.releaseTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-      expect(result.releaseTxHash).not.toBe(result.txHash);
-    });
-  });
-
-  describe('CANCELLED detection (full escrow → cancel flow)', () => {
-    it('should detect on-chain PaymentCancelled and update DB to CANCELLED', async () => {
-      if (!isReady) return;
-
-      const orderId = `WH_CANCEL_${Date.now()}`;
-      const amount = parseUnits('100', token.decimals);
-      const initialPayerBalance = await getTokenBalance(token.address, payerAddress);
-
-      // 1. Pay on-chain
-      const { paymentHash } = await createAndPayOnChain(orderId, amount);
-
-      // 2. Wait for ESCROWED
-      await waitForDbStatus(paymentHash, 'ESCROWED', 30000);
-
-      // 3. Call gateway cancel API → gateway signs + submits tx via relayer
-      const cancelRes = await fetch(`${GATEWAY_API_URL}/payments/${paymentHash}/cancel`, {
-        method: 'POST',
-        headers: {
-          'x-api-key': TEST_MERCHANT.apiKey,
-        },
-      });
-      expect(cancelRes.ok).toBe(true);
-      const cancelBody = (await cancelRes.json()) as {
-        success: boolean;
-        data: { paymentId: string; relayRequestId: string; status: string };
-      };
-      expect(cancelBody.success).toBe(true);
-
-      // 4. Wait for webhook-manager to detect CANCELLED (relayer submits tx automatically)
-      const result = await waitForDbStatus(paymentHash, 'CANCELLED', 30000);
-      expect(result.status).toBe('CANCELLED');
-
-      // 5. Verify funds returned to payer
-      const finalPayerBalance = await getTokenBalance(token.address, payerAddress);
-      expect(finalPayerBalance).toBe(initialPayerBalance);
-    });
-
-    it('should record cancel txHash in DB', async () => {
-      if (!isReady) return;
-
-      const orderId = `WH_CAN_TX_${Date.now()}`;
-      const amount = parseUnits('50', token.decimals);
-
-      const { paymentHash } = await createAndPayOnChain(orderId, amount);
-      await waitForDbStatus(paymentHash, 'ESCROWED', 30000);
-
-      const cancelRes = await fetch(`${GATEWAY_API_URL}/payments/${paymentHash}/cancel`, {
-        method: 'POST',
-        headers: { 'x-api-key': TEST_MERCHANT.apiKey },
-      });
-      expect(cancelRes.ok).toBe(true);
-
-      const result = await waitForDbStatus(paymentHash, 'CANCELLED', 30000);
-      expect(result.status).toBe('CANCELLED');
-      // txHash = escrow tx (pay)
-      expect(result.txHash).toBeDefined();
-      expect(result.txHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-      // releaseTxHash = cancel tx (separate from escrow tx)
-      expect(result.releaseTxHash).toBeDefined();
-      expect(result.releaseTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-      expect(result.releaseTxHash).not.toBe(result.txHash);
-    });
-  });
-
-  describe('Full lifecycle: escrow → finalize → verify balances', () => {
-    it('should correctly transfer funds through full escrow lifecycle', async () => {
+  describe('Full lifecycle: pay -> verify balances', () => {
+    it('should correctly transfer funds through direct payment lifecycle', async () => {
       if (!isReady) return;
 
       const orderId = `WH_LIFECYCLE_${Date.now()}`;
@@ -336,29 +205,19 @@ describe('Webhook Monitor Integration', () => {
       const initialPayerBalance = await getTokenBalance(token.address, payerAddress);
       const initialRecipientBalance = await getTokenBalance(token.address, recipientAddress);
 
-      // 1. Pay → ESCROWED
+      // 1. Pay -> PAID (funds go directly to recipient)
       const { paymentHash } = await createAndPayOnChain(orderId, amount);
-      await waitForDbStatus(paymentHash, 'ESCROWED', 30000);
+      await waitForDbStatus(paymentHash, 'PAID', 30000);
 
       // Payer balance decreased
-      const afterEscrowPayer = await getTokenBalance(token.address, payerAddress);
-      expect(afterEscrowPayer).toBe(initialPayerBalance - amount);
+      const finalPayerBalance = await getTokenBalance(token.address, payerAddress);
+      expect(finalPayerBalance).toBe(initialPayerBalance - amount);
 
-      // 2. Finalize → FINALIZED (gateway submits tx via relayer)
-      const finalizeRes = await fetch(`${GATEWAY_API_URL}/payments/${paymentHash}/finalize`, {
-        method: 'POST',
-        headers: { 'x-api-key': TEST_MERCHANT.apiKey },
-      });
-      expect(finalizeRes.ok).toBe(true);
-
-      await waitForDbStatus(paymentHash, 'FINALIZED', 30000);
-
-      // 3. Verify recipient received funds (amount minus fee if any)
+      // 2. Verify recipient received funds directly (no finalize needed)
       const finalRecipientBalance = await getTokenBalance(token.address, recipientAddress);
       expect(finalRecipientBalance).toBeGreaterThan(initialRecipientBalance);
 
       // Payer balance still decreased
-      const finalPayerBalance = await getTokenBalance(token.address, payerAddress);
       expect(finalPayerBalance).toBe(initialPayerBalance - amount);
     });
   });

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { Payment } from '@solo-pay/database';
 import type { Merchant } from '@solo-pay/database';
 import { Decimal } from '@solo-pay/database';
-import { resolveWebhookUrl, buildPaymentConfirmedBody } from '../webhook-queue.service';
+import { resolveWebhookUrl, buildPaymentWebhookBody } from '../webhook-queue.service';
 
 describe('webhook-queue.service', () => {
   const basePayment = {
@@ -14,7 +14,7 @@ describe('webhook-queue.service', () => {
     token_decimals: 6,
     token_symbol: 'USDC',
     network_id: 31337,
-    status: 'FINALIZED' as const,
+    status: 'PAID' as const,
     tx_hash: '0xtx',
     expires_at: new Date(),
     confirmed_at: new Date('2024-01-26T12:00:00.000Z'),
@@ -26,6 +26,9 @@ describe('webhook-queue.service', () => {
     payer_address: '0xpayer',
     created_at: new Date(),
     updated_at: new Date(),
+    currency_code: null,
+    fiat_amount: null,
+    token_price: null,
   } as Payment;
 
   const baseMerchant = {
@@ -70,28 +73,28 @@ describe('webhook-queue.service', () => {
     });
   });
 
-  describe('buildPaymentConfirmedBody', () => {
+  describe('buildPaymentWebhookBody', () => {
     it('builds body with all required fields', () => {
-      const body = buildPaymentConfirmedBody(basePayment);
+      const body = buildPaymentWebhookBody(basePayment);
       expect(body.paymentId).toBe('0xabc');
       expect(body.orderId).toBe('order-1');
-      expect(body.status).toBe('FINALIZED');
+      expect(body.status).toBe('PAID');
       expect(body.txHash).toBe('0xtx');
       expect(body.amount).toBe('1000000');
       expect(body.tokenSymbol).toBe('USDC');
-      expect(body.confirmedAt).toBe('2024-01-26T12:00:00.000Z');
+      expect(body.paidAt).toBe('2024-01-26T12:00:00.000Z');
     });
 
     it('uses null for orderId when payment.order_id is null', () => {
       const payment = { ...basePayment, order_id: null };
-      const body = buildPaymentConfirmedBody(payment);
+      const body = buildPaymentWebhookBody(payment);
       expect(body.orderId).toBeNull();
     });
 
-    it('returns undefined confirmedAt when confirmed_at is null', () => {
+    it('returns undefined paidAt when confirmed_at is null', () => {
       const payment = { ...basePayment, confirmed_at: null };
-      const body = buildPaymentConfirmedBody(payment);
-      expect(body.confirmedAt).toBeUndefined();
+      const body = buildPaymentWebhookBody(payment);
+      expect(body.paidAt).toBeUndefined();
     });
   });
 });

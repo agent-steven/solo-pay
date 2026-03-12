@@ -11,14 +11,15 @@ Webhook payload의 내용을 그대로 신뢰하지 마세요. 반드시 API를 
 :::
 
 ```bash
-curl https://pay-api.staging.sut.com/api/v1/payments/0xabc123... \
-  -H "x-public-key: pk_test_xxxxx"
+curl https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123... \
+  -H "x-public-key: pk_xxxxx"
 ```
 
 **검증 체크리스트**
 
-- [ ] `status === 'ESCROWED'` 또는 `status === 'FINALIZED'` 확인 (결제 성공)
-- [ ] `amount`가 주문 금액과 일치 확인
+- [ ] `status === 'PAID'` 확인 (결제 성공)
+- [ ] `amount`가 **자사 주문 DB에 저장된 기대 금액**과 일치 확인 (위젯은 클라이언트에서 실행되므로 금액이 변조될 수 있음)
+- [ ] `tokenAddress`가 기대한 토큰 컨트랙트 주소와 일치 확인
 - [ ] `orderId`가 DB에 저장된 orderId와 일치 확인
 - [ ] 동일 `paymentId`의 중복 처리 방지
 

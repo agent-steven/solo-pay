@@ -244,7 +244,7 @@ export function usePermit({
         chainId
       );
 
-      const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
+      const deadline = BigInt(Math.floor(Date.now() / 1000) + 600);
 
       const domain = {
         name: tokenName as string,

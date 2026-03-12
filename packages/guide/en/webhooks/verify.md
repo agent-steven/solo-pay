@@ -11,14 +11,15 @@ Do not trust Webhook payload contents directly. Always re-confirm the actual pay
 :::
 
 ```bash
-curl https://pay-api.staging.sut.com/api/v1/payments/0xabc123... \
-  -H "x-public-key: pk_test_xxxxx"
+curl https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123... \
+  -H "x-public-key: pk_xxxxx"
 ```
 
 **Verification Checklist**
 
-- [ ] Confirm `status === 'ESCROWED'` or `status === 'FINALIZED'` (payment success)
-- [ ] Confirm `amount` matches order amount
+- [ ] Confirm `status === 'PAID'` (payment success)
+- [ ] Confirm `amount` matches the expected amount **in your order database** (the widget runs client-side and the amount could be tampered with)
+- [ ] Confirm `tokenAddress` matches the expected token contract address
 - [ ] Confirm `orderId` matches orderId stored in DB
 - [ ] Prevent duplicate processing for the same `paymentId`
 

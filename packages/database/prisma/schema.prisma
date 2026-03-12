@@ -13,15 +13,12 @@ datasource db {
 
 enum PaymentStatus {
   CREATED
-  ESCROWED
-  FINALIZE_SUBMITTED
-  FINALIZED
-  CANCEL_SUBMITTED
-  CANCELLED
+  PAID
   REFUND_SUBMITTED
   REFUNDED
   EXPIRED
   FAILED
+  INVALID
 }
 
 enum RelayStatus {
@@ -33,15 +30,12 @@ enum RelayStatus {
 
 enum EventType {
   CREATED
-  ESCROWED
-  FINALIZE_SUBMITTED
-  FINALIZED
-  CANCEL_SUBMITTED
-  CANCELLED
+  PAID
   REFUND_SUBMITTED
   REFUNDED
   EXPIRED
   FAILED
+  INVALID
 }
 
 enum RefundStatus {
@@ -97,7 +91,6 @@ model Merchant {
   public_key_hash   String?   @unique @db.VarChar(64) // SHA-256 hash of public_key (same pattern as api_key_hash)
   webhook_url       String?   @db.VarChar(500)
   recipient_address String?   @db.VarChar(42) // 0x... Ethereum address
-  escrow_duration   Int? // escrow duration in seconds; null = use DEFAULT_ESCROW_DURATION env var
   is_enabled        Boolean   @default(true)
   is_deleted        Boolean   @default(false)
   deleted_at        DateTime?
@@ -132,8 +125,7 @@ model Payment {
   token_symbol      String        @db.VarChar(20) // snapshot
   network_id        Int // snapshot of chain's network_id
   status            PaymentStatus @default(CREATED)
-  tx_hash           String?       @db.VarChar(66) // escrow tx (pay() transaction)
-  release_tx_hash   String?       @db.VarChar(66) // finalize/cancel tx (escrow release)
+  tx_hash           String?       @db.VarChar(66) // pay() transaction hash
   expires_at        DateTime
   confirmed_at      DateTime?
   order_id          String?       @db.VarChar(255) // merchant order ID (client-side integration)
@@ -142,9 +134,8 @@ model Payment {
   webhook_url       String?       @db.VarChar(500) // per-payment webhook (fallback: merchant.webhook_url)
   origin            String?       @db.VarChar(500) // request origin for domain verification audit
   payer_address     String?       @db.VarChar(42) // payer wallet address
-  escrow_deadline   DateTime? // escrow expiration (set when ESCROWED)
-  finalized_at      DateTime? // finalization timestamp (set when FINALIZED)
-  cancelled_at      DateTime? // cancellation timestamp (set when CANCELLED)
+  recipient_address String?       @db.VarChar(42) // merchant recipient address snapshot at creation
+  token_address     String?       @db.VarChar(42) // token contract address snapshot (on-chain validated)
   currency_code     String?       @db.VarChar(10) // fiat currency code (e.g., USD, KRW); null = direct token amount
   fiat_amount       Decimal?      @db.Decimal(20, 8) // original fiat amount before conversion
   token_price       Decimal?      @db.Decimal(20, 8) // token price at creation time
@@ -154,7 +145,7 @@ model Payment {
   @@unique([order_id, merchant_id])
   @@index([merchant_id])
   @@index([status])
-  @@index([status, escrow_deadline])
+  @@index([status, created_at])
   @@map("payments")
 }
 

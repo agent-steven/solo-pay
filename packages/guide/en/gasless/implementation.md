@@ -29,10 +29,10 @@ If you need a custom flow instead of the widget, follow the steps below. All ste
 Call `POST /payments` with the `x-public-key` header. This can be called directly from the browser.
 
 ```typescript
-const response = await fetch('https://pay-api.staging.sut.com/api/v1/payments', {
+const response = await fetch('https://gateway.dev.solonetwork.io/api/v1/payments', {
   method: 'POST',
   headers: {
-    'x-public-key': 'pk_test_xxxxx',
+    'x-public-key': 'pk_xxxxx',
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
@@ -44,8 +44,8 @@ const response = await fetch('https://pay-api.staging.sut.com/api/v1/payments', 
   }),
 });
 
-const payment = await response.json();
-// payment contains: paymentId, forwarderAddress, gatewayAddress, amount, serverSignature, ...
+const { data: payment } = await response.json();
+// payment contains: paymentId, forwarderAddress, gatewayAddress, amount, deadline, ...
 ```
 
 ::: warning Check forwarderAddress
@@ -105,7 +105,7 @@ const nonce = await publicClient.readContract({
   args: [userAddress],
 });
 
-// Build Forward Request (PaymentGateway.pay — deadline/escrowDuration from API response)
+// Build Forward Request (PaymentGateway.pay — deadline from API response)
 const forwardRequest = {
   from: userAddress,
   to: gatewayAddress,
@@ -123,8 +123,6 @@ const forwardRequest = {
       recipientAddress,
       merchantId,
       BigInt(deadline), // from payment.deadline (API)
-      BigInt(escrowDuration), // from payment.escrowDuration (API)
-      serverSignature,
       permitData, // EIP-2612 permit, or zero permit { deadline: 0, v: 0, r: '0x00...', s: '0x00...' }
     ],
   }),
@@ -156,7 +154,7 @@ const signature = await signTypedDataAsync({
 
 ::: warning Important
 Signing is NOT a transaction, so **no gas fees are charged**.
-The `pay` function requires `deadline`, `escrowDuration`, and `serverSignature` from the API response; use a zero permit when not using EIP-2612.
+The `pay` function requires `deadline` from the API response; use a zero permit when not using EIP-2612.
 :::
 
 ## Step 4: Submit Gasless Request
@@ -165,11 +163,11 @@ The `pay` function requires `deadline`, `escrowDuration`, and `serverSignature` 
 
 ```typescript
 const result = await fetch(
-  `https://pay-api.staging.sut.com/api/v1/payments/${payment.paymentId}/relay`,
+  `https://gateway.dev.solonetwork.io/api/v1/payments/${payment.paymentId}/relay`,
   {
     method: 'POST',
     headers: {
-      'x-public-key': 'pk_test_xxxxx',
+      'x-public-key': 'pk_xxxxx',
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -195,16 +193,19 @@ const result = await fetch(
 ```typescript
 // Relay status (by paymentId)
 const relayStatus = await fetch(
-  `https://pay-api.staging.sut.com/api/v1/payments/${paymentId}/relay`,
-  { headers: { 'x-public-key': 'pk_test_xxxxx' } }
+  `https://gateway.dev.solonetwork.io/api/v1/payments/${paymentId}/relay`,
+  { headers: { 'x-public-key': 'pk_xxxxx' } }
 ).then((r) => r.json());
 // relayStatus.data.status: 'QUEUED' | 'SUBMITTED' | 'CONFIRMED' | 'FAILED'
 
 // Payment status
-const paymentStatus = await fetch(`https://pay-api.staging.sut.com/api/v1/payments/${paymentId}`, {
-  headers: { 'x-public-key': 'pk_test_xxxxx' },
-}).then((r) => r.json());
-// paymentStatus.data.status: 'CREATED' | 'ESCROWED' | 'FINALIZE_SUBMITTED' | 'FINALIZED' | 'CANCEL_SUBMITTED' | 'CANCELLED' | 'REFUND_SUBMITTED' | 'REFUNDED' | 'EXPIRED' | 'FAILED'
+const paymentStatus = await fetch(
+  `https://gateway.dev.solonetwork.io/api/v1/payments/${paymentId}`,
+  {
+    headers: { 'x-public-key': 'pk_xxxxx' },
+  }
+).then((r) => r.json());
+// paymentStatus.data.status: 'CREATED' | 'PAID' | 'REFUND_SUBMITTED' | 'REFUNDED' | 'INVALID' | 'EXPIRED' | 'FAILED'
 ```
 
 ## Full Example (React + wagmi)
@@ -216,7 +217,7 @@ function GaslessPayment({ payment }) {
   const { signTypedDataAsync } = useSignTypedData();
 
   const { paymentId, forwarderAddress, gatewayAddress, amount, tokenAddress,
-          recipientAddress, merchantId, deadline, escrowDuration, serverSignature, chainId } = payment;
+          recipientAddress, merchantId, deadline, chainId } = payment;
 
   const handleGaslessPayment = async () => {
     const nonce = await publicClient.readContract({
@@ -225,7 +226,6 @@ function GaslessPayment({ payment }) {
     });
 
     const payDeadline = BigInt(deadline);
-    const payEscrowDuration = BigInt(escrowDuration);
     const zeroPermit = { deadline: 0, v: 0, r: '0x0000000000000000000000000000000000000000000000000000000000000000' as const, s: '0x0000000000000000000000000000000000000000000000000000000000000000' as const };
 
     const forwardRequest = {
@@ -233,7 +233,7 @@ function GaslessPayment({ payment }) {
       deadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
       data: encodeFunctionData({
         abi: PaymentGatewayABI, functionName: 'pay',
-        args: [paymentId, tokenAddress, BigInt(amount), recipientAddress, merchantId, payDeadline, payEscrowDuration, serverSignature, zeroPermit],
+        args: [paymentId, tokenAddress, BigInt(amount), recipientAddress, merchantId, payDeadline, zeroPermit],
       }),
     };
 
@@ -251,10 +251,10 @@ function GaslessPayment({ payment }) {
     });
 
     const result = await fetch(
-      `https://pay-api.staging.sut.com/api/v1/payments/${paymentId}/relay`,
+      `https://gateway.dev.solonetwork.io/api/v1/payments/${paymentId}/relay`,
       {
         method: 'POST',
-        headers: { 'x-public-key': 'pk_test_xxxxx', 'Content-Type': 'application/json' },
+        headers: { 'x-public-key': 'pk_xxxxx', 'Content-Type': 'application/json' },
         body: JSON.stringify({
           paymentId, forwarderAddress,
           forwardRequest: {
@@ -277,13 +277,13 @@ function GaslessPayment({ payment }) {
 
 ## Error Handling
 
-| Error Code               | Cause                                                           | Resolution                                                         |
-| ------------------------ | --------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `INVALID_SIGNATURE`      | Invalid signature format                                        | Ensure signature is a hex string starting with `0x`                |
-| `INVALID_PAYMENT_STATUS` | Payment in terminal state (e.g. ESCROWED, FINALIZED, CANCELLED) | Only send relay when status is CREATED; prevent duplicate requests |
-| `PAYMENT_EXPIRED`        | Payment expired                                                 | Create a new payment and retry                                     |
-| `RELAYER_NOT_CONFIGURED` | No Relayer for this chain                                       | Verify supported chains                                            |
-| `VALIDATION_ERROR`       | Input validation failed                                         | Verify forwardRequest amount matches payment amount                |
+| Error Code               | Cause                                                         | Resolution                                                         |
+| ------------------------ | ------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `INVALID_SIGNATURE`      | Invalid signature format                                      | Ensure signature is a hex string starting with `0x`                |
+| `INVALID_PAYMENT_STATUS` | Payment in terminal state (e.g. PAID, REFUNDED, EXPIRED etc.) | Only send relay when status is CREATED; prevent duplicate requests |
+| `PAYMENT_EXPIRED`        | Payment expired                                               | Create a new payment and retry                                     |
+| `RELAYER_NOT_CONFIGURED` | No Relayer for this chain                                     | Verify supported chains                                            |
+| `VALIDATION_ERROR`       | Input validation failed                                       | Verify forwardRequest amount matches payment amount                |
 
 ## Next Steps
 

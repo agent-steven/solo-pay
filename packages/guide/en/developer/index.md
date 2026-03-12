@@ -2,33 +2,18 @@
 
 Technical documentation for integrating SoloPay into your service.
 
+## Overview
+
+- [Introduction](/en/developer/introduction) - What is SoloPay, supported networks, prerequisites
+
 ## Getting Started
 
 - [Quick Start](/en/developer/quick-start) - First payment in 5 minutes
-- [Service Overview](/en/developer/introduction) - System features and supported assets
-- [How Payments Work](/en/developer/how-it-works) - Payment pipeline and gasless concepts
-- [Client-Side Integration](/en/developer/client-side) - Redirect-based payment UI guide
-- [Testing & QA](/en/developer/testing) - Test cases and QA procedures
-- [FAQ & Troubleshooting](/en/developer/troubleshooting) - Common errors and solutions
+- [Widget Integration](/en/widget/) - widget-js / widget-react usage and callback handling
+- [Important Notes](/en/developer/important-notes) - Essential considerations for integration
 
 ## Detailed Features
 
-- [Create Payment](/en/payments/create) - Payment API parameters in detail
-- [Payment Status](/en/payments/status) - Poll-based status queries
-- [Payment History](/en/payments/history) - Payment history API
-- [Finalize & Cancel](/en/payments/finalize) - Release or cancel escrowed payments
-- [Refunds](/en/payments/refunds) - Refund finalized payments (POST /refunds)
-- [Webhook Setup](/en/webhooks/) - Payment notification setup
-- [Signature Verification](/en/webhooks/verify) - Verify webhook signatures
-- [Event Details](/en/webhooks/events) - payment.escrowed, payment.finalized, payment.cancelled
-- [API Authentication](/en/developer/authentication) - API key issuance and authentication
-
-## Libraries
-
-- [Widget Integration](/en/widget/) - widget-js / widget-react usage
-- [Smart Contracts](/en/developer/smart-contracts) - Contract addresses and ABI
-
-## API Reference
-
-- [Full API Spec](/en/api/) - Complete REST API specification
-- [Error Codes](/en/api/errors) - API status codes and causes
+- [Payments](/en/payments/) - Create, status, refunds
+- [Merchant](/en/merchant/) - Registration, API authentication, payment method management
+- [Webhooks](/en/webhooks/) - Event reception and signature verification

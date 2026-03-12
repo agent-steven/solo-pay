@@ -157,11 +157,11 @@ describe('GET /merchant', () => {
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
     expect(body.success).toBe(true);
-    expect(body.merchant).toBeDefined();
-    expect(body.merchant.id).toBe(1);
-    expect(body.merchant.merchant_key).toBe('merchant_demo_001');
-    expect(body.chainTokens).toBeDefined();
-    expect(Array.isArray(body.chainTokens)).toBe(true);
+    expect(body.data.merchant).toBeDefined();
+    expect(body.data.merchant.id).toBe(1);
+    expect(body.data.merchant.merchant_key).toBe('merchant_demo_001');
+    expect(body.data.chainTokens).toBeDefined();
+    expect(Array.isArray(body.data.chainTokens)).toBe(true);
   });
 
   it('returns chainTokens with correct format (id, network_id, name, is_testnet, tokens)', async () => {
@@ -172,9 +172,9 @@ describe('GET /merchant', () => {
     });
 
     const body = JSON.parse(response.body);
-    expect(body.chainTokens.length).toBeGreaterThanOrEqual(1);
+    expect(body.data.chainTokens.length).toBeGreaterThanOrEqual(1);
 
-    for (const chain of body.chainTokens) {
+    for (const chain of body.data.chainTokens) {
       expect(chain).toHaveProperty('id');
       expect(chain).toHaveProperty('network_id');
       expect(chain).toHaveProperty('name');

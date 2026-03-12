@@ -1,190 +1,270 @@
+import { useRef } from 'react';
+import { motion } from 'framer-motion';
+import { useGSAP } from '@gsap/react';
+import gsap from 'gsap';
 import { useLocale } from '../../context/LocaleContext';
+import { type PaymentProgressState } from '../../hooks/useGaslessPayment';
+import { LetterGlitch, AsciiProgressBar, DotFlowLoader } from '../ui/processing-card';
+import { TechScrambleButton } from '../ui/tech-scramble-button';
 
 type StepStatus = 'waiting' | 'processing' | 'completed';
 
-interface StepProps {
-  label: string;
-  status: StepStatus;
-}
+const PROGRESS_KEYS: Record<
+  PaymentProgressState,
+  | 'progress.SIGNING_PERMIT'
+  | 'progress.SIGNING_FORWARD'
+  | 'progress.RELAYING'
+  | 'progress.CONFIRMING'
+  | 'progress.PAID'
+  | 'progress.ERROR'
+> = {
+  INIT: 'progress.SIGNING_PERMIT',
+  CHECKING_ALLOWANCE: 'progress.SIGNING_PERMIT',
+  SIGNING_PERMIT: 'progress.SIGNING_PERMIT',
+  SIGNING_FORWARD: 'progress.SIGNING_FORWARD',
+  RELAYING: 'progress.RELAYING',
+  CONFIRMING: 'progress.CONFIRMING',
+  PAID: 'progress.PAID',
+  ERROR: 'progress.ERROR',
+};
 
 interface PaymentProcessingProps {
   amount: string;
   token: string;
-  /** Retry payment after error */
+  progressState?: PaymentProgressState;
   onRetry?: () => void;
-  /** Cancel and redirect to failUrl */
   onCancel?: () => void;
-  /** Whether payment transaction is pending */
-  isPending?: boolean;
-  /** Error message from payment */
   error?: string;
 }
 
-function StepIndicator({ status }: { status: StepStatus }) {
-  if (status === 'completed') {
-    return (
-      <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center shrink-0">
-        <svg
-          className="w-3.5 h-3.5 text-white"
-          fill="none"
-          viewBox="0 0 24 24"
-          strokeWidth={2.5}
-          stroke="currentColor"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-        </svg>
-      </div>
-    );
+function getProgressPercentage(state: PaymentProgressState, hasError: boolean): number {
+  if (hasError) return 100;
+  switch (state) {
+    case 'INIT':
+    case 'CHECKING_ALLOWANCE':
+    case 'SIGNING_PERMIT':
+    case 'SIGNING_FORWARD':
+      return 33;
+    case 'RELAYING':
+      return 66;
+    case 'CONFIRMING':
+      return 80;
+    case 'PAID':
+      return 100;
+    case 'ERROR':
+      return 100;
+    default:
+      return 33;
   }
-
-  if (status === 'processing') {
-    return (
-      <div className="w-6 h-6 rounded-full border-2 border-blue-100 border-t-blue-600 animate-spin shrink-0" />
-    );
-  }
-
-  return <div className="w-6 h-6 rounded-full border-2 border-gray-300 shrink-0" />;
 }
 
-function StepItem({ label, status }: StepProps) {
-  return (
-    <div className="flex items-center gap-2 sm:gap-3">
-      <StepIndicator status={status} />
-      <span
-        className={`text-xs sm:text-sm ${
-          status === 'processing'
-            ? 'text-blue-700 font-semibold'
-            : status === 'completed'
-              ? 'text-green-700 font-medium'
-              : 'text-gray-400'
-        }`}
-      >
-        {label}
-      </span>
-    </div>
-  );
+function getStepStatus(
+  state: PaymentProgressState,
+  targetStates: PaymentProgressState[],
+  pastStates: PaymentProgressState[],
+  error?: string
+): StepStatus {
+  if (error || state === 'ERROR') return 'completed';
+  if (targetStates.includes(state)) return 'processing';
+  if (pastStates.includes(state)) return 'completed';
+  return 'waiting';
 }
 
 export default function PaymentProcessing({
   amount,
   token,
+  progressState = 'INIT',
   onRetry,
   onCancel,
-  isPending = true,
   error,
 }: PaymentProcessingProps) {
   const { t } = useLocale();
+  const paymentStatusRef = useRef<HTMLDivElement>(null);
 
-  // Note: Auto-advance to payment-complete is handled in PaymentStep.tsx
-  // based on actual transaction confirmation (txHash && !isConfirming)
+  const signingStatus = getStepStatus(
+    progressState,
+    ['INIT', 'CHECKING_ALLOWANCE', 'SIGNING_PERMIT', 'SIGNING_FORWARD'],
+    ['RELAYING', 'CONFIRMING', 'PAID'],
+    error
+  );
+  const relayingStatus = getStepStatus(progressState, ['RELAYING'], ['CONFIRMING', 'PAID'], error);
+  const confirmingStatus = getStepStatus(progressState, ['CONFIRMING'], ['PAID'], error);
 
-  const getStepStatus = (step: 'requesting' | 'signing' | 'confirming'): StepStatus => {
-    if (error) {
-      if (step === 'requesting') return 'completed';
-      return 'waiting';
-    }
-    if (isPending) {
-      if (step === 'requesting') return 'completed';
-      if (step === 'signing') return 'processing';
-      return 'waiting';
-    }
-    return 'completed';
-  };
+  const percentage = getProgressPercentage(progressState, !!error);
+  const isSuccess = progressState === 'PAID' && !error;
 
-  return (
-    <div className="w-full p-4 sm:p-8">
-      {/* Title */}
-      <div className="text-center mb-6 sm:mb-8">
-        <h1 className="text-base sm:text-lg font-bold text-gray-900">{t('processing.title')}</h1>
-        <p className="text-xs sm:text-sm text-gray-500 mt-1">{t('processing.pleaseWait')}</p>
-      </div>
+  // Animate status rows
+  const stepIndex =
+    signingStatus === 'processing'
+      ? 0
+      : relayingStatus === 'processing'
+        ? 1
+        : confirmingStatus === 'processing'
+          ? 2
+          : isSuccess
+            ? 2
+            : 0;
 
-      {!error && (
-        <>
-          {/* Spinner */}
-          <div className="flex justify-center mb-4 sm:mb-6">
-            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-4 border-blue-100 border-t-blue-600 animate-spin" />
-          </div>
+  useGSAP(
+    () => {
+      if (!paymentStatusRef.current) return;
+      const rows = paymentStatusRef.current.querySelectorAll('.status-row');
+      rows.forEach((row, index) => {
+        if (index <= stepIndex) {
+          if (index === stepIndex) {
+            gsap.fromTo(
+              row,
+              { y: 10, opacity: 0, filter: 'blur(10px)' },
+              { y: 0, opacity: 1, filter: 'blur(0px)', duration: 0.5, ease: 'power2.out' }
+            );
+          } else {
+            gsap.set(row, { y: 0, opacity: 1, filter: 'blur(0px)' });
+          }
+        } else {
+          gsap.set(row, { y: 0, opacity: 0.3, filter: 'blur(0px)' });
+        }
+      });
+    },
+    { dependencies: [stepIndex], scope: paymentStatusRef }
+  );
 
-          {/* Amount */}
-          <div className="text-center mb-6 sm:mb-8">
-            <p className="text-xs text-gray-500 mb-1">{t('processing.paymentAmount')}</p>
-            <p className="text-xl sm:text-2xl font-bold text-gray-900">
-              {amount} {token}
-            </p>
-          </div>
-
-          {/* Progress Steps */}
-          <div className="rounded-xl bg-gray-50 border border-gray-100 p-4 sm:p-5">
-            <h2 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3 sm:mb-4">
-              {t('processing.paymentStatus')}
-            </h2>
-            <div className="space-y-3 sm:space-y-4">
-              <StepItem
-                label={t('processing.requestingPayment')}
-                status={getStepStatus('requesting')}
-              />
-              <StepItem
-                label={t('processing.signingTransaction')}
-                status={getStepStatus('signing')}
-              />
-              <StepItem
-                label={t('processing.confirmingPayment')}
-                status={getStepStatus('confirming')}
-              />
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Error Message */}
-      {error && (
-        <div className="mb-4 sm:mb-6 p-4 rounded-xl bg-red-50 border border-red-200">
-          <div className="flex items-start gap-2">
-            <svg
-              className="w-5 h-5 text-red-500 shrink-0 mt-0.5"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={2}
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"
-              />
-            </svg>
-            <div>
-              <p className="text-sm font-medium text-red-700">{t('error.transactionFailed')}</p>
-              <p className="text-xs text-red-600 mt-1">{error}</p>
-            </div>
-          </div>
+  if (error) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="flex flex-col items-center animate-shake"
+      >
+        <div className="w-16 h-16 bg-[var(--color-brand-error)]/10 text-[var(--color-brand-error)] rounded-full flex items-center justify-center mb-6 text-3xl">
+          &#10005;
         </div>
-      )}
-
-      {/* Action Buttons - shown on error */}
-      {error && (
-        <div className="mt-4 sm:mt-6 space-y-3">
+        <h2 className="relative z-10 text-2xl md:text-3xl bg-clip-text text-transparent bg-gradient-to-b from-[var(--color-brand-error)] to-red-950 text-center font-extrabold antialiased mb-2 tracking-tight">
+          {t('error.transactionFailed')}
+        </h2>
+        <p className="text-center text-sm text-[var(--color-brand-gray)] mb-4 sm:mb-8">{error}</p>
+        <div className="w-full space-y-3">
           {onRetry && (
-            <button
-              type="button"
-              className="w-full py-3 sm:py-3.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-500 transition-colors cursor-pointer"
+            <TechScrambleButton
+              text={t('common.tryAgain').toUpperCase()}
               onClick={onRetry}
-            >
-              {t('common.tryAgain')}
-            </button>
+              delay={0.2}
+              containerClassName="w-full"
+              gradientClassName="via-red-500/60"
+              buttonClassName="bg-zinc-950 hover:bg-gradient-to-r hover:from-zinc-950 hover:to-red-950/40 text-red-500 hover:text-red-400"
+            />
           )}
           {onCancel && (
-            <button
-              type="button"
-              className="w-full py-3 sm:py-3.5 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold hover:bg-gray-200 transition-colors cursor-pointer"
+            <TechScrambleButton
+              text={t('common.cancel').toUpperCase()}
               onClick={onCancel}
-            >
-              {t('common.cancel')}
-            </button>
+              delay={0.3}
+              containerClassName="w-full"
+              gradientClassName="via-white/20 group-hover:via-zinc-800"
+              buttonClassName="bg-zinc-950 text-zinc-400 hover:text-white"
+            />
           )}
         </div>
-      )}
-    </div>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      className="flex flex-col items-center"
+    >
+      <h2 className="relative z-10 text-2xl md:text-3xl bg-clip-text text-transparent bg-gradient-to-b from-white to-zinc-500 text-center font-extrabold antialiased mb-2 tracking-tight">
+        {t('processing.title')}
+      </h2>
+      <p className="text-center text-sm text-[var(--color-brand-gray)] mb-4 sm:mb-8">
+        {t('processing.pleaseWait')}
+      </p>
+
+      <div
+        ref={paymentStatusRef}
+        className="w-full relative rounded-none border border-zinc-700/50 bg-white/[0.02] overflow-hidden mb-4 sm:mb-8 flex flex-col shadow-2xl"
+      >
+        {/* ASCII glitch backdrop */}
+        <div className="absolute inset-0 opacity-[0.07] z-0 mix-blend-screen pointer-events-none">
+          <LetterGlitch glitchSpeed={60} characters="10!<>-_/[]" />
+        </div>
+        <div
+          className="absolute inset-0 z-0 pointer-events-none"
+          style={{
+            background:
+              'radial-gradient(ellipse 60% 60% at 50% 50%, rgba(255,255,255,0.03), transparent 80%)',
+          }}
+        />
+
+        <div className="relative z-10 flex flex-col w-full">
+          {/* Amount */}
+          <div className="p-5 flex flex-col items-center justify-center border-b border-dashed border-zinc-700/50">
+            <div className="text-[10px] font-mono text-[var(--color-brand-gray)] mb-3 uppercase tracking-[0.2em] opacity-80">
+              {t('processing.paymentAmount')}
+            </div>
+            <div className="flex items-center gap-4 w-full justify-center">
+              <span className="text-zinc-600 font-mono opacity-50">-</span>
+              <span className="font-mono text-xl font-bold tracking-tight text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">
+                {amount} {token}
+              </span>
+              <span className="text-zinc-600 font-mono opacity-50">+</span>
+            </div>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="p-4 flex items-center justify-center border-b border-dashed border-zinc-700/50">
+            <AsciiProgressBar progress={percentage} isSuccess={isSuccess} />
+          </div>
+
+          {/* Status List */}
+          <div className="p-5 space-y-4">
+            <div
+              className={`status-row flex items-center gap-3 text-xs font-mono tracking-tight ${signingStatus === 'completed' ? 'text-[var(--color-brand-success)]' : signingStatus === 'processing' ? 'text-white drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]' : 'text-zinc-500'}`}
+            >
+              <DotFlowLoader
+                status={
+                  signingStatus === 'completed'
+                    ? 'success'
+                    : signingStatus === 'processing'
+                      ? 'active'
+                      : 'waiting'
+                }
+              />
+              <span>[SYS] {t('step.signing')}...</span>
+            </div>
+            <div
+              className={`status-row flex items-center gap-3 text-xs font-mono tracking-tight ${relayingStatus === 'completed' ? 'text-[var(--color-brand-success)]' : relayingStatus === 'processing' ? 'text-white drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]' : 'text-zinc-500'}`}
+            >
+              <DotFlowLoader
+                status={
+                  relayingStatus === 'completed'
+                    ? 'success'
+                    : relayingStatus === 'processing'
+                      ? 'active'
+                      : 'waiting'
+                }
+              />
+              <span>[SYS] {t('step.relaying')}...</span>
+            </div>
+            <div
+              className={`status-row flex items-center gap-3 text-xs font-mono tracking-tight ${confirmingStatus === 'completed' ? 'text-[var(--color-brand-success)]' : confirmingStatus === 'processing' ? 'text-white drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]' : 'text-zinc-500'}`}
+            >
+              <DotFlowLoader
+                status={
+                  confirmingStatus === 'completed'
+                    ? 'success'
+                    : confirmingStatus === 'processing'
+                      ? 'active'
+                      : 'waiting'
+                }
+              />
+              <span>[SYS] {t('step.confirming')}...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
   );
 }

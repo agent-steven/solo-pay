@@ -21,7 +21,7 @@ import { useWidget } from '@solo-pay/widget-react';
 
 function CheckoutButton({ orderId, amount }) {
   const { openWidget } = useWidget({
-    publicKey: 'pk_test_xxxxx', // Your issued Public Key
+    publicKey: 'pk_xxxxx', // Your issued Public Key
     defaultPaymentRequest: {
       tokenAddress: '0xE4C687167705Abf55d709395f92e254bdF5825a2',
       successUrl: 'https://myshop.com/payment/success',
@@ -58,8 +58,7 @@ npm install @solo-pay/widget-js
 import { SoloPay } from '@solo-pay/widget-js';
 
 const solopay = new SoloPay({
-  publicKey: 'pk_test_xxxxx',
-  // widgetUrl: 'https://widget.solo-pay.com', // Optional, defaults to this value
+  publicKey: 'pk_xxxxx',
 });
 
 solopay.requestPayment(
@@ -79,27 +78,115 @@ solopay.requestPayment(
 );
 ```
 
+### CDN
+
+Use the widget directly via script tag without npm.
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/@solo-pay/widget-js/dist/widget.min.js"></script>
+<script>
+  const solopay = new SoloPay({ publicKey: 'pk_xxxxx' });
+  solopay.requestPayment({
+    orderId: 'order-2024-00001',
+    amount: '25.5',
+    tokenAddress: '0xE4C687167705Abf55d709395f92e254bdF5825a2',
+    successUrl: 'https://myshop.com/payment/success',
+    failUrl: 'https://myshop.com/payment/fail',
+    currency: 'USD',
+  });
+</script>
+```
+
+## amount and currency Behavior
+
+How `amount` is interpreted depends on whether `currency` is provided.
+
+| `currency`                        | `amount` interpretation                                                         |
+| --------------------------------- | ------------------------------------------------------------------------------- |
+| Provided (e.g., `'USD'`, `'KRW'`) | **Fiat amount** — automatically converted to token amount using real-time price |
+| Omitted                           | **Token amount directly** — used as-is, no conversion                           |
+
+**Example 1: USD-based payment (currency provided)**
+
+```typescript
+// amount: 25.5 USD → converted to token amount at real-time price
+solopay.requestPayment({
+  orderId: 'order-001',
+  amount: '25.5',
+  currency: 'USD',
+  tokenAddress: '0xE4C687167705Abf55d709395f92e254bdF5825a2',
+  successUrl: 'https://myshop.com/payment/success',
+  failUrl: 'https://myshop.com/payment/fail',
+});
+```
+
+**Example 2: Token amount directly (currency omitted)**
+
+```typescript
+// amount: 25.5 USDT directly (no conversion)
+solopay.requestPayment({
+  orderId: 'order-001',
+  amount: '25.5',
+  // currency omitted → amount is used as token amount directly
+  tokenAddress: '0xE4C687167705Abf55d709395f92e254bdF5825a2',
+  successUrl: 'https://myshop.com/payment/success',
+  failUrl: 'https://myshop.com/payment/fail',
+});
+```
+
+::: tip What happens when currency is omitted?
+When `currency` is omitted, `amount` is treated as the **token amount** directly. For example, passing `amount: '25.5'` with a USDT token requests exactly 25.5 USDT. Use this when no currency conversion is needed.
+:::
+
 ## How It Works
 
 - **Desktop**: The widget opens as a popup window.
 - **Mobile**: The user is redirected to a full-screen page.
 - After payment completion or failure, the widget auto-redirects to `successUrl` or `failUrl`.
 
-## Handling Payment Completion
+## Callback URL Handling
 
-When the widget redirects to `successUrl`, it includes a `paymentId` in the URL.
+After payment, SoloPay redirects the user to the `successUrl` or `failUrl` specified at payment creation. The widget automatically appends `paymentId`, `orderId`, and `status` as query parameters.
+
+| Parameter   | Description                                    |
+| ----------- | ---------------------------------------------- |
+| `paymentId` | The unique payment identifier                  |
+| `orderId`   | The merchant order ID                          |
+| `status`    | Payment result: `success`, `fail`, or `closed` |
 
 ```
-https://myshop.com/payment/success?paymentId=0xabc123...
+https://myshop.com/payment/success?paymentId=0xabc123...&orderId=order-001&status=success
+https://myshop.com/payment/fail?paymentId=0xabc123...&orderId=order-001&status=fail
+https://myshop.com/payment/fail?paymentId=0xabc123...&orderId=order-001&status=closed
 ```
 
 ::: warning Do Not Trust URL Parameters
-URL parameters can be manipulated by the user. Always verify the final payment status by calling the status API.
+URL parameters can be manipulated by the user. Always **verify payment status via API** as the final check.
 :::
 
-Call `GET /api/v1/payments/:paymentId` with the `x-public-key` header to confirm status is **ESCROWED** or **FINALIZED** and verify the amount and orderId before fulfilling the order. This endpoint can be called directly from the browser.
+## Payment Verification (Required)
+
+As soon as the `paymentId` is received from the callback URL, call the status API to verify payment. The `GET /payments/:id` endpoint uses the `x-public-key` header, which can be called from the browser.
+
+```typescript
+const response = await fetch(`https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123...`, {
+  headers: { 'x-public-key': 'pk_xxxxx' },
+});
+const result = await response.json();
+```
+
+**Verification Checklist**
+
+- [ ] Confirm `status === 'PAID'` (payment success)
+- [ ] Confirm `amount` matches the expected amount **in your order database** (the widget runs client-side and the amount could be tampered with)
+- [ ] Confirm `tokenAddress` matches the expected token
+- [ ] Confirm `orderId` matches the expected orderId
+- [ ] Prevent duplicate completion processing for the same `paymentId`
+
+::: tip Webhook Integration Recommended
+Callbacks are browser-redirect based and can be lost due to network issues. **Using it with Webhooks** allows reliable payment completion reception. [View Webhook Setup Guide](/en/webhooks/)
+:::
 
 ## Next Steps
 
-- [Client-Side Integration Guide](/en/developer/client-side) — How to verify payment results
 - [Webhook Setup](/en/webhooks/) — Reliable payment completion notifications

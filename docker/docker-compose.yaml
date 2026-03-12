@@ -253,7 +253,8 @@ services:
       SOLO_PAY_API_KEY: '123'
       # Public key + origin for POST /payments/create (must match merchant allowed_domains in DB)
       SOLO_PAY_PUBLIC_KEY: 'pk_test_demo'
-      # SOLO_PAY_ORIGIN optional; default http://localhost:3000 matches init.sql allowed_domains
+      # Origin sent to gateway on create/checkout. Must match gateway ALLOWED_WIDGET_ORIGIN when set (e.g. widget origin).
+      SOLO_PAY_ORIGIN: http://localhost:3005
     depends_on:
       gateway:
         condition: service_healthy
@@ -266,6 +267,8 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.packages
       target: widget
+      args:
+        NEXT_PUBLIC_WC_PROJECT_ID: ${NEXT_PUBLIC_WC_PROJECT_ID:-}
     image: 347765734000.dkr.ecr.ap-northeast-2.amazonaws.com/solo-pay/widget:nightly
     container_name: solo-pay-widget
     restart: always
@@ -371,6 +374,29 @@ services:
     container_name: solo-pay-guide
     ports:
       - '5173:80'
+    networks:
+      - solo-pay-network
+
+  # Admin Dashboard (Next.js)
+  admin-dashboard:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.packages
+      target: admin-dashboard
+    image: 347765734000.dkr.ecr.ap-northeast-2.amazonaws.com/solo-pay/admin-dashboard:nightly
+    container_name: solo-pay-admin-dashboard
+    restart: always
+    ports:
+      - '3007:3007'
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: mysql://solopay:pass@mysql:3306/solopay
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-solopay}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-solopay}
+      ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET:-solopay-admin-secret}
+    depends_on:
+      mysql:
+        condition: service_healthy
     networks:
       - solo-pay-network
 

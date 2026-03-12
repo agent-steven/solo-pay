@@ -8,7 +8,7 @@ Every SoloPay payment is processed in the following 5 steps.
 
 ```
 [1] SoloPay Widget
-    POST /payments → receives paymentId, serverSignature
+    POST /payments → receives paymentId, contract addresses
 
          ↓
 
@@ -28,35 +28,29 @@ Every SoloPay payment is processed in the following 5 steps.
          ↓
 
 [5] SoloPay → Merchant Server
-    Send payment.escrowed / payment.finalized / payment.cancelled / payment.failed / payment.expired Webhook event
+    Send PAID / INVALID Webhook event
 ```
 
-After payment is **ESCROWED**, the merchant server can call **POST /payments/:id/finalize** (or **POST /payments/:id/cancel**) to release funds to the merchant wallet or return them to the buyer. See [Finalize & Cancel](/en/payments/finalize).
+When the payment is confirmed as **PAID**, the funds have been transferred directly to the merchant wallet. No additional finalize or cancel step is needed.
 
 ### Step-by-Step
 
-| Step                        | Actor          | Action                                                           |
-| :-------------------------- | :------------- | :--------------------------------------------------------------- |
-| **1. Payment Request**      | SoloPay Widget | `POST /payments` → get `paymentId`, `serverSignature`            |
-| **2. Signing**              | User Wallet    | EIP-712 sign only (no TX, no gas)                                |
-| **3. Relayer**              | SoloPay Server | Verify signature → submit on-chain TX                            |
-| **4. Contract**             | Blockchain     | `pay()` → token escrowed                                         |
-| **5. Webhook**              | SoloPay Server | Sends events to your Webhook URL (see rows below)                |
-| **5a.** `payment.created`   | SoloPay Server | Right after creation. Optional: track pending                    |
-| **5b.** `payment.escrowed`  | SoloPay Server | User payment confirmed on-chain. Call **finalize** or **cancel** |
-| **5c.** `payment.finalized` | SoloPay Server | Your finalize TX confirmed. Complete order                       |
-| **5d.** `payment.cancelled` | SoloPay Server | Your cancel TX confirmed. Close order (funds returned to buyer)  |
-| **5e.** `payment.failed`    | SoloPay Server | Relay or TX failed. No escrow → retry or cancel                  |
-| **5f.** `payment.expired`   | SoloPay Server | Not completed in time. No escrow → new payment if needed         |
+| Step                   | Actor          | Action                                                 |
+| :--------------------- | :------------- | :----------------------------------------------------- |
+| **1. Payment Request** | SoloPay Widget | `POST /payments` → get `paymentId`, contract addresses |
+| **2. Signing**         | User Wallet    | EIP-712 sign only (no TX, no gas)                      |
+| **3. Relayer**         | SoloPay Server | Verify signature → submit on-chain TX                  |
+| **4. Contract**        | Blockchain     | `pay()` → token transferred to merchant                |
+| **5. Webhook**         | SoloPay Server | Sends events to your Webhook URL (see rows below)      |
+| **5a.** `PAID`         | SoloPay Server | Payment confirmed on-chain. Complete the order         |
+| **5b.** `INVALID`      | SoloPay Server | On-chain payment detected but validation failed        |
 
 **What happens next:**
 
-- **Success:** You get `payment.escrowed` → you call **POST /payments/:id/finalize** → you get `payment.finalized` (funds with you).
-- **Cancel (return escrow to buyer):** You get `payment.escrowed` → you call **POST /payments/:id/cancel** → you get `payment.cancelled` (funds back to buyer; payment never finalized). This is not the Refund API.
-- **Refund (after finalized):** After a payment is **finalized**, you can request a refund via **POST /refunds** (status → REFUND_SUBMITTED → REFUNDED). See [Refunds](/en/payments/refunds).
-- **No escrow:** You get `payment.failed` or `payment.expired` (payment never completed; no funds moved).
+- **Success:** You receive `PAID` → order complete (funds transferred to merchant wallet).
+- **Refund (coming soon):** After `PAID`, you can request a refund via **POST /payments/refunds** → status becomes `REFUND_SUBMITTED` → then `REFUNDED` when confirmed.
 
-Details: [Webhook Events](/en/webhooks/events) · [Finalize & Cancel](/en/payments/finalize) · [Refunds](/en/payments/refunds).
+Details: [Webhook Events](/en/webhooks/events) · [Refunds](/en/payments/refunds).
 
 ## 2.2 Gasless & Relayer System
 
@@ -159,20 +153,22 @@ Approving the maximum value (`BigInt(2**256 - 1)`) in the first Approve allows h
 ### Payment Status
 
 ```
-CREATED ──► ESCROWED ──► FINALIZE_SUBMITTED ──► FINALIZED
-                    └──► CANCEL_SUBMITTED   ──► CANCELLED
+CREATED ──► PAID
+PAID    ──► REFUND_SUBMITTED ──► REFUNDED (coming soon)
+CREATED ──► INVALID
 CREATED ──► EXPIRED
 CREATED ──► FAILED
 ```
 
-| Status      | Description                                                    |
-| ----------- | -------------------------------------------------------------- |
-| `CREATED`   | Payment created, awaiting on-chain transaction                 |
-| `ESCROWED`  | User paid; funds held in escrow (merchant can finalize/cancel) |
-| `FINALIZED` | Funds released to merchant                                     |
-| `CANCELLED` | Funds returned to buyer                                        |
-| `FAILED`    | Transaction failed or signature validation failed              |
-| `EXPIRED`   | Payment expired (30 minutes exceeded)                          |
+| Status             | Description                                                          |
+| ------------------ | -------------------------------------------------------------------- |
+| `CREATED`          | Payment created, awaiting on-chain transaction                       |
+| `PAID`             | Payment confirmed on-chain, funds transferred to merchant (terminal) |
+| `REFUND_SUBMITTED` | Refund transaction submitted (coming soon)                           |
+| `REFUNDED`         | Refund completed (coming soon)                                       |
+| `INVALID`          | On-chain payment detected but validation failed                      |
+| `EXPIRED`          | Payment expired                                                      |
+| `FAILED`           | Transaction failed                                                   |
 
 ### Relay Status (Gasless only)
 
@@ -192,13 +188,13 @@ QUEUED ──────▶ SUBMITTED ──────▶ CONFIRMED
 
 ::: info Payment Status vs Relay Status
 
-- **Payment Status** reflects the on-chain state (e.g. ESCROWED, FINALIZED, CANCELLED).
+- **Payment Status** reflects the on-chain state (e.g. PAID, INVALID, EXPIRED).
 - **Relay Status** reflects the relayer's TX submission process (QUEUED → SUBMITTED → CONFIRMED/FAILED).
-- When the escrow TX is confirmed, payment status becomes ESCROWED. The merchant then calls [Finalize or Cancel](/en/payments/finalize) to release or return funds.
+- When the payment TX is confirmed, payment status becomes PAID and funds are transferred directly to the merchant wallet.
   :::
 
 ## Next Steps
 
-- [Finalize & Cancel](/en/payments/finalize) — Release or cancel escrowed payments
+- [Refunds](/en/payments/refunds) — Request a refund for a completed payment
 - [Smart Contract Info](/en/developer/smart-contracts) — Contract addresses and ABI
 - [Client-Side Integration](/en/developer/client-side) — Step-by-step implementation guide

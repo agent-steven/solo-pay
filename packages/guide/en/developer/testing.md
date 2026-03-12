@@ -34,7 +34,7 @@ This scenario covers tokens such as USDC that support EIP-2612 Permit.
 3. Create a payment session of 10 or more units via SoloPay and request a signature.
 4. **Verify results**:
    - Only a signature (Sign) popup should appear — no gas transaction.
-   - After signing, payment should be processed (status becomes `ESCROWED`) via the relayer.
+   - After signing, payment should be processed (status becomes `PAID`) via the relayer.
    - MATIC balance should remain unchanged; only the test token balance should decrease correctly.
 
 ### Case B: Infinite Approve (Non-Permit Standard Token)
@@ -54,7 +54,7 @@ This covers standard test tokens that do not support Permit. Since a one-time Ap
 Validate that the system handles failure scenarios gracefully.
 
 1. **Insufficient Balance**: Attempt a payment for an amount significantly higher than the wallet's test token balance. (Confirm rejection at the Relay step or revert at the smart contract)
-2. **Payment Expiry**: Create a payment session, then wait **30 minutes** without signing (or close the window). Confirm that querying the payment status from the merchant backend returns `EXPIRED`.
+2. **Payment Expiry**: Create a payment session, then wait **5 minutes** without signing (or close the window). Confirm that querying the payment status from the merchant backend returns `EXPIRED`.
 3. **User Rejection**: When MetaMask requests a signature, have the user click 'Reject'. Confirm the client detects this and displays a "Signature was cancelled." message.
 
 ## Payment Result Cross-Verification Check

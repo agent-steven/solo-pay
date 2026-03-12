@@ -1,6 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { Address, Hex } from 'viem';
-import { BlockchainService } from '../../services/blockchain.service';
+import { Address } from 'viem';
 import { PaymentService } from '../../services/payment.service';
 import { MerchantService } from '../../services/merchant.service';
 import { ChainService } from '../../services/chain.service';
@@ -9,16 +8,15 @@ import { PaymentMethodService } from '../../services/payment-method.service';
 import { ServerSigningService } from '../../services/signature-server.service';
 import { createPublicAuthMiddleware } from '../../middleware/public-auth.middleware';
 import { PaymentStatusResponseSchema, ErrorResponseSchema } from '../../docs/schemas';
+import { ErrorCodes } from '../../error-codes';
 
 export async function getPaymentStatusRoute(
   app: FastifyInstance,
-  blockchainService: BlockchainService,
   paymentService: PaymentService,
   merchantService: MerchantService,
   chainService: ChainService,
   tokenService: TokenService,
-  paymentMethodService: PaymentMethodService,
-  signingServices?: Map<number, ServerSigningService>
+  paymentMethodService: PaymentMethodService
 ) {
   const authMiddleware = createPublicAuthMiddleware(merchantService);
 
@@ -34,19 +32,14 @@ export async function getPaymentStatusRoute(
         description: `
 Retrieves the current status and full details of a payment by its payment hash. Requires x-public-key.
 
-Stateless: blockchain is the source of truth for status when on-chain state is available (escrowed/finalized/cancelled). Returns that status (and syncs DB), plus full payment details including server signature, merchant/token/chain info, and contract parameters needed for the widget to resume a payment flow.
-
-For non-terminal statuses, a fresh server signature with a new deadline is generated. For terminal statuses, details are returned without a signature.
+Stateless: blockchain is the source of truth for status when on-chain state is available (paid/refunded). Returns that status (and syncs DB), plus full payment details including merchant/token/chain info and contract parameters needed for the widget to resume a payment flow.
 
 **Status Values:**
 - \`CREATED\` - Payment created, awaiting on-chain transaction
-- \`PENDING\` - Transaction submitted, awaiting confirmation
-- \`ESCROWED\` - Payment escrowed on-chain, awaiting merchant decision
-- \`FINALIZE_SUBMITTED\` - Merchant submitted finalize request
-- \`CANCEL_SUBMITTED\` - Merchant submitted cancel request
-- \`CONFIRMED\` - Payment confirmed on-chain (direct flow, no escrow)
-- \`FINALIZED\` - Escrowed payment released to merchant
-- \`CANCELLED\` - Escrowed payment refunded to buyer
+- \`PAID\` - Payment completed on-chain
+- \`REFUND_SUBMITTED\` - Refund request submitted
+- \`REFUNDED\` - Payment refunded
+- \`EXPIRED\` - Payment expired
 - \`FAILED\` - Payment failed
         `,
         headers: {
@@ -90,7 +83,7 @@ For non-terminal statuses, a fresh server signature with a new deadline is gener
 
         if (!id || typeof id !== 'string') {
           return reply.code(400).send({
-            code: 'INVALID_REQUEST',
+            code: ErrorCodes.INVALID_REQUEST,
             message: 'Payment ID is required',
           });
         }
@@ -99,7 +92,7 @@ For non-terminal statuses, a fresh server signature with a new deadline is gener
 
         if (!paymentData) {
           return reply.code(404).send({
-            code: 'NOT_FOUND',
+            code: ErrorCodes.NOT_FOUND,
             message: 'Payment not found',
           });
         }
@@ -108,76 +101,25 @@ For non-terminal statuses, a fresh server signature with a new deadline is gener
         const merchant = request.merchant;
         if (merchant && paymentData.merchant_id !== merchant.id) {
           return reply.code(403).send({
-            code: 'FORBIDDEN',
+            code: ErrorCodes.FORBIDDEN,
             message: 'Payment does not belong to this merchant',
           });
         }
 
-        const chainIdNum = paymentData.network_id;
-
-        if (!blockchainService.isChainSupported(chainIdNum)) {
-          return reply.code(400).send({
-            code: 'UNSUPPORTED_CHAIN',
-            message: 'Unsupported chain',
-          });
-        }
-
-        const paymentStatus = await blockchainService.getPaymentStatus(chainIdNum, id);
-
-        if (!paymentStatus) {
-          return reply.code(404).send({
-            code: 'NOT_FOUND',
-            message: 'Payment not found',
-          });
-        }
-
-        if (paymentStatus.status !== 'pending' && paymentStatus.amount) {
-          const eventAmount = BigInt(paymentStatus.amount);
-          const dbAmount = BigInt(paymentData.amount.toString());
-
-          if (eventAmount !== dbAmount) {
-            return reply.code(400).send({
-              code: 'AMOUNT_MISMATCH',
-              message: `Payment amount mismatch. DB: ${dbAmount.toString()}, on-chain: ${eventAmount.toString()}`,
-              details: {
-                dbAmount: dbAmount.toString(),
-                onChainAmount: eventAmount.toString(),
-                paymentId: id,
-                transactionHash: paymentStatus.transactionHash,
-              },
-            });
-          }
-        }
-
-        // Stateless: blockchain is source of truth for payment status when on-chain state is available
-        const onChain = paymentStatus.status;
-
-        const onChainToApiStatus: Record<string, string> = {
-          escrowed: 'ESCROWED',
-          finalized: 'FINALIZED',
-          cancelled: 'CANCELLED',
+        // DB is source of truth for payment status (webhook-manager syncs on-chain state)
+        const paymentStatus = {
+          paymentId: paymentData.payment_hash,
+          payerAddress: paymentData.payer_address ?? '',
+          amount: Number(paymentData.amount),
+          rawAmount: paymentData.amount.toString(),
+          tokenAddress: paymentData.token_address ?? '',
+          tokenSymbol: paymentData.token_symbol,
+          treasuryAddress: paymentData.recipient_address ?? '',
+          status: paymentData.status,
+          transactionHash: paymentData.tx_hash ?? undefined,
+          createdAt: new Date(paymentData.created_at).toISOString(),
+          updatedAt: new Date(paymentData.updated_at).toISOString(),
         };
-        const finalStatusFromChain =
-          onChain !== 'pending' ? onChainToApiStatus[onChain] : undefined;
-
-        // When chain has definitive status, always derive response status from chain and sync DB
-        const finalStatus: string = finalStatusFromChain ?? paymentData.status;
-
-        if (finalStatusFromChain) {
-          const newStatus = finalStatusFromChain as import('@solo-pay/database').PaymentStatus;
-          const isRelease = newStatus === 'FINALIZED' || newStatus === 'CANCELLED';
-          const txHashToStore = isRelease
-            ? paymentStatus.releaseTxHash
-            : paymentStatus.transactionHash;
-          await paymentService.updateStatusByHash(
-            paymentData.payment_hash,
-            newStatus,
-            txHashToStore
-          );
-          if (paymentStatus.payerAddress) {
-            await paymentService.updatePayerAddress(id, paymentStatus.payerAddress);
-          }
-        }
 
         const tokenPermitSupported = await paymentService.getTokenPermitSupported(
           paymentData.payment_method_id
@@ -199,45 +141,10 @@ For non-terminal statuses, a fresh server signature with a new deadline is gener
             const merchantId = ServerSigningService.merchantKeyToId(merchantRecord.merchant_key);
             const recipientAddress = merchantRecord.recipient_address as Address | null;
             const amountInWei = BigInt(paymentData.amount.toString());
-            const defaultEscrowDuration = Number(process.env.DEFAULT_ESCROW_DURATION) || 300;
-            const escrowDuration = BigInt(merchantRecord.escrow_duration ?? defaultEscrowDuration);
 
-            const terminalStatuses = new Set([
-              'CONFIRMED',
-              'FINALIZED',
-              'CANCELLED',
-              'FAILED',
-              'EXPIRED',
-            ]);
-            const isTerminal = terminalStatuses.has(finalStatus);
-
-            let serverSignature: Hex | string = '';
-            let deadline = BigInt(0);
-
-            if (!isTerminal) {
-              const deadlineTtl = Number(process.env.PAYMENT_DEADLINE_SECONDS) || 3600;
-              deadline = BigInt(Math.floor(Date.now() / 1000) + deadlineTtl);
-
-              const signingService = signingServices?.get(paymentData.network_id);
-              if (signingService && recipientAddress) {
-                try {
-                  serverSignature = await signingService.signPaymentRequest(
-                    id as Hex,
-                    token.address as Address,
-                    amountInWei,
-                    recipientAddress,
-                    merchantId,
-                    deadline,
-                    escrowDuration
-                  );
-                } catch (err) {
-                  app.log.error({ err }, 'Failed to generate server signature for payment details');
-                }
-              }
-            }
+            const deadline = Math.floor(new Date(paymentData.expires_at).getTime() / 1000);
 
             detailsFields = {
-              serverSignature,
               orderId: paymentData.order_id ?? '',
               tokenAddress: token.address,
               gatewayAddress: chain.gateway_address ?? '',
@@ -246,7 +153,6 @@ For non-terminal statuses, a fresh server signature with a new deadline is gener
               recipientAddress: recipientAddress ?? '',
               merchantId,
               deadline: deadline.toString(),
-              escrowDuration: escrowDuration.toString(),
               forwarderAddress: chain.forwarder_address ?? undefined,
               successUrl: paymentData.success_url ?? '',
               failUrl: paymentData.fail_url ?? '',
@@ -266,7 +172,7 @@ For non-terminal statuses, a fresh server signature with a new deadline is gener
             paymentId: paymentData.payment_hash,
             chainId: paymentData.network_id,
             tokenSymbol: paymentData.token_symbol,
-            status: finalStatus,
+            status: paymentData.status,
             tokenPermitSupported,
             ...detailsFields,
           },
@@ -274,7 +180,7 @@ For non-terminal statuses, a fresh server signature with a new deadline is gener
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to get payment status';
         return reply.code(500).send({
-          code: 'INTERNAL_ERROR',
+          code: ErrorCodes.INTERNAL_ERROR,
           message,
         });
       }

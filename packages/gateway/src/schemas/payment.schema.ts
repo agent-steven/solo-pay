@@ -34,38 +34,29 @@ export const PrepareWalletSchema = z.object({
 
 export type PrepareWalletRequest = z.infer<typeof PrepareWalletSchema>;
 
-// 결제 정보 조회 요청 스키마 (결제 생성 없이 컨트랙트 정보만 반환)
-// chainId와 merchantId는 인증된 머천트에서 가져옴
+// Payment info request schema (returns contract info without creating a payment)
+// chainId and merchantId are derived from the authenticated merchant
 export const PaymentInfoSchema = z.object({
-  amount: z.number().positive('금액은 양수여야 합니다'),
+  amount: z.number().positive('amount must be positive'),
   tokenAddress: z
     .string()
-    .regex(/^0x[a-fA-F0-9]{40}$/, '유효한 토큰 주소여야 합니다 (0x + 40자 hex)'),
+    .regex(/^0x[a-fA-F0-9]{40}$/, 'tokenAddress must be a valid Ethereum address (0x + 40 hex)'),
 });
 
 export type PaymentInfoRequest = z.infer<typeof PaymentInfoSchema>;
 
-// 결제 상태 조회 응답 스키마
-// Note: treasuryAddress는 컨트랙트에서 결제를 받는 주소 (배포 시 설정)
+// Payment status response schema
+// Note: treasuryAddress is the contract address that receives payments (set at deployment)
 export const PaymentStatusSchema = z.object({
   paymentId: z.string(),
   payerAddress: z.string(), // wallet address of payer (from chain event)
   amount: z.number(),
+  rawAmount: z.string().optional(), // wei string for precise comparison
   tokenAddress: z.string(),
   tokenSymbol: z.string(),
-  treasuryAddress: z.string(),
-  status: z.enum([
-    'pending',
-    'escrowed',
-    'finalized',
-    'cancelled',
-    'refunded',
-    'confirmed',
-    'failed',
-    'completed',
-  ]),
+  treasuryAddress: z.string(), // recipient address from event
+  status: z.enum(['pending', 'paid', 'refunded', 'failed']),
   transactionHash: z.string().optional(),
-  releaseTxHash: z.string().optional(),
   blockNumber: z.number().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -74,18 +65,18 @@ export const PaymentStatusSchema = z.object({
 export type PaymentStatus = z.infer<typeof PaymentStatusSchema>;
 
 /**
- * ERC2771 ForwardRequest 스키마
- * OZ ERC2771Forwarder.execute()에 전달되는 파라미터
+ * ERC2771 ForwardRequest schema
+ * Parameters passed to OZ ERC2771Forwarder.execute()
  *
- * nonce는 클라이언트가 서명 시 사용한 값을 그대로 전달해야 함.
- * 서버에서 재조회하면 서명 검증이 실패함.
+ * nonce must be passed as-is from the client's signing step.
+ * Re-fetching on the server would cause signature verification to fail.
  */
 export const ForwardRequestSchema = z.object({
   from: z.string().startsWith('0x').length(42),
   to: z.string().startsWith('0x').length(42),
   value: z.string(),
   gas: z.string(),
-  nonce: z.string(), // 클라이언트가 서명 시 사용한 nonce
+  nonce: z.string(), // nonce used by the client during signing
   deadline: z.string(),
   data: z.string().startsWith('0x'),
   signature: z.string().startsWith('0x'),
@@ -93,7 +84,7 @@ export const ForwardRequestSchema = z.object({
 
 export type ForwardRequest = z.infer<typeof ForwardRequestSchema>;
 
-// Gasless 요청 스키마
+// Gasless request schema
 export const GaslessRequestSchema = z.object({
   paymentId: z.string(),
   forwarderAddress: z.string().startsWith('0x').length(42),
@@ -103,11 +94,24 @@ export const GaslessRequestSchema = z.object({
 export type GaslessRequest = z.infer<typeof GaslessRequestSchema>;
 
 /**
- * Creates a refined GaslessRequestSchema that validates the forwardRequest.data
- * amount matches the expected DB amount.
- * This prevents frontend manipulation and gas waste.
+ * Expected values for pay() function parameters, sourced from the DB payment record.
  */
-export function createAmountValidationSchema(expectedAmount: bigint): z.ZodType<GaslessRequest> {
+export interface PayCallExpectedParams {
+  paymentId: string; // bytes32 payment hash
+  tokenAddress: string; // token contract address
+  amount: bigint; // wei amount
+  recipientAddress: string; // merchant recipient address
+  merchantId: string; // bytes32 keccak256(merchantKey)
+}
+
+/**
+ * Creates a refined GaslessRequestSchema that validates ALL pay() function
+ * parameters in forwardRequest.data against DB values.
+ * This prevents frontend manipulation of any contract call parameter.
+ */
+export function createPayCallValidationSchema(
+  expected: PayCallExpectedParams
+): z.ZodType<GaslessRequest> {
   return GaslessRequestSchema.superRefine((data, ctx) => {
     try {
       const decoded = decodeFunctionData({
@@ -119,20 +123,68 @@ export function createAmountValidationSchema(expectedAmount: bigint): z.ZodType<
       if (decoded.functionName !== 'pay') {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: 'forwardRequest.data는 pay() 함수 호출이어야 합니다',
+          message: 'forwardRequest.data must be a pay() function call',
           path: ['forwardRequest', 'data'],
         });
         return;
       }
 
-      // Extract amount from decoded function arguments (3rd parameter, index 2)
-      const decodedAmount = decoded?.args?.[2] as bigint;
-
-      // Compare amounts - reject if mismatch
-      if (decodedAmount !== expectedAmount) {
+      const args = decoded.args;
+      if (!args || args.length < 5) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `결제 금액이 일치하지 않습니다. DB: ${expectedAmount.toString()}, 요청: ${decodedAmount.toString()}`,
+          message: 'pay() call missing required arguments',
+          path: ['forwardRequest', 'data'],
+        });
+        return;
+      }
+
+      // args[0] = paymentId (bytes32)
+      const decodedPaymentId = args[0] as string;
+      if (decodedPaymentId.toLowerCase() !== expected.paymentId.toLowerCase()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `paymentId mismatch. DB: ${expected.paymentId}, request: ${decodedPaymentId}`,
+          path: ['forwardRequest', 'data'],
+        });
+      }
+
+      // args[1] = tokenAddress (address)
+      const decodedTokenAddress = args[1] as string;
+      if (decodedTokenAddress.toLowerCase() !== expected.tokenAddress.toLowerCase()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `tokenAddress mismatch. DB: ${expected.tokenAddress}, request: ${decodedTokenAddress}`,
+          path: ['forwardRequest', 'data'],
+        });
+      }
+
+      // args[2] = amount (uint256)
+      const decodedAmount = args[2] as bigint;
+      if (decodedAmount !== expected.amount) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `amount mismatch. DB: ${expected.amount.toString()}, request: ${decodedAmount.toString()}`,
+          path: ['forwardRequest', 'data'],
+        });
+      }
+
+      // args[3] = recipientAddress (address)
+      const decodedRecipient = args[3] as string;
+      if (decodedRecipient.toLowerCase() !== expected.recipientAddress.toLowerCase()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `recipientAddress mismatch. DB: ${expected.recipientAddress}, request: ${decodedRecipient}`,
+          path: ['forwardRequest', 'data'],
+        });
+      }
+
+      // args[4] = merchantId (bytes32)
+      const decodedMerchantId = args[4] as string;
+      if (decodedMerchantId.toLowerCase() !== expected.merchantId.toLowerCase()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `merchantId mismatch. DB: ${expected.merchantId}, request: ${decodedMerchantId}`,
           path: ['forwardRequest', 'data'],
         });
       }
@@ -140,15 +192,14 @@ export function createAmountValidationSchema(expectedAmount: bigint): z.ZodType<
       // If decoding fails, the data is invalid
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message:
-          'forwardRequest.data를 파싱할 수 없습니다. 유효한 pay() 함수 호출 데이터여야 합니다.',
+        message: 'Failed to parse forwardRequest.data. Must be valid pay() function call data.',
         path: ['forwardRequest', 'data'],
       });
     }
   });
 }
 
-// 릴레이 실행 요청 스키마
+// Relay execution request schema
 export const RelayExecutionSchema = z.object({
   paymentId: z.string(),
   transactionData: z.string().startsWith('0x'),
@@ -157,7 +208,7 @@ export const RelayExecutionSchema = z.object({
 
 export type RelayExecution = z.infer<typeof RelayExecutionSchema>;
 
-// 에러 응답 스키마
+// Error response schema
 export const ErrorResponseSchema = z.object({
   code: z.string(),
   message: z.string(),

@@ -50,37 +50,34 @@ export interface GaslessParams {
 
 // Response types (matches gateway POST /payments 201 response)
 export interface CreatePaymentResponse {
-  /** Present when gateway returns 201; omitted in error paths */
-  success?: true;
-  paymentId: string;
-  orderId: string;
-  /** Server EIP-712 signature for payment authorization */
-  serverSignature: string;
-  chainId: number;
-  tokenAddress: string;
-  gatewayAddress: string;
-  amount: string; // wei
-  tokenDecimals: number;
-  tokenSymbol: string;
-  successUrl: string;
-  failUrl: string;
-  expiresAt: string;
-  recipientAddress: string;
-  merchantId: string;
-  /** Payment deadline (unix timestamp) included in server signature */
-  deadline: string;
-  /** Escrow duration (seconds) included in server signature */
-  escrowDuration: string;
-  /** ERC2771Forwarder address for gasless payments */
-  forwarderAddress?: string;
-  /** Whether the token supports EIP-2612 permit (gasless approval) */
-  tokenPermitSupported: boolean;
-  /** Fiat currency code used for conversion */
-  currency?: string;
-  /** Original fiat amount before conversion */
-  fiatAmount?: number;
-  /** Token price at creation time */
-  tokenPrice?: number;
+  success: true;
+  data: {
+    paymentId: string;
+    orderId: string;
+    chainId: number;
+    tokenAddress: string;
+    gatewayAddress: string;
+    amount: string; // wei
+    tokenDecimals: number;
+    tokenSymbol: string;
+    successUrl: string;
+    failUrl: string;
+    expiresAt: string;
+    recipientAddress: string;
+    merchantId: string;
+    /** Payment expiration timestamp (unix seconds) for on-chain validation */
+    deadline: string;
+    /** ERC2771Forwarder address for gasless payments */
+    forwarderAddress?: string;
+    /** Whether the token supports EIP-2612 permit (gasless approval) */
+    tokenPermitSupported: boolean;
+    /** Fiat currency code used for conversion */
+    currency?: string;
+    /** Original fiat amount before conversion */
+    fiatAmount?: number;
+    /** Token price at creation time */
+    tokenPrice?: number;
+  };
 }
 
 /** Response from GET /payments/:id */
@@ -111,8 +108,10 @@ export interface PaymentStatusResponse {
 /** Response from POST /payments/:id/relay (202) */
 export interface GaslessResponse {
   success: true;
-  status: 'submitted' | 'mined' | 'failed';
-  message: string;
+  data: {
+    status: 'submitted' | 'mined' | 'failed';
+    message: string;
+  };
 }
 
 /** Response from GET /payments/:id/relay */
@@ -161,32 +160,38 @@ export interface PaymentMethod {
 /** Response from GET /merchant */
 export interface MerchantInfoResponse {
   success: true;
-  merchant: {
-    id: number;
-    merchant_key: string;
-    name: string;
-    chain_id: number | null;
-    chain: ChainInfo | null;
-    webhook_url: string | null;
-    public_key: string | null;
-    is_enabled: boolean;
-    created_at: string;
-    updated_at: string;
-    payment_methods: PaymentMethod[];
+  data: {
+    merchant: {
+      id: number;
+      merchant_key: string;
+      name: string;
+      chain_id: number | null;
+      chain: ChainInfo | null;
+      webhook_url: string | null;
+      public_key: string | null;
+      is_enabled: boolean;
+      created_at: string;
+      updated_at: string;
+      payment_methods: PaymentMethod[];
+    };
+    chainTokens: Array<ChainInfo & { tokens: TokenInfo[] }>;
   };
-  chainTokens: Array<ChainInfo & { tokens: TokenInfo[] }>;
 }
 
 /** Response from GET /merchant/payment-methods */
 export interface PaymentMethodListResponse {
   success: true;
-  payment_methods: PaymentMethod[];
+  data: {
+    payment_methods: PaymentMethod[];
+  };
 }
 
 /** Response from POST /merchant/payment-methods */
 export interface CreatePaymentMethodResponse {
   success: true;
-  payment_method: PaymentMethod;
+  data: {
+    payment_method: PaymentMethod;
+  };
 }
 
 /** Params for POST /merchant/payment-methods */
@@ -203,23 +208,23 @@ export interface UpdatePaymentMethodParams {
 /** Response from PATCH /merchant/payment-methods/:id */
 export interface UpdatePaymentMethodResponse {
   success: true;
-  payment_method: PaymentMethod;
+  data: {
+    payment_method: PaymentMethod;
+  };
 }
 
 /** Response from DELETE /merchant/payment-methods/:id */
 export interface DeletePaymentMethodResponse {
   success: true;
-  message: string;
+  data: {
+    message: string;
+  };
 }
 
 /** All possible payment statuses */
 export type PaymentStatus =
   | 'CREATED'
-  | 'ESCROWED'
-  | 'FINALIZE_SUBMITTED'
-  | 'FINALIZED'
-  | 'CANCEL_SUBMITTED'
-  | 'CANCELLED'
+  | 'PAID'
   | 'REFUND_SUBMITTED'
   | 'REFUNDED'
   | 'EXPIRED'
@@ -227,43 +232,21 @@ export type PaymentStatus =
 
 /** Response from GET /merchant/payments (by orderId) and GET /merchant/payments/:id */
 export interface MerchantPaymentDetailResponse {
-  paymentId: string;
-  orderId?: string;
-  status: PaymentStatus;
-  amount: string;
-  tokenSymbol: string;
-  tokenDecimals: number;
-  txHash?: string;
-  payerAddress?: string;
-  createdAt: string;
-  confirmedAt?: string;
-  expiresAt: string;
-  escrowDeadline?: string;
-  finalizedAt?: string;
-  cancelledAt?: string;
-  /** Whether the token supports EIP-2612 permit (gasless approval) */
-  tokenPermitSupported: boolean;
-}
-
-/** Response from POST /payments/:id/finalize */
-export interface FinalizePaymentResponse {
   success: true;
   data: {
     paymentId: string;
-    serverSignature: string;
-    gatewayAddress: string;
-    chainId: number;
-  };
-}
-
-/** Response from POST /payments/:id/cancel */
-export interface CancelPaymentResponse {
-  success: true;
-  data: {
-    paymentId: string;
-    serverSignature: string;
-    gatewayAddress: string;
-    chainId: number;
+    orderId?: string;
+    status: PaymentStatus;
+    amount: string;
+    tokenSymbol: string;
+    tokenDecimals: number;
+    txHash?: string;
+    payerAddress?: string;
+    createdAt: string;
+    confirmedAt?: string;
+    expiresAt: string;
+    /** Whether the token supports EIP-2612 permit (gasless approval) */
+    tokenPermitSupported: boolean;
   };
 }
 
@@ -357,13 +340,17 @@ export interface RefundListResponse {
 /** Response from GET /chains */
 export interface ChainsResponse {
   success: true;
-  chains: ChainInfo[];
+  data: {
+    chains: ChainInfo[];
+  };
 }
 
 /** Response from GET /chains/tokens */
 export interface ChainsWithTokensResponse {
   success: true;
-  chains: Array<ChainInfo & { tokens: TokenInfo[] }>;
+  data: {
+    chains: Array<ChainInfo & { tokens: TokenInfo[] }>;
+  };
 }
 
 // ============================================================================

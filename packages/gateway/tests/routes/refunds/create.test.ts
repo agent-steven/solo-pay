@@ -38,7 +38,7 @@ const mockPayment = {
   token_decimals: 18,
   token_symbol: 'TEST',
   network_id: 31337,
-  status: 'FINALIZED' as const,
+  status: 'PAID' as const,
   tx_hash: '0x' + 'b'.repeat(64),
   expires_at: new Date(Date.now() + 3600000),
   confirmed_at: new Date(),
@@ -265,14 +265,14 @@ describe('POST /refunds', () => {
       expect(body.code).toBe('FORBIDDEN');
     });
 
-    it('FINALIZED 상태가 아닌 결제에 대해 환불 요청하면 400 상태 코드를 반환해야 함', async () => {
+    it('PAID 상태가 아닌 결제에 대해 환불 요청하면 400 상태 코드를 반환해야 함', async () => {
       const testStatuses = [
         'CREATED',
-        'ESCROWED',
-        'FINALIZE_SUBMITTED',
-        'CANCEL_SUBMITTED',
+        'REFUND_SUBMITTED',
+        'REFUNDED',
         'FAILED',
         'EXPIRED',
+        'INVALID',
       ];
 
       for (const status of testStatuses) {
@@ -292,7 +292,7 @@ describe('POST /refunds', () => {
 
         expect(response.statusCode).toBe(400);
         const body = JSON.parse(response.body);
-        expect(body.code).toBe('PAYMENT_NOT_FINALIZED');
+        expect(body.code).toBe('PAYMENT_NOT_PAID');
       }
     });
 

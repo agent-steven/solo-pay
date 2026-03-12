@@ -569,9 +569,8 @@ describe('RefundService', () => {
         token_decimals: 18,
         token_symbol: 'TEST',
         network_id: 31337,
-        status: 'FINALIZED',
+        status: 'PAID',
         tx_hash: null,
-        release_tx_hash: null,
         expires_at: new Date(),
         confirmed_at: new Date(),
         order_id: null,
@@ -585,9 +584,8 @@ describe('RefundService', () => {
         currency_code: null,
         fiat_amount: null,
         token_price: null,
-        escrow_deadline: null,
-        finalized_at: null,
-        cancelled_at: null,
+        recipient_address: null,
+        token_address: null,
       });
       mockPrisma.refund.findMany.mockResolvedValue([]);
       mockPrisma.refund.count.mockResolvedValue(0);

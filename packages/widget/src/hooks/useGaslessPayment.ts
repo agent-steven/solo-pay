@@ -10,6 +10,16 @@ import { usePermit, ZERO_PERMIT } from './usePermit';
 // Types
 // ============================================================================
 
+export type PaymentProgressState =
+  | 'INIT'
+  | 'CHECKING_ALLOWANCE'
+  | 'SIGNING_PERMIT'
+  | 'SIGNING_FORWARD'
+  | 'RELAYING'
+  | 'CONFIRMING'
+  | 'PAID'
+  | 'ERROR';
+
 export interface UseGaslessPaymentParams {
   /** Payment details from API */
   paymentDetails: PaymentDetails | null;
@@ -34,6 +44,8 @@ export interface UseGaslessPaymentReturn {
   isPermitSupported: boolean | undefined;
   /** Whether permit support is still being checked (token contract reads in progress) */
   isCheckingPermit: boolean;
+  /** Granular progress state for UI progress bar */
+  progressState: PaymentProgressState;
 }
 
 // ============================================================================
@@ -55,6 +67,7 @@ export function useGaslessPayment({
   const [isRelayConfirming, setIsRelayConfirming] = useState(false);
   const [relayTxHash, setRelayTxHash] = useState<string>();
   const [error, setError] = useState<Error | null>(null);
+  const [progressState, setProgressState] = useState<PaymentProgressState>('INIT');
 
   const { data: walletClient } = useWalletClient();
 
@@ -65,11 +78,7 @@ export function useGaslessPayment({
   const amount = paymentDetails?.amount ? BigInt(paymentDetails.amount) : undefined;
   const recipientAddress = paymentDetails?.recipientAddress as `0x${string}` | undefined;
   const merchantId = paymentDetails?.merchantId as `0x${string}` | undefined;
-  const payDeadline = paymentDetails?.deadline ? BigInt(paymentDetails.deadline) : undefined;
-  const escrowDuration = paymentDetails?.escrowDuration
-    ? BigInt(paymentDetails.escrowDuration)
-    : undefined;
-  const serverSignature = paymentDetails?.serverSignature as `0x${string}` | undefined;
+  const payDeadline = paymentDetails?.deadline ? BigInt(paymentDetails.deadline) : BigInt(0);
 
   // Check if gasless is supported
   const isGaslessSupported = !!forwarderAddress;
@@ -84,7 +93,7 @@ export function useGaslessPayment({
   });
 
   // Get nonce from forwarder contract
-  const { data: nonce, refetch: refetchNonce } = useReadContract({
+  const { refetch: refetchNonce } = useReadContract({
     address: forwarderAddress,
     abi: FORWARDER_ABI,
     functionName: 'nonces',
@@ -106,9 +115,7 @@ export function useGaslessPayment({
       !amount ||
       !recipientAddress ||
       !merchantId ||
-      !payDeadline ||
-      !escrowDuration ||
-      !serverSignature
+      !payDeadline
     ) {
       console.error('Missing gasless payment details');
       return;
@@ -118,6 +125,7 @@ export function useGaslessPayment({
       setIsPayingGasless(true);
       setError(null);
       setRelayTxHash(undefined);
+      setProgressState('SIGNING_PERMIT');
 
       // Refetch nonce to ensure fresh value
       const { data: freshNonce } = await refetchNonce();
@@ -152,6 +160,9 @@ export function useGaslessPayment({
         }
       }
 
+      // 1.5 Update state to signing forward request
+      setProgressState('SIGNING_FORWARD');
+
       // 2. Encode the PaymentGateway.pay() function call with permit
       const payCallData = encodeFunctionData({
         abi: PAYMENT_GATEWAY_ABI,
@@ -163,8 +174,6 @@ export function useGaslessPayment({
           recipientAddress,
           merchantId,
           payDeadline,
-          escrowDuration,
-          serverSignature,
           permitData,
         ],
       });
@@ -225,10 +234,12 @@ export function useGaslessPayment({
       // 6. Submit to relay service
       setIsPayingGasless(false);
       setIsRelayConfirming(true);
+      setProgressState('RELAYING');
 
       await submitGaslessPayment(paymentId, forwarderAddress, forwardRequest, publicKey ?? '');
 
       // 7. Poll relay status until CONFIRMED/FAILED
+      setProgressState('CONFIRMING');
       const relayResult = await waitForRelayTransaction(paymentId, {
         timeout: 120000,
         interval: 3000,
@@ -237,10 +248,12 @@ export function useGaslessPayment({
 
       setRelayTxHash(relayResult.transactionHash ?? '');
       setIsRelayConfirming(false);
+      setProgressState('PAID');
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Gasless payment failed'));
       setIsPayingGasless(false);
       setIsRelayConfirming(false);
+      setProgressState('ERROR');
     }
   }, [
     walletClient,
@@ -252,8 +265,6 @@ export function useGaslessPayment({
     recipientAddress,
     merchantId,
     payDeadline,
-    escrowDuration,
-    serverSignature,
     paymentDetails?.chainId,
     publicKey,
     refetchNonce,
@@ -270,5 +281,6 @@ export function useGaslessPayment({
     isGaslessSupported,
     isPermitSupported,
     isCheckingPermit,
+    progressState,
   };
 }

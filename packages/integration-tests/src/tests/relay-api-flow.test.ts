@@ -12,9 +12,9 @@ import {
 import { HARDHAT_ACCOUNTS, CONTRACT_ADDRESSES } from '../setup/wallets';
 import { getToken } from '../fixtures/token';
 import {
-  encodePayFunctionData,
   signForwardRequest,
   getDeadline,
+  ZERO_PERMIT,
   type ForwardRequest,
 } from '../helpers/signature';
 import { createTestClient, TEST_MERCHANT, makeCreatePaymentParams } from '../helpers/sdk';
@@ -24,8 +24,8 @@ import type { CreatePaymentResponse } from '@solo-pay/gateway-sdk';
  * Relay API Flow Integration Tests
  *
  * Tests the full Gateway relay API path:
- *   POST /payments/:id/relay  — submit gasless relay
- *   GET  /payments/:id/relay  — poll relay status
+ *   POST /payments/:id/relay  -- submit gasless relay
+ *   GET  /payments/:id/relay  -- poll relay status
  *
  * Existing gasless tests call the forwarder contract directly.
  * These tests verify the gateway API relay layer end-to-end.
@@ -92,22 +92,22 @@ describe('Relay API Flow', () => {
     const params = makeCreatePaymentParams(tokenAmount, orderId);
     const createResponse = await client.createPayment(params);
 
-    const amount = BigInt(createResponse.amount);
+    const amount = BigInt(createResponse.data.amount);
 
     // Approve token for gateway
     await approveToken(token.address, gatewayAddress, amount, payerPrivateKey);
 
-    // Encode pay() function data
-    const data = encodePayFunctionData(
-      createResponse.paymentId,
+    // Encode pay() function data inline (7 args: no escrowDuration, no serverSignature)
+    const iface = new Interface(PaymentGatewayABI);
+    const data = iface.encodeFunctionData('pay', [
+      createResponse.data.paymentId,
       token.address,
       amount,
-      createResponse.recipientAddress,
-      createResponse.merchantId,
-      BigInt(createResponse.deadline),
-      BigInt(createResponse.escrowDuration),
-      createResponse.serverSignature
-    );
+      createResponse.data.recipientAddress,
+      createResponse.data.merchantId,
+      BigInt(createResponse.data.deadline),
+      ZERO_PERMIT,
+    ]);
 
     // Build ForwardRequest
     const forwarder = getContract(forwarderAddress, ERC2771ForwarderABI);
@@ -223,7 +223,7 @@ describe('Relay API Flow', () => {
     }
   });
 
-  // ── Successful Relay Submission ───────────────────────────────────
+  // -- Successful Relay Submission --
 
   describe('Gasless relay submission via API', () => {
     it('should submit gasless relay and return 202', async () => {
@@ -235,12 +235,15 @@ describe('Relay API Flow', () => {
         10
       );
 
-      const res = await submitRelay(createResponse.paymentId, forwardRequest, signature);
+      const res = await submitRelay(createResponse.data.paymentId, forwardRequest, signature);
 
       expect(res.status).toBe(202);
-      const body = (await res.json()) as { success: boolean; status: string; message: string };
+      const body = (await res.json()) as {
+        success: boolean;
+        data: { status: string; message: string };
+      };
       expect(body.success).toBe(true);
-      expect(body.status).toBeDefined();
+      expect(body.data.status).toBeDefined();
     });
 
     it('should transition relay status to CONFIRMED after submission', async () => {
@@ -253,17 +256,21 @@ describe('Relay API Flow', () => {
       );
 
       // Submit relay
-      const submitRes = await submitRelay(createResponse.paymentId, forwardRequest, signature);
+      const submitRes = await submitRelay(createResponse.data.paymentId, forwardRequest, signature);
       expect(submitRes.status).toBe(202);
 
       // Poll until CONFIRMED
-      const relayStatus = await waitForRelayStatus(createResponse.paymentId, ['CONFIRMED'], 30000);
+      const relayStatus = await waitForRelayStatus(
+        createResponse.data.paymentId,
+        ['CONFIRMED'],
+        30000
+      );
       expect(relayStatus.status).toBe('CONFIRMED');
       expect(relayStatus.transactionHash).toBeDefined();
       expect(relayStatus.transactionHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
     });
 
-    it('should verify payment is escrowed on-chain after relay confirms', async () => {
+    it('should verify payment is paid on-chain after relay confirms', async () => {
       if (!isReady) return;
 
       const orderId = `RELAY_ONCHAIN_${Date.now()}`;
@@ -272,17 +279,17 @@ describe('Relay API Flow', () => {
         20
       );
 
-      await submitRelay(createResponse.paymentId, forwardRequest, signature);
-      await waitForRelayStatus(createResponse.paymentId, ['CONFIRMED'], 30000);
+      await submitRelay(createResponse.data.paymentId, forwardRequest, signature);
+      await waitForRelayStatus(createResponse.data.paymentId, ['CONFIRMED'], 30000);
 
       // Verify on-chain
       const gateway = getContract(gatewayAddress, PaymentGatewayABI);
-      const isProcessed = await gateway.isPaymentProcessed(createResponse.paymentId);
+      const isProcessed = await gateway.isPaymentProcessed(createResponse.data.paymentId);
       expect(isProcessed).toBe(true);
     });
   });
 
-  // ── Relay Status Polling ──────────────────────────────────────────
+  // -- Relay Status Polling --
 
   describe('Relay status polling', () => {
     it('should return 404 for payment with no relay request', async () => {
@@ -293,7 +300,7 @@ describe('Relay API Flow', () => {
       const params = makeCreatePaymentParams(5, `RELAY_NORELAY_${Date.now()}`);
       const createRes = await client.createPayment(params);
 
-      const res = await fetch(`${GATEWAY_API_URL}/payments/${createRes.paymentId}/relay`, {
+      const res = await fetch(`${GATEWAY_API_URL}/payments/${createRes.data.paymentId}/relay`, {
         headers: {
           'x-public-key': TEST_MERCHANT.publicKey ?? '',
           Origin: TEST_MERCHANT.origin ?? '',
@@ -314,17 +321,20 @@ describe('Relay API Flow', () => {
         8
       );
 
-      await submitRelay(createResponse.paymentId, forwardRequest, signature);
+      await submitRelay(createResponse.data.paymentId, forwardRequest, signature);
 
       // Wait a moment for relay to be processed
       await sleep(2000);
 
-      const res = await fetch(`${GATEWAY_API_URL}/payments/${createResponse.paymentId}/relay`, {
-        headers: {
-          'x-public-key': TEST_MERCHANT.publicKey ?? '',
-          Origin: TEST_MERCHANT.origin ?? '',
-        },
-      });
+      const res = await fetch(
+        `${GATEWAY_API_URL}/payments/${createResponse.data.paymentId}/relay`,
+        {
+          headers: {
+            'x-public-key': TEST_MERCHANT.publicKey ?? '',
+            Origin: TEST_MERCHANT.origin ?? '',
+          },
+        }
+      );
 
       expect(res.ok).toBe(true);
       const body = (await res.json()) as {
@@ -345,7 +355,7 @@ describe('Relay API Flow', () => {
     });
   });
 
-  // ── Validation & Error Cases ──────────────────────────────────────
+  // -- Validation & Error Cases --
 
   describe('Relay validation', () => {
     it('should reject relay with mismatched amount in forwardRequest data', async () => {
@@ -356,22 +366,20 @@ describe('Relay API Flow', () => {
       const params = makeCreatePaymentParams(50, orderId);
       const createResponse = await client.createPayment(params);
 
-      const correctAmount = BigInt(createResponse.amount);
+      const correctAmount = BigInt(createResponse.data.amount);
       const wrongAmount = correctAmount + 1000000n; // Tamper with amount
 
       await approveToken(token.address, gatewayAddress, wrongAmount, payerPrivateKey);
 
-      // Encode pay() with WRONG amount
+      // Encode pay() with WRONG amount (7 args, no escrowDuration/serverSignature)
       const iface = new Interface(PaymentGatewayABI);
       const tamperedData = iface.encodeFunctionData('pay', [
-        createResponse.paymentId,
+        createResponse.data.paymentId,
         token.address,
         wrongAmount, // Different from DB amount
-        createResponse.recipientAddress,
-        createResponse.merchantId,
-        BigInt(createResponse.deadline),
-        BigInt(createResponse.escrowDuration),
-        createResponse.serverSignature,
+        createResponse.data.recipientAddress,
+        createResponse.data.merchantId,
+        BigInt(createResponse.data.deadline),
         { deadline: 0n, v: 0, r: '0x' + '00'.repeat(32), s: '0x' + '00'.repeat(32) },
       ]);
 
@@ -391,7 +399,7 @@ describe('Relay API Flow', () => {
 
       const signature = await signForwardRequest(request, payerPrivateKey);
 
-      const res = await submitRelay(createResponse.paymentId, request, signature);
+      const res = await submitRelay(createResponse.data.paymentId, request, signature);
 
       // Should be rejected because amount in data doesn't match DB
       expect(res.status).toBe(400);
@@ -399,35 +407,35 @@ describe('Relay API Flow', () => {
       expect(body.code).toBe('VALIDATION_ERROR');
     });
 
-    it('should reject relay on already-escrowed payment', async () => {
+    it('should reject relay on already-paid payment', async () => {
       if (!isReady) return;
 
-      const orderId = `RELAY_ALREADYESCROW_${Date.now()}`;
+      const orderId = `RELAY_ALREADYPAID_${Date.now()}`;
       const { createResponse, forwardRequest, signature } = await createPaymentAndBuildRelay(
         orderId,
         10
       );
 
       // Submit relay and wait for CONFIRMED
-      await submitRelay(createResponse.paymentId, forwardRequest, signature);
-      await waitForRelayStatus(createResponse.paymentId, ['CONFIRMED'], 30000);
+      await submitRelay(createResponse.data.paymentId, forwardRequest, signature);
+      await waitForRelayStatus(createResponse.data.paymentId, ['CONFIRMED'], 30000);
 
-      // Wait for payment to be detected as ESCROWED
+      // Wait for payment to be detected as PAID
       await sleep(5000);
 
       // Try to submit another relay - should fail because payment is no longer CREATED
       const forwarder = getContract(forwarderAddress, ERC2771ForwarderABI);
       const newNonce = await forwarder.nonces(payerAddress);
-      const newData = encodePayFunctionData(
-        createResponse.paymentId,
+      const iface = new Interface(PaymentGatewayABI);
+      const newData = iface.encodeFunctionData('pay', [
+        createResponse.data.paymentId,
         token.address,
-        BigInt(createResponse.amount),
-        createResponse.recipientAddress,
-        createResponse.merchantId,
-        BigInt(createResponse.deadline),
-        BigInt(createResponse.escrowDuration),
-        createResponse.serverSignature
-      );
+        BigInt(createResponse.data.amount),
+        createResponse.data.recipientAddress,
+        createResponse.data.merchantId,
+        BigInt(createResponse.data.deadline),
+        ZERO_PERMIT,
+      ]);
 
       const newRequest: ForwardRequest = {
         from: payerAddress,
@@ -442,17 +450,19 @@ describe('Relay API Flow', () => {
       await approveToken(
         token.address,
         gatewayAddress,
-        BigInt(createResponse.amount),
+        BigInt(createResponse.data.amount),
         payerPrivateKey
       );
       const newSig = await signForwardRequest(newRequest, payerPrivateKey);
 
-      const res = await submitRelay(createResponse.paymentId, newRequest, newSig);
-      // 400 if DB status already updated to ESCROWED (INVALID_PAYMENT_STATUS)
-      // 500 if DB still CREATED but relayer rejects duplicate on-chain tx
+      const res = await submitRelay(createResponse.data.paymentId, newRequest, newSig);
+      // 400: RELAY_ALREADY_SUBMITTED (relay already in flight), or INVALID_PAYMENT_STATUS (DB already PAID)
+      // 500: INTERNAL_ERROR if relayer rejects duplicate on-chain tx before we check
       expect(res.status).toBeGreaterThanOrEqual(400);
       const body = (await res.json()) as { code: string };
-      expect(['INVALID_PAYMENT_STATUS', 'INTERNAL_ERROR']).toContain(body.code);
+      expect(['RELAY_ALREADY_SUBMITTED', 'INVALID_PAYMENT_STATUS', 'INTERNAL_ERROR']).toContain(
+        body.code
+      );
     });
   });
 });

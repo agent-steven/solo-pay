@@ -4,6 +4,8 @@ import { MerchantService } from '../../services/merchant.service';
 import { PaymentService } from '../../services/payment.service';
 import { RefundService } from '../../services/refund.service';
 import { createAuthMiddleware } from '../../middleware/auth.middleware';
+import { ErrorResponseSchema } from '../../docs/schemas';
+import { ErrorCodes } from '../../error-codes';
 
 interface RefundListQuery {
   page?: number;
@@ -98,6 +100,7 @@ export async function getRefundListRoute(
               },
             },
           },
+          500: ErrorResponseSchema,
         },
       },
       preHandler: authMiddleware,
@@ -105,7 +108,13 @@ export async function getRefundListRoute(
     async (request, reply) => {
       try {
         const { page = 1, limit = 20, status, paymentId } = request.query;
-        const merchant = (request as unknown as { merchant: { id: number } }).merchant;
+        const merchant = request.merchant;
+        if (!merchant) {
+          return reply.code(401).send({
+            code: ErrorCodes.UNAUTHORIZED,
+            message: 'Authentication required',
+          });
+        }
 
         const result = await refundService.findByMerchant(merchant.id, {
           page,
@@ -128,8 +137,8 @@ export async function getRefundListRoute(
           status: refund.status,
           reason: refund.reason,
           txHash: refund.tx_hash,
-          createdAt: refund.created_at.toISOString(),
-          confirmedAt: refund.confirmed_at?.toISOString() || null,
+          createdAt: new Date(refund.created_at).toISOString(),
+          confirmedAt: refund.confirmed_at ? new Date(refund.confirmed_at).toISOString() : null,
         }));
 
         return reply.code(200).send({
@@ -142,7 +151,7 @@ export async function getRefundListRoute(
       } catch (error) {
         request.log.error({ err: error }, 'Failed to list refunds');
         return reply.code(500).send({
-          code: 'INTERNAL_ERROR',
+          code: ErrorCodes.INTERNAL_ERROR,
           message: 'Failed to list refunds',
         });
       }

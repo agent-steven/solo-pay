@@ -1,4 +1,8 @@
+import { motion } from 'framer-motion';
+import { Unlink } from 'lucide-react';
 import { useLocale } from '../../context/LocaleContext';
+import { TechScrambleButton } from '../ui/tech-scramble-button';
+import { DotFlowLoader } from '../ui/processing-card';
 
 interface TokenApprovalProps {
   walletAddress: string;
@@ -7,20 +11,13 @@ interface TokenApprovalProps {
   onApprove?: () => void;
   onGetGas?: () => void;
   onDisconnect?: () => void;
-  /** Cancel handler - redirects to failUrl */
   onCancel?: () => void;
-  /** Whether approval transaction is pending */
   isApproving?: boolean;
-  /** Whether user needs to approve (false if already approved) */
-  needsApproval?: boolean;
-  /** Error message from approval */
   error?: string;
-  /** Whether gas faucet request is in progress */
   isRequestingGas?: boolean;
-  /** Error message from gas request */
   gasRequestError?: string | null;
-  /** Gas was successfully received from faucet */
   gasReceived?: boolean;
+  isLoading?: boolean;
 }
 
 export default function TokenApproval({
@@ -32,67 +29,55 @@ export default function TokenApproval({
   onDisconnect,
   onCancel,
   isApproving = false,
-  needsApproval = true,
   error,
   isRequestingGas = false,
   gasRequestError = null,
   gasReceived = false,
+  isLoading = false,
 }: TokenApprovalProps) {
   const { t } = useLocale();
   const hasBalance = balance !== '' && balance !== '0' && parseFloat(balance) > 0;
 
   return (
-    <div className="w-full p-4 sm:p-8">
-      {/* Title */}
-      <div className="text-center mb-5 sm:mb-6">
-        <h1 className="text-base sm:text-lg font-bold text-gray-900">
-          {needsApproval ? t('approval.title') : t('approval.alreadyApproved')}
-        </h1>
-        <p className="text-xs sm:text-sm text-gray-500 mt-1">
-          {needsApproval ? t('approval.description') : t('approval.descriptionAlready')}
-        </p>
-      </div>
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      className="flex flex-col items-center"
+    >
+      <h2 className="relative z-10 text-2xl md:text-3xl bg-clip-text text-transparent bg-gradient-to-b from-white to-zinc-500 text-center font-extrabold antialiased mb-2 tracking-tight">
+        {t('approval.title')}
+      </h2>
+      <p className="text-center text-sm text-[var(--color-brand-gray)] mb-4 sm:mb-8">
+        {t('approval.description')}
+      </p>
 
-      {/* Wallet Info */}
-      <div className="rounded-xl bg-gray-50 border border-gray-100 p-4 sm:p-5 mb-4 sm:mb-5">
-        <div className="flex items-center justify-between mb-3 sm:mb-4">
-          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-            {t('approval.connectedWallet')}
+      {/* Wallet Info Card */}
+      <div className="w-full bg-zinc-800 p-4 rounded-none mb-4 sm:mb-6 border border-zinc-600/70 shadow-sm">
+        <div className="flex justify-between items-center mb-4">
+          <span className="text-xs font-mono text-[var(--color-brand-gray)]">
+            {t('approval.connectedWallet').toUpperCase()}
           </span>
           {onDisconnect && (
             <button
               type="button"
               onClick={onDisconnect}
-              className="inline-flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-medium hover:bg-gray-200 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 text-xs bg-zinc-700 px-3 py-1 rounded-none hover:bg-zinc-600 transition-colors"
             >
-              <svg
-                className="w-3.5 h-3.5 sm:w-3 sm:h-3"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={2}
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"
-                />
-              </svg>
-              <span className="hidden sm:inline">{t('common.disconnect')}</span>
+              <Unlink className="w-3 h-3" />
+              <span>{t('common.disconnect')}</span>
             </button>
           )}
         </div>
-
-        {/* Address */}
-        <div className="mb-3 sm:mb-4">
-          <p className="text-xs sm:text-sm font-mono text-gray-900 truncate">{walletAddress}</p>
-        </div>
-
-        {/* Balance */}
-        <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-          <span className="text-xs sm:text-sm text-gray-500">{t('approval.balance')}</span>
-          <span className="text-xs sm:text-sm font-semibold text-gray-900">
-            {balance} {token}
+        <div className="font-mono text-lg mb-4">{walletAddress}</div>
+        <div className="flex justify-between items-center border-t border-zinc-700 pt-4">
+          <span className="text-sm text-[var(--color-brand-gray)]">{t('approval.balance')}</span>
+          <span className="font-mono font-bold">
+            {isLoading ? (
+              <span className="inline-block w-20 h-4 bg-zinc-700 rounded animate-pulse" />
+            ) : (
+              `${balance} ${token}`
+            )}
           </span>
         </div>
       </div>
@@ -100,119 +85,85 @@ export default function TokenApproval({
       {/* GET GAS Section */}
       {onGetGas && (
         <div
-          className={`rounded-xl border p-4 sm:p-5 mb-4 sm:mb-6 ${
-            gasReceived ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-100'
-          }`}
+          className={`w-full rounded-none border p-4 mb-4 sm:mb-6 ${gasReceived ? 'bg-zinc-800/50 border-[var(--color-brand-success)]/30' : 'bg-zinc-800/50 border-zinc-600/50'}`}
         >
           {gasReceived ? (
             <div className="flex items-center gap-3">
-              <div className="shrink-0 w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                <svg
-                  className="w-4 h-4 text-green-600"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={2.5}
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                </svg>
+              <div className="shrink-0 w-8 h-8 rounded-full bg-[var(--color-brand-success)]/10 flex items-center justify-center">
+                <span className="text-[var(--color-brand-success)] text-sm">&#10003;</span>
               </div>
               <div>
-                <p className="text-sm font-semibold text-green-800">{t('approval.gasReceived')}</p>
-                <p className="text-xs text-green-700 mt-0.5">
+                <p className="text-sm font-semibold text-[var(--color-brand-success)]">
+                  {t('approval.gasReceived')}
+                </p>
+                <p className="text-xs text-[var(--color-brand-gray)] mt-0.5">
                   {t('approval.gasReceivedDescription')}
                 </p>
               </div>
             </div>
           ) : (
             <>
-              <div className="flex items-start gap-2 sm:gap-3 mb-3 sm:mb-4">
-                <div className="mt-0.5 shrink-0 w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center">
-                  <svg
-                    className="w-3 h-3 text-blue-600"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={2}
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"
-                    />
-                  </svg>
-                </div>
-                <p className="text-xs text-blue-700 leading-relaxed">{t('approval.getGasInfo')}</p>
-              </div>
+              <p className="text-xs text-[var(--color-brand-gray)] leading-relaxed mb-3">
+                {t('approval.getGasInfo')}
+              </p>
               <button
                 type="button"
-                className="w-full py-2 sm:py-2.5 rounded-lg bg-white border border-blue-200 text-xs sm:text-sm font-semibold text-blue-600 hover:bg-blue-100 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full py-2 rounded-none bg-zinc-700 border border-zinc-600 text-xs font-semibold text-white hover:bg-zinc-600 transition-colors disabled:opacity-60"
                 onClick={onGetGas}
                 disabled={isRequestingGas}
               >
-                {isRequestingGas ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <span className="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                    {t('approval.requestingGas')}
-                  </span>
-                ) : (
-                  t('approval.getGas')
-                )}
+                {isRequestingGas ? t('approval.requestingGas') : t('approval.getGas')}
               </button>
-              {gasRequestError && <p className="mt-2 text-xs text-red-600">{gasRequestError}</p>}
+              {gasRequestError && (
+                <p className="mt-2 text-xs text-[var(--color-brand-error)]">{gasRequestError}</p>
+              )}
             </>
           )}
         </div>
       )}
 
-      {/* Error Message */}
+      {/* Error */}
       {error && (
-        <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200">
-          <p className="text-xs text-red-600">{error}</p>
+        <div className="w-full mb-4 p-3 rounded-none bg-[var(--color-brand-error)]/10 border border-[var(--color-brand-error)]/30">
+          <p className="text-xs text-[var(--color-brand-error)]">{error}</p>
         </div>
       )}
 
-      {/* Approve Button - hidden when no balance */}
-      {(hasBalance || !needsApproval) && (
-        <button
-          type="button"
-          className={`w-full py-3 sm:py-3.5 rounded-xl text-white text-sm font-semibold transition-colors ${
-            isApproving
-              ? 'bg-blue-400 cursor-not-allowed'
-              : error
-                ? 'bg-blue-600 hover:bg-blue-500 active:bg-blue-700 cursor-pointer'
-                : needsApproval
-                  ? 'bg-blue-600 hover:bg-blue-500 active:bg-blue-700 cursor-pointer'
-                  : 'bg-green-600 hover:bg-green-500 cursor-pointer'
-          }`}
-          onClick={onApprove}
-          disabled={isApproving}
-        >
-          {isApproving ? (
-            <span className="flex items-center justify-center gap-2">
-              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              {t('approval.approving')}
-            </span>
-          ) : error ? (
-            t('common.tryAgain')
-          ) : needsApproval ? (
-            t('approval.approveToken')
-          ) : (
-            t('approval.continueToPayment')
-          )}
-        </button>
-      )}
+      {/* Approve Button */}
+      {(isLoading || hasBalance) &&
+        (isApproving ? (
+          <div className="relative p-[1px] tech-cut-btn group overflow-hidden w-full mt-2">
+            <button
+              disabled
+              className="w-full transition-colors py-4 font-bold tracking-widest tech-cut-btn relative z-10 uppercase bg-zinc-900 text-zinc-400 flex items-center justify-center gap-3 opacity-80"
+            >
+              <DotFlowLoader status="active" />
+              {t('approval.approving').toUpperCase()}
+            </button>
+          </div>
+        ) : (
+          <TechScrambleButton
+            text={
+              error ? t('common.tryAgain').toUpperCase() : t('approval.approveToken').toUpperCase()
+            }
+            onClick={() => onApprove?.()}
+            delay={0.2}
+            containerClassName="w-full mt-2"
+            disabled={isLoading}
+          />
+        ))}
 
-      {/* Cancel Button - shown when no balance */}
-      {!hasBalance && needsApproval && onCancel && (
-        <button
-          type="button"
-          className="w-full mt-3 py-3 sm:py-3.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-500 transition-colors cursor-pointer"
+      {/* Cancel */}
+      {!isLoading && !hasBalance && onCancel && (
+        <TechScrambleButton
+          text={t('approval.cancelPayment').toUpperCase()}
           onClick={onCancel}
-        >
-          {t('approval.cancelPayment')}
-        </button>
+          delay={0.3}
+          containerClassName="w-full mt-3"
+          gradientClassName="via-red-500/60"
+          buttonClassName="bg-zinc-950 hover:bg-gradient-to-r hover:from-zinc-950 hover:to-red-950/40 text-red-500 hover:text-red-400"
+        />
       )}
-    </div>
+    </motion.div>
   );
 }

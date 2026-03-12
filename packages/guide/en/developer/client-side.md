@@ -28,7 +28,7 @@ npm install @solo-pay/widget-js
 import { SoloPay } from '@solo-pay/widget-js';
 
 const solopay = new SoloPay({
-  publicKey: 'pk_test_xxxxx', // Your issued Public Key
+  publicKey: 'pk_xxxxx', // Your issued Public Key
 });
 
 solopay.requestPayment({
@@ -42,11 +42,17 @@ solopay.requestPayment({
 
 ## Step 2: Handle Callback URL
 
-After payment, SoloPay redirects the user to the `successUrl` or `failUrl` specified at payment creation.
+After payment, SoloPay redirects the user to the `successUrl` or `failUrl` specified at payment creation. The widget automatically appends `paymentId`, `orderId`, and `status` as query parameters.
+
+| Parameter   | Description                         |
+| ----------- | ----------------------------------- |
+| `paymentId` | The unique payment identifier       |
+| `orderId`   | The merchant order ID               |
+| `status`    | Payment result: `success` or `fail` |
 
 ```
-https://yourshop.com/payment/success?paymentId=0xabc123...
-https://yourshop.com/payment/fail?paymentId=0xabc123...&reason=expired
+https://yourshop.com/payment/success?paymentId=0xabc123...&orderId=order-001&status=success
+https://yourshop.com/payment/fail?paymentId=0xabc123...&orderId=order-001&status=fail
 ```
 
 ::: warning Do Not Trust URL Parameters
@@ -58,23 +64,23 @@ URL parameters can be manipulated by the user. Always **verify payment status vi
 As soon as the `paymentId` is received from the callback URL, call the status API to verify payment. The `GET /payments/:id` endpoint uses the `x-public-key` header, which can be called from the browser.
 
 ```typescript
-const response = await fetch(`https://pay-api.staging.sut.com/api/v1/payments/0xabc123...`, {
-  headers: { 'x-public-key': 'pk_test_xxxxx' },
+const response = await fetch(`https://gateway.dev.solonetwork.io/api/v1/payments/0xabc123...`, {
+  headers: { 'x-public-key': 'pk_xxxxx' },
 });
 const result = await response.json();
 ```
 
 **Verification Checklist**
 
-- [ ] Confirm `status === 'ESCROWED'` or `status === 'FINALIZED'`
-- [ ] Confirm `amount` matches order amount
+- [ ] Confirm `status === 'PAID'` (payment success)
+- [ ] Confirm `amount` matches the expected amount **in your order database** (the widget runs client-side and the amount could be tampered with)
 - [ ] Confirm `tokenAddress` matches the expected token
 - [ ] Confirm `orderId` matches the expected orderId
 - [ ] Prevent duplicate completion processing for the same `paymentId`
 
 ## Webhook Integration (Recommended)
 
-The callback URL approach can fail if the user closes the browser. **Using it with Webhooks** allows reliable payment completion reception even when the user does not return to the success page.
+The callback URL approach is browser-redirect based and can be lost due to network issues. **Using it with Webhooks** allows reliable payment completion reception even when the user does not return to the success page.
 
 - [View Webhook Setup Guide](/en/webhooks/)
 

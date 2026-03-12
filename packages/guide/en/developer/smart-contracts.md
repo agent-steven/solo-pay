@@ -10,10 +10,10 @@ These are currently testnet addresses. Mainnet addresses will be announced separ
 
 ### Polygon Amoy (80002)
 
-| Contract             | Address                                            |
-| -------------------- | -------------------------------------------------- |
-| **PaymentGateway**   | See `gatewayAddress` in `GET /payments` response   |
-| **ERC2771Forwarder** | See `forwarderAddress` in `GET /payments` response |
+| Contract             | Address                                             |
+| -------------------- | --------------------------------------------------- |
+| **PaymentGateway**   | See `gatewayAddress` in `POST /payments` response   |
+| **ERC2771Forwarder** | See `forwarderAddress` in `POST /payments` response |
 
 ::: tip Why not hardcode addresses?
 Contract addresses may differ per chain and per merchant, and may change on upgrades. The **payment creation API response** always contains the latest addresses — trust those values.
@@ -33,7 +33,7 @@ Contract addresses may differ per chain and per merchant, and may change on upgr
 
 The core payment contract. A single `pay()` function is used for both direct payment (user sends the transaction) and gasless payment (relayer sends the transaction via `ERC2771Forwarder`).
 
-#### `pay()` — Escrow Payment (Direct or Gasless)
+#### `pay()` — Execute Payment (Direct or Gasless)
 
 ```solidity
 function pay(
@@ -42,14 +42,12 @@ function pay(
     uint256 amount,          // Payment amount (in wei)
     address recipientAddress,// Recipient address (merchant wallet)
     bytes32 merchantId,      // Merchant ID
-    uint256 deadline,        // Signature deadline (Unix timestamp, from API)
-    uint256 escrowDuration,  // Escrow duration in seconds (from API)
-    bytes calldata serverSignature,  // Server EIP-712 signature (tamper prevention)
+    uint256 deadline,        // Payment deadline (Unix timestamp, from API)
     PermitSignature calldata permit // EIP-2612 permit; use zero (deadline=0) if not applicable
 ) external
 ```
 
-All of `deadline`, `escrowDuration`, and `serverSignature` are provided in the payment creation or status API response. Fee is applied on-chain from contract configuration; it is not passed as an argument.
+The `deadline` is provided in the payment creation or status API response. Fee is applied on-chain from contract configuration; it is not passed as an argument.
 
 **Frontend call example (wagmi) — direct payment**
 
@@ -71,8 +69,6 @@ await writeContract({
     recipientAddress,
     merchantId,
     BigInt(deadline),
-    BigInt(escrowDuration),
-    serverSignature,
     zeroPermit,
   ],
 });
@@ -122,17 +118,6 @@ const domain = {
   verifyingContract: forwarderAddress,
 };
 ```
-
-## The Role of serverSignature
-
-The `serverSignature` included in the payment creation response is an EIP-712 signature proving that SoloPay's server has authenticated the payment.
-
-- **Tamper Prevention**: Merchants and users cannot arbitrarily modify `paymentId`, `amount`, `recipient`, etc.
-- **Contract Verification**: `PaymentGateway` verifies on-chain that this signature belongs to SoloPay's server at the time of transaction execution.
-
-::: warning Note
-`serverSignature` is issued only once per payment creation. Previous signatures become invalid when a payment expires or a new payment is created.
-:::
 
 ## Next Steps
 

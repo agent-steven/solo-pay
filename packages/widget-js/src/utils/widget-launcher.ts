@@ -33,15 +33,8 @@ export class WidgetLauncher {
     }
   }
 
-  /** Base URL for device: mobile → index (/), PC → /pc */
-  private getBaseUrlForDevice(forMobile: boolean): string {
-    return forMobile ? this.widgetUrl : `${this.widgetUrl}/pc`;
-  }
-
-  /** Build widget URL with payment parameters. Uses current device (mobile → /, PC → /pc) when forMobile is omitted. */
-  buildWidgetUrl(request: PaymentRequest, forMobile?: boolean): string {
-    const mobile = forMobile ?? isMobile();
-    const baseUrl = this.getBaseUrlForDevice(mobile);
+  /** Build widget URL with payment parameters. */
+  buildWidgetUrl(request: PaymentRequest): string {
     const params = new URLSearchParams({
       pk: this.publicKey,
       orderId: request.orderId,
@@ -57,8 +50,8 @@ export class WidgetLauncher {
       params.set('lang', request.locale);
     }
 
-    const url = `${baseUrl}?${params.toString()}`;
-    this.log('Built widget URL:', url, `(${mobile ? 'mobile' : 'pc'})`);
+    const url = `${this.widgetUrl}?${params.toString()}`;
+    this.log('Built widget URL:', url);
     return url;
   }
 
@@ -67,8 +60,8 @@ export class WidgetLauncher {
    * Call directly from a user gesture (e.g. click handler) so the browser allows the popup.
    */
   open(request: PaymentRequest, options?: { onClose?: () => void }): void {
+    const url = this.buildWidgetUrl(request);
     const mobile = isMobile();
-    const url = this.buildWidgetUrl(request, mobile);
 
     this.log('Opening widget:', mobile ? 'redirect' : 'popup');
     this.onClose = options?.onClose;
@@ -76,7 +69,7 @@ export class WidgetLauncher {
     if (mobile) {
       this.openRedirect(url);
     } else {
-      this.openPopup(url, request.failUrl);
+      this.openPopup(url, request);
     }
   }
 
@@ -89,10 +82,21 @@ export class WidgetLauncher {
    * Open widget in a popup window.
    * Uses a unique window name and explicit size/position so the browser opens a window rather than a tab.
    */
-  private openPopup(url: string, failUrl: string): void {
+  private openPopup(url: string, request: PaymentRequest): void {
     this.log('Opening popup:', url);
     this.closePopup();
-    this.pendingFailUrl = failUrl;
+    // Build fallback failUrl for when popup is closed without postMessage
+    // (e.g. browser X button). Use status=closed (not fail) because the
+    // payment may have been paid on-chain before the user closed.
+    // Merchant should check actual payment status via gateway API.
+    try {
+      const u = new URL(request.failUrl);
+      u.searchParams.set('orderId', request.orderId);
+      u.searchParams.set('status', 'closed');
+      this.pendingFailUrl = u.toString();
+    } catch {
+      this.pendingFailUrl = request.failUrl;
+    }
 
     const left = Math.round(window.screenX + (window.outerWidth - POPUP_WIDTH) / 2);
     const top = Math.round(window.screenY + (window.outerHeight - POPUP_HEIGHT) / 2);
@@ -109,17 +113,34 @@ export class WidgetLauncher {
     this.popupWindow.focus();
 
     const widgetOrigin = new URL(this.widgetUrl).origin;
+    const popupRef = this.popupWindow;
+    let handled = false;
+
     const handleMessage = (event: MessageEvent) => {
-      if (event.source !== this.popupWindow) return;
+      if (event.source !== popupRef) return;
       if (event.origin !== widgetOrigin) return;
       const data = event.data;
-      if (
-        !data ||
-        typeof data !== 'object' ||
-        (data.type !== 'payment_complete' && data.type !== 'wallet_connected')
-      )
-        return;
+      if (!data || typeof data !== 'object') return;
 
+      // Widget sends paymentId as soon as payment is created/fetched.
+      // Append it to pendingFailUrl so fallback close includes it.
+      if (data.type === 'payment_init' && typeof data.paymentId === 'string') {
+        this.log('Payment initialized:', data.paymentId);
+        if (this.pendingFailUrl) {
+          try {
+            const u = new URL(this.pendingFailUrl);
+            u.searchParams.set('paymentId', data.paymentId);
+            this.pendingFailUrl = u.toString();
+          } catch {
+            /* ignore */
+          }
+        }
+        return;
+      }
+
+      if (data.type !== 'payment_complete' && data.type !== 'wallet_connected') return;
+
+      handled = true;
       this.log('Widget message:', data.type, data.status ?? '');
       window.removeEventListener('message', handleMessage);
       this.pendingFailUrl = null;
@@ -144,14 +165,25 @@ export class WidgetLauncher {
 
     this.popupCheckInterval = setInterval(() => {
       if (this.popupWindow?.closed) {
-        window.removeEventListener('message', handleMessage);
-        const failUrl = this.pendingFailUrl;
-        this.clearPopupCheck();
-        this.pendingFailUrl = null;
-        this.handleClose();
-        if (failUrl) {
-          window.location.href = failUrl;
+        // Stop polling but keep popupWindow reference alive for message handler.
+        if (this.popupCheckInterval !== null) {
+          clearInterval(this.popupCheckInterval);
+          this.popupCheckInterval = null;
         }
+        // Wait briefly for any pending postMessage to arrive before fallback.
+        // Widget sends postMessage before window.close(), but the event may
+        // still be queued when we detect the popup is closed.
+        setTimeout(() => {
+          if (handled) return;
+          window.removeEventListener('message', handleMessage);
+          const failUrl = this.pendingFailUrl;
+          this.pendingFailUrl = null;
+          this.popupWindow = null;
+          this.handleClose();
+          if (failUrl) {
+            window.location.href = failUrl;
+          }
+        }, 150);
       }
     }, POPUP_POLL_MS);
   }

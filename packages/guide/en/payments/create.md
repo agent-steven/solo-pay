@@ -6,17 +6,17 @@ Create a payment and receive a unique payment ID.
 
 When using the SoloPay widget, **payment creation is handled automatically by the widget**. This page is a reference API spec for understanding the internals or for custom implementations.
 
-Created payments **expire automatically after 30 minutes**.
+Created payments **expire automatically after 5 minutes**.
 
-- Auth: `x-public-key` header required (pk_live_xxx or pk_test_xxx)
+- Auth: `x-public-key` header required (pk_xxx)
 - Chain and recipient address are determined by merchant configuration
 - `tokenAddress` must be whitelisted and enabled for the merchant
 
 ## REST API
 
 ```bash
-curl -X POST https://pay-api.staging.sut.com/api/v1/payments \
-  -H "x-public-key: pk_test_xxxxx" \
+curl -X POST https://gateway.dev.solonetwork.io/api/v1/payments \
+  -H "x-public-key: pk_xxxxx" \
   -H "Origin: https://yourshop.com" \
   -H "Content-Type: application/json" \
   -d '{
@@ -51,23 +51,27 @@ Example: `amount: 10, currency: "USD"` → pays 10 USD worth of tokens
 ```json
 {
   "success": true,
-  "paymentId": "0xabc123def456...",
-  "orderId": "order-001",
-  "serverSignature": "0x...",
-  "chainId": 80002,
-  "tokenAddress": "0xE4C687167705Abf55d709395f92e254bdF5825a2",
-  "tokenSymbol": "SUT",
-  "tokenDecimals": 18,
-  "gatewayAddress": "0x...",
-  "forwarderAddress": "0x...",
-  "amount": "10500000000000000000",
-  "recipientAddress": "0xMerchantWallet...",
-  "merchantId": "0x...",
-  "deadline": "1706281200",
-  "escrowDuration": "300",
-  "successUrl": "https://example.com/success",
-  "failUrl": "https://example.com/fail",
-  "expiresAt": "2024-01-26T13:00:00.000Z"
+  "data": {
+    "paymentId": "0xabc123def456...",
+    "orderId": "order-001",
+    "chainId": 80002,
+    "tokenAddress": "0xE4C687167705Abf55d709395f92e254bdF5825a2",
+    "tokenSymbol": "SUT",
+    "tokenDecimals": 18,
+    "gatewayAddress": "0x...",
+    "forwarderAddress": "0x...",
+    "amount": "10500000000000000000",
+    "recipientAddress": "0xMerchantWallet...",
+    "merchantId": "0x...",
+    "deadline": "1706281200",
+    "successUrl": "https://example.com/success",
+    "failUrl": "https://example.com/fail",
+    "expiresAt": "2024-01-26T12:35:00.000Z",
+    "tokenPermitSupported": true,
+    "currency": "USD",
+    "fiatAmount": 10.5,
+    "tokenPrice": 1.0
+  }
 }
 ```
 
@@ -76,7 +80,7 @@ Example: `amount: 10, currency: "USD"` → pays 10 USD worth of tokens
 | HTTP | Code                       | Cause                                     |
 | ---- | -------------------------- | ----------------------------------------- |
 | 400  | `TOKEN_NOT_ENABLED`        | Token is not enabled for this merchant    |
-| 400  | `TOKEN_NOT_FOUND`          | Token not in whitelist                    |
+| 404  | `TOKEN_NOT_FOUND`          | Token not in whitelist                    |
 | 400  | `UNSUPPORTED_CHAIN`        | Unsupported chain                         |
 | 400  | `CHAIN_NOT_CONFIGURED`     | Merchant has no chain configured          |
 | 400  | `RECIPIENT_NOT_CONFIGURED` | Merchant recipient address not configured |
@@ -85,23 +89,25 @@ Example: `amount: 10, currency: "USD"` → pays 10 USD worth of tokens
 
 ## Response Fields
 
-| Field              | Type       | Description                                                           |
-| ------------------ | ---------- | --------------------------------------------------------------------- |
-| `paymentId`        | `string`   | Unique payment identifier (bytes32 hash)                              |
-| `serverSignature`  | `string`   | Server EIP-712 signature for contract auth                            |
-| `amount`           | `string`   | Amount in wei                                                         |
-| `gatewayAddress`   | `address`  | PaymentGateway contract address                                       |
-| `forwarderAddress` | `address`  | ERC2771 Forwarder address (for Gasless)                               |
-| `merchantId`       | `string`   | Merchant ID (bytes32)                                                 |
-| `deadline`         | `string`   | Signature deadline (Unix timestamp); required for `pay()` and gasless |
-| `escrowDuration`   | `string`   | Escrow duration in seconds; required for `pay()` and gasless          |
-| `expiresAt`        | `datetime` | Payment expiry (30 minutes from creation)                             |
+| Field                  | Type       | Description                                                                                           |
+| ---------------------- | ---------- | ----------------------------------------------------------------------------------------------------- |
+| `paymentId`            | `string`   | Unique payment identifier (bytes32 hash)                                                              |
+| `amount`               | `string`   | Amount in wei                                                                                         |
+| `gatewayAddress`       | `address`  | PaymentGateway contract address                                                                       |
+| `forwarderAddress`     | `address`  | ERC2771 Forwarder address (for Gasless)                                                               |
+| `merchantId`           | `string`   | Merchant ID (bytes32)                                                                                 |
+| `deadline`             | `string`   | Server signature deadline (Unix timestamp); required for `pay()` and gasless. Default: 1 hour (3600s) |
+| `expiresAt`            | `datetime` | Payment expiry (5 minutes from creation)                                                              |
+| `tokenPermitSupported` | `boolean`  | Whether the token supports EIP-2612 Permit                                                            |
+| `currency`             | `string`   | Fiat currency code (included only when requested)                                                     |
+| `fiatAmount`           | `number`   | Original fiat amount (included only when requested)                                                   |
+| `tokenPrice`           | `number`   | Token price at creation time (included only when requested)                                           |
 
 ## When Using the Widget
 
 When using the widget (`@solo-pay/widget-js` / `@solo-pay/widget-react`), there is no need to call this API directly — the widget handles it automatically.
 
-See [Client-Side Integration Guide](/en/developer/client-side)
+See [Widget Integration Guide](/en/widget/)
 
 ## Next Steps
 

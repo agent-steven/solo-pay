@@ -9,16 +9,29 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@gsap/react": "^2.1.2",
     "@metamask/sdk": "^0.34.0",
     "@reown/appkit": "^1.8.18",
     "@reown/appkit-adapter-wagmi": "^1.8.18",
     "@tanstack/react-query": "^5.55.3",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.35.2",
+    "gsap": "^3.14.2",
+    "lucide-react": "^0.577.0",
     "next": "^15.3.7",
     "react": "^19.1.3",
     "react-dom": "^19.1.3",
+    "tailwind-merge": "^3.5.0",
     "viem": "2.38.0",
     "wagmi": "^2.19.3"
   },
+  "browserslist": [
+    "chrome >= 93",
+    "edge >= 93",
+    "firefox >= 90",
+    "safari >= 15.4",
+    "not dead"
+  ],
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",
     "@types/node": "^22.19.1",

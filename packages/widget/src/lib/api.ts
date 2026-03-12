@@ -92,9 +92,8 @@ export async function createPayment(
     );
   }
 
-  if (data && typeof data === 'object' && 'success' in data) {
-    const { success: _success, ...rest } = data as Record<string, unknown>;
-    return rest as unknown as CreatePaymentResponse;
+  if (data && data.success === true && data.data) {
+    return data.data as CreatePaymentResponse;
   }
 
   return data as CreatePaymentResponse;
@@ -122,17 +121,7 @@ export async function createPaymentFromUrlParams(
 
 export interface PaymentStatusResponse extends PaymentDetails {
   paymentId: string;
-  status:
-    | 'CREATED'
-    | 'ESCROWED'
-    | 'FINALIZE_SUBMITTED'
-    | 'FINALIZED'
-    | 'CANCEL_SUBMITTED'
-    | 'CANCELLED'
-    | 'REFUND_SUBMITTED'
-    | 'REFUNDED'
-    | 'EXPIRED'
-    | 'FAILED';
+  status: 'CREATED' | 'PAID' | 'REFUND_SUBMITTED' | 'REFUNDED' | 'EXPIRED' | 'FAILED';
   txHash?: string;
   transactionHash?: string;
   confirmedAt?: string;
@@ -200,15 +189,11 @@ export async function pollPaymentStatus(
 
     onStatusChange?.(status);
 
-    if (status.status === 'FINALIZED') {
+    if (status.status === 'PAID') {
       return status;
     }
 
-    if (
-      status.status === 'FAILED' ||
-      status.status === 'EXPIRED' ||
-      status.status === 'CANCELLED'
-    ) {
+    if (status.status === 'FAILED' || status.status === 'EXPIRED') {
       throw new PaymentApiError(
         `PAYMENT_${status.status}`,
         `Payment ${status.status.toLowerCase()}`,
@@ -332,9 +317,8 @@ export async function submitGaslessPayment(
     );
   }
 
-  if (data && typeof data === 'object' && 'success' in data) {
-    const { success: _success, ...rest } = data as Record<string, unknown>;
-    return rest as unknown as GaslessPaymentResponse;
+  if (data && data.success === true && data.data) {
+    return data.data as GaslessPaymentResponse;
   }
 
   return data as GaslessPaymentResponse;

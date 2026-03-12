@@ -25,7 +25,11 @@ export interface WidgetUrlParams {
   successUrl: string;
   /** Redirect URL on failure (required in creation mode) */
   failUrl: string;
-  /** Fiat currency code (optional, e.g., USD, KRW) */
+  /**
+   * Fiat currency code (optional, e.g., USD, KRW).
+   * When provided, `amount` is treated as fiat amount and converted to token amount using real-time price.
+   * When omitted, `amount` is treated as token amount directly (no conversion).
+   */
   currency?: string;
   /** If true, only connect wallet — no gateway API or payment flow */
   walletOnly?: boolean;
@@ -55,8 +59,6 @@ export interface PaymentDetails {
   paymentId: string;
   /** Merchant order ID */
   orderId: string;
-  /** Server EIP-712 signature for contract verification */
-  serverSignature: string;
   /** Blockchain network ID */
   chainId: number;
   /** ERC20 token contract address */
@@ -79,10 +81,8 @@ export interface PaymentDetails {
   recipientAddress: string;
   /** Merchant ID (bytes32) */
   merchantId: string;
-  /** Deadline timestamp for server signature expiration */
+  /** Payment expiration timestamp in unix seconds (for on-chain validation) */
   deadline: string;
-  /** Escrow duration in seconds (bigint as string from API) */
-  escrowDuration: string;
   /** ERC2771Forwarder contract address (for gasless payments) */
   forwarderAddress?: string;
   /** Whether the token supports EIP-2612 permit (from server, skips on-chain probing) */
@@ -94,41 +94,7 @@ export interface PaymentDetails {
   /** Token price at creation time */
   tokenPrice?: number;
   /** Payment status (blockchain is source of truth when on-chain state is available; from GET /payments/:id) */
-  status?:
-    | 'CREATED'
-    | 'ESCROWED'
-    | 'FINALIZE_SUBMITTED'
-    | 'FINALIZED'
-    | 'CANCEL_SUBMITTED'
-    | 'CANCELLED'
-    | 'REFUND_SUBMITTED'
-    | 'REFUNDED'
-    | 'EXPIRED'
-    | 'FAILED';
+  status?: 'CREATED' | 'PAID' | 'REFUND_SUBMITTED' | 'REFUNDED' | 'EXPIRED' | 'FAILED';
   /** Transaction hash */
   txHash?: string;
-}
-
-/** Gas payment mode */
-export type GasMode = 'direct' | 'gasless';
-
-/**
- * @deprecated Use WidgetUrlParams and PaymentDetails instead
- */
-export interface PaymentInfo {
-  product: string;
-  amount: string;
-  token: string;
-  network: string;
-  merchantId?: string;
-}
-
-export interface WalletInfo {
-  address: string;
-  balance: string;
-}
-
-export interface TransactionResult {
-  txHash: string;
-  date: string;
 }

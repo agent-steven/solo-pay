@@ -26,7 +26,7 @@ This occurs when `INVALID_SIGNATURE` is returned when submitting a signature to 
 
 - Verify that the `chainId` in the EIP-712 domain parameters matches the chain ID of the network the user's MetaMask is currently connected to.
 - Check that the `forwarderAddress` value used matches the value received in the payment session API response.
-- If any value in the signed `data` structure — such as the payment amount, `paymentId`, or `serverSignature` — is changed, the signature becomes invalid.
+- If any value in the signed data structure — such as the payment amount or `paymentId` — is changed, the signature becomes invalid.
 
 ### 2. Revert After Relay Submission (Payment Status FAILED)
 

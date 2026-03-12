@@ -42,6 +42,14 @@ API Key or Public Key is invalid or missing.
 
 ## Validation Errors (400)
 
+### INVALID_REQUEST
+
+General invalid request error.
+
+```json
+{ "code": "INVALID_REQUEST", "message": "Invalid request" }
+```
+
 ### VALIDATION_ERROR
 
 ```json
@@ -85,12 +93,12 @@ API Key or Public Key is invalid or missing.
 
 ### INVALID_PAYMENT_STATUS
 
-Returned when a gasless (relay) request is sent for a payment that is already in a terminal state. Gasless is only allowed when payment status is **CREATED**.
+Returned when a gasless (relay) request is sent for a payment that is already in a non-CREATED state. Gasless is only allowed when payment status is **CREATED**.
 
 ```json
 {
   "code": "INVALID_PAYMENT_STATUS",
-  "message": "Payment is in terminal state (e.g. ESCROWED, FINALIZED, CANCELLED). Gasless requests only allowed when status is CREATED."
+  "message": "Payment is in terminal state (e.g. PAID, REFUNDED, EXPIRED). Gasless requests only allowed when status is CREATED."
 }
 ```
 
@@ -100,31 +108,18 @@ Returned when a gasless (relay) request is sent for a payment that is already in
 { "code": "PAYMENT_EXPIRED", "message": "Payment has expired" }
 ```
 
-### INVALID_STATUS (Finalize / Cancel)
+### INVALID_STATUS (Refund)
 
-Returned when calling **POST /payments/:id/finalize** or **POST /payments/:id/cancel** and the payment is not in **ESCROWED** status.
+Returned when calling **POST /refunds** and the payment is not in **PAID** status.
 
 ```json
 {
   "code": "INVALID_STATUS",
-  "message": "Payment must be ESCROWED to finalize. Current status: FINALIZED"
+  "message": "Payment must be PAID to request a refund. Current status: REFUNDED"
 }
 ```
 
-**Resolution**: Only finalize or cancel when `GET /payments/:id` returns `status === "ESCROWED"`.
-
-### ESCROW_EXPIRED
-
-Returned when calling **POST /payments/:id/finalize** after the escrow deadline has passed. The response body includes this code so your backend can detect and handle it (e.g. inform the user that only on-chain cancel is possible).
-
-```json
-{
-  "code": "ESCROW_EXPIRED",
-  "message": "Escrow deadline has expired"
-}
-```
-
-**Resolution**: After the escrow deadline, finalize via API is no longer allowed. Anyone can cancel the payment on-chain (permissionless) to return funds to the buyer.
+**Resolution**: Only request a refund when `GET /payments/:id` returns `status === "PAID"`.
 
 ### INVALID_SIGNATURE
 
@@ -152,6 +147,65 @@ Returned when calling **POST /payments/:id/finalize** after the escrow deadline 
 { "code": "INVALID_CURRENCY", "message": "Unsupported currency: XYZ" }
 ```
 
+### UNSUPPORTED_TOKEN
+
+Token exists but is not supported on this chain.
+
+```json
+{ "code": "UNSUPPORTED_TOKEN", "message": "Unsupported token" }
+```
+
+### TOKEN_INFO_ERROR
+
+Failed to fetch token information from the blockchain.
+
+```json
+{ "code": "TOKEN_INFO_ERROR", "message": "Failed to fetch token info" }
+```
+
+### PRICE_SERVICE_NOT_CONFIGURED
+
+Currency conversion was requested but the price service is not available.
+
+```json
+{ "code": "PRICE_SERVICE_NOT_CONFIGURED", "message": "Price service is not configured" }
+```
+
+### PAYER_ADDRESS_NOT_FOUND
+
+Payer wallet address could not be resolved.
+
+```json
+{ "code": "PAYER_ADDRESS_NOT_FOUND", "message": "Payer address not found" }
+```
+
+### RELAY_ALREADY_SUBMITTED
+
+Returned when a gasless relay has already been submitted for this payment.
+
+```json
+{
+  "code": "RELAY_ALREADY_SUBMITTED",
+  "message": "Gasless already submitted for this payment. Check relay status or use a new checkout."
+}
+```
+
+### AMOUNT_MISMATCH
+
+Returned when the amount in the relay request does not match the payment amount in the database.
+
+```json
+{ "code": "AMOUNT_MISMATCH", "message": "Payment amount mismatch" }
+```
+
+### PAYMENT_NOT_PAID
+
+Returned when requesting a refund for a payment that is not in PAID status.
+
+```json
+{ "code": "PAYMENT_NOT_PAID", "message": "Payment must be PAID to request a refund" }
+```
+
 ---
 
 ## Not Found Errors (404)
@@ -168,10 +222,30 @@ Returned when calling **POST /payments/:id/finalize** after the escrow deadline 
 { "code": "PAYMENT_NOT_FOUND", "message": "Payment not found" }
 ```
 
+### NOT_FOUND
+
+Generic resource not found.
+
+```json
+{ "code": "NOT_FOUND", "message": "Resource not found" }
+```
+
+### CHAIN_NOT_FOUND
+
+```json
+{ "code": "CHAIN_NOT_FOUND", "message": "Chain not found" }
+```
+
 ### RELAY_NOT_FOUND
 
 ```json
 { "code": "RELAY_NOT_FOUND", "message": "No relay request found for this payment" }
+```
+
+### REFUND_NOT_FOUND
+
+```json
+{ "code": "REFUND_NOT_FOUND", "message": "Refund not found" }
 ```
 
 ---
@@ -184,9 +258,23 @@ Returned when calling **POST /payments/:id/finalize** after the escrow deadline 
 { "code": "DUPLICATE_ORDER", "message": "Order ID already used for this merchant." }
 ```
 
-### CONFLICT (Finalize / Cancel)
+### PAYMENT_METHOD_EXISTS
 
-Returned when **POST /payments/:id/finalize** or **POST /payments/:id/cancel** is called while another request is already processing the same payment (e.g. duplicate submit or race).
+Payment method already exists for this merchant and token.
+
+```json
+{ "code": "PAYMENT_METHOD_EXISTS", "message": "Payment method already exists" }
+```
+
+### PAYMENT_ALREADY_REFUNDED
+
+```json
+{ "code": "PAYMENT_ALREADY_REFUNDED", "message": "Payment has already been refunded" }
+```
+
+### CONFLICT (Refund)
+
+Returned when **POST /refunds** is called while another refund request is already processing the same payment.
 
 ```json
 {
@@ -195,7 +283,15 @@ Returned when **POST /payments/:id/finalize** or **POST /payments/:id/cancel** i
 }
 ```
 
-**Resolution**: Wait and poll **GET /payments/:id** until status is FINALIZED or CANCELLED; do not retry finalize/cancel immediately.
+**Resolution**: Wait and poll **GET /payments/:id** until status is REFUNDED; do not retry the refund immediately.
+
+### REFUND_IN_PROGRESS
+
+Returned when a refund is already in progress for this payment.
+
+```json
+{ "code": "REFUND_IN_PROGRESS", "message": "A refund is already in progress for this payment" }
+```
 
 ---
 
@@ -213,15 +309,31 @@ Returned when **POST /payments/:id/finalize** or **POST /payments/:id/cancel** i
 
 ### CHAIN_CONFIG_ERROR
 
-Returned when the chain or relayer configuration is missing or invalid (e.g. when calling **POST /payments/:id/finalize** or **POST /payments/:id/cancel**).
+Returned when the chain or relayer configuration is missing or invalid.
 
 ```json
 { "code": "CHAIN_CONFIG_ERROR", "message": "Chain or relayer configuration error" }
 ```
 
+### MERCHANT_CHAIN_NOT_CONFIGURED
+
+Merchant's chain configuration is missing.
+
+```json
+{ "code": "MERCHANT_CHAIN_NOT_CONFIGURED", "message": "Merchant chain is not configured" }
+```
+
+### SIGNATURE_ERROR
+
+Server failed to generate a signature.
+
+```json
+{ "code": "SIGNATURE_ERROR", "message": "Signature generation failed" }
+```
+
 ### SIGNING_SERVICE_ERROR
 
-Returned when the server fails to generate the finalize or cancel signature (e.g. **POST /payments/:id/finalize**, **POST /payments/:id/cancel**).
+Returned when the server fails to generate a required signature.
 
 ```json
 { "code": "SIGNING_SERVICE_ERROR", "message": "Failed to generate signature" }
@@ -229,7 +341,7 @@ Returned when the server fails to generate the finalize or cancel signature (e.g
 
 ### RELAYER_ERROR
 
-Returned when the relayer fails to submit the finalize or cancel transaction to the blockchain.
+Returned when the relayer fails to submit a transaction to the blockchain.
 
 ```json
 { "code": "RELAYER_ERROR", "message": "Relayer failed to submit transaction" }

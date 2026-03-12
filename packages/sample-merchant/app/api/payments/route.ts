@@ -21,7 +21,8 @@ async function getFirstPaymentMethod(): Promise<{
 
   if (!response.ok) return null;
 
-  const data = await response.json();
+  const json = await response.json();
+  const data = json.data ?? json;
   const enabled = data.payment_methods?.find((pm: { is_enabled: boolean }) => pm.is_enabled);
   if (!enabled?.token) return null;
 

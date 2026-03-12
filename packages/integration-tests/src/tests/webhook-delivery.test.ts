@@ -78,7 +78,7 @@ describe('Webhook Delivery to Sample Merchant', () => {
     it('should return 400 when orderId is missing', async () => {
       if (!isSampleMerchantReady) return;
 
-      const res = await postWebhook({ status: 'ESCROWED' });
+      const res = await postWebhook({ status: 'PAID' });
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('orderId');
     });
@@ -94,7 +94,7 @@ describe('Webhook Delivery to Sample Merchant', () => {
     it('should return 400 for null orderId', async () => {
       if (!isSampleMerchantReady) return;
 
-      const res = await postWebhook({ orderId: null, status: 'ESCROWED' });
+      const res = await postWebhook({ orderId: null, status: 'PAID' });
       expect(res.status).toBe(400);
     });
 
@@ -103,7 +103,7 @@ describe('Webhook Delivery to Sample Merchant', () => {
 
       const res = await postWebhook({
         orderId: 'stress-test-abc-123',
-        status: 'ESCROWED',
+        status: 'PAID',
         paymentId: '0x' + 'a'.repeat(64),
         txHash: '0x' + 'b'.repeat(64),
         amount: '1000000',
@@ -118,7 +118,7 @@ describe('Webhook Delivery to Sample Merchant', () => {
 
       const res = await postWebhook({
         orderId: '0x' + 'f'.repeat(64),
-        status: 'ESCROWED',
+        status: 'PAID',
         paymentId: '0x' + 'a'.repeat(64),
         amount: '1000000',
         tokenSymbol: 'USDC',
@@ -132,7 +132,7 @@ describe('Webhook Delivery to Sample Merchant', () => {
 
       const res = await postWebhook({
         orderId: '0',
-        status: 'ESCROWED',
+        status: 'PAID',
         paymentId: '0x' + 'a'.repeat(64),
         amount: '1000000',
         tokenSymbol: 'USDC',
@@ -146,7 +146,7 @@ describe('Webhook Delivery to Sample Merchant', () => {
 
       const res = await postWebhook({
         orderId: '-5',
-        status: 'ESCROWED',
+        status: 'PAID',
         paymentId: '0x' + 'a'.repeat(64),
         amount: '1000000',
         tokenSymbol: 'USDC',
@@ -160,7 +160,7 @@ describe('Webhook Delivery to Sample Merchant', () => {
 
       const res = await postWebhook({
         orderId: '1.5',
-        status: 'ESCROWED',
+        status: 'PAID',
         paymentId: '0x' + 'a'.repeat(64),
         amount: '1000000',
         tokenSymbol: 'USDC',
@@ -174,7 +174,7 @@ describe('Webhook Delivery to Sample Merchant', () => {
 
       const res = await postWebhook({
         orderId: '999999',
-        status: 'ESCROWED',
+        status: 'PAID',
         paymentId: '0x' + 'a'.repeat(64),
         amount: '1000000',
         tokenSymbol: 'USDC',
@@ -203,7 +203,7 @@ describe('Webhook Delivery to Sample Merchant', () => {
       for (const orderId of badOrderIds) {
         const res = await postWebhook({
           orderId,
-          status: 'ESCROWED',
+          status: 'PAID',
           paymentId: '0x' + 'a'.repeat(64),
           amount: '1000000',
           tokenSymbol: 'USDC',
@@ -241,7 +241,8 @@ describe('Webhook Delivery to Sample Merchant', () => {
         return;
       }
 
-      const body = (await res.json()) as WebhookJsonBody;
+      const json = (await res.json()) as { success: boolean; data: WebhookJsonBody };
+      const body = json.data;
       expect(body.orderId).toBe(testOrderId);
       expect(body.paymentId).toBeDefined();
       expect(body.paymentId).toMatch(/^0x/);

@@ -6,9 +6,9 @@
 
 SoloPay 위젯을 사용하면 **결제 생성은 위젯이 자동으로 처리**합니다. 이 페이지는 내부 동작을 이해하거나 커스텀 구현을 위한 참고용 API 명세입니다.
 
-생성된 결제는 **30분 후 자동 만료**됩니다.
+생성된 결제는 **5분 후 자동 만료**됩니다.
 
-- 인증: `x-public-key` 헤더 필수 (pk_live_xxx 또는 pk_test_xxx)
+- 인증: `x-public-key` 헤더 필수 (pk_xxx)
 - 체인 및 수령 주소는 가맹점 설정에서 자동 결정
 - `tokenAddress`는 화이트리스트 등록 및 가맹점 활성화가 필수
 
@@ -22,7 +22,7 @@ SoloPay 위젯을 사용하면 **결제 생성은 위젯이 자동으로 처리*
        │  POST /payments       │                       │
        │──────────────────────▶│                       │
        │                       │                       │
-       │  { paymentId, serverSignature, ... }          │
+       │  { paymentId, deadline, ... }          │
        │◀──────────────────────│                       │
        │                       │                       │
        │     (사용자가 지갑에서 결제)                   │
@@ -34,8 +34,8 @@ SoloPay 위젯을 사용하면 **결제 생성은 위젯이 자동으로 처리*
 ## REST API
 
 ```bash
-curl -X POST https://pay-api.staging.sut.com/api/v1/payments \
-  -H "x-public-key: pk_test_xxxxx" \
+curl -X POST https://gateway.dev.solonetwork.io/api/v1/payments \
+  -H "x-public-key: pk_xxxxx" \
   -H "Origin: https://yourshop.com" \
   -H "Content-Type: application/json" \
   -d '{
@@ -70,23 +70,27 @@ curl -X POST https://pay-api.staging.sut.com/api/v1/payments \
 ```json
 {
   "success": true,
-  "paymentId": "0xabc123def456...",
-  "orderId": "order-001",
-  "serverSignature": "0x...",
-  "chainId": 80002,
-  "tokenAddress": "0xE4C687167705Abf55d709395f92e254bdF5825a2",
-  "tokenSymbol": "SUT",
-  "tokenDecimals": 18,
-  "gatewayAddress": "0x...",
-  "forwarderAddress": "0x...",
-  "amount": "10500000000000000000",
-  "recipientAddress": "0xMerchantWallet...",
-  "merchantId": "0x...",
-  "deadline": "1706281200",
-  "escrowDuration": "300",
-  "successUrl": "https://example.com/success",
-  "failUrl": "https://example.com/fail",
-  "expiresAt": "2024-01-26T13:00:00.000Z"
+  "data": {
+    "paymentId": "0xabc123def456...",
+    "orderId": "order-001",
+    "chainId": 80002,
+    "tokenAddress": "0xE4C687167705Abf55d709395f92e254bdF5825a2",
+    "tokenSymbol": "SUT",
+    "tokenDecimals": 18,
+    "gatewayAddress": "0x...",
+    "forwarderAddress": "0x...",
+    "amount": "10500000000000000000",
+    "recipientAddress": "0xMerchantWallet...",
+    "merchantId": "0x...",
+    "deadline": "1706281200",
+    "successUrl": "https://example.com/success",
+    "failUrl": "https://example.com/fail",
+    "expiresAt": "2024-01-26T12:35:00.000Z",
+    "tokenPermitSupported": true,
+    "currency": "USD",
+    "fiatAmount": 10.5,
+    "tokenPrice": 1.0
+  }
 }
 ```
 
@@ -95,7 +99,7 @@ curl -X POST https://pay-api.staging.sut.com/api/v1/payments \
 | HTTP | 코드                       | 원인                              |
 | ---- | -------------------------- | --------------------------------- |
 | 400  | `TOKEN_NOT_ENABLED`        | 해당 토큰이 가맹점에서 비활성화됨 |
-| 400  | `TOKEN_NOT_FOUND`          | 화이트리스트에 없는 토큰          |
+| 404  | `TOKEN_NOT_FOUND`          | 화이트리스트에 없는 토큰          |
 | 400  | `UNSUPPORTED_CHAIN`        | 지원하지 않는 체인                |
 | 400  | `CHAIN_NOT_CONFIGURED`     | 가맹점에 체인이 설정되지 않음     |
 | 400  | `RECIPIENT_NOT_CONFIGURED` | 가맹점 수령 주소 미설정           |
@@ -104,23 +108,25 @@ curl -X POST https://pay-api.staging.sut.com/api/v1/payments \
 
 ## 응답 필드 설명
 
-| 필드               | 타입       | 설명                                                   |
-| ------------------ | ---------- | ------------------------------------------------------ |
-| `paymentId`        | `string`   | 결제 고유 식별자 (bytes32 해시)                        |
-| `serverSignature`  | `string`   | 서버 EIP-712 서명 (컨트랙트 인증용)                    |
-| `amount`           | `string`   | wei 단위로 변환된 금액                                 |
-| `gatewayAddress`   | `address`  | PaymentGateway 컨트랙트 주소                           |
-| `forwarderAddress` | `address`  | ERC2771 Forwarder 주소 (Gasless용)                     |
-| `merchantId`       | `string`   | bytes32 형태의 가맹점 ID                               |
-| `deadline`         | `string`   | 서명 기한 (Unix timestamp); `pay()` 및 가스리스에 필요 |
-| `escrowDuration`   | `string`   | 에스크로 기간(초); `pay()` 및 가스리스에 필요          |
-| `expiresAt`        | `datetime` | 결제 만료 시각 (생성 후 30분)                          |
+| 필드                   | 타입       | 설명                                                                                 |
+| ---------------------- | ---------- | ------------------------------------------------------------------------------------ |
+| `paymentId`            | `string`   | 결제 고유 식별자 (bytes32 해시)                                                      |
+| `amount`               | `string`   | wei 단위로 변환된 금액                                                               |
+| `gatewayAddress`       | `address`  | PaymentGateway 컨트랙트 주소                                                         |
+| `forwarderAddress`     | `address`  | ERC2771 Forwarder 주소 (Gasless용)                                                   |
+| `merchantId`           | `string`   | bytes32 형태의 가맹점 ID                                                             |
+| `deadline`             | `string`   | 서버 서명 만료 기한 (Unix timestamp); `pay()` 및 가스리스에 필요. 기본 1시간(3600초) |
+| `expiresAt`            | `datetime` | 결제 만료 시각 (생성 후 5분)                                                         |
+| `tokenPermitSupported` | `boolean`  | EIP-2612 Permit 지원 여부                                                            |
+| `currency`             | `string`   | 법정화폐 통화 코드 (요청 시에만 포함)                                                |
+| `fiatAmount`           | `number`   | 원래 법정화폐 금액 (요청 시에만 포함)                                                |
+| `tokenPrice`           | `number`   | 결제 생성 시점 토큰 가격 (요청 시에만 포함)                                          |
 
 ## 위젯 사용 시
 
 위젯(`@solo-pay/widget-js` / `@solo-pay/widget-react`)을 사용하면 이 API를 직접 호출할 필요 없이 위젯이 자동으로 처리합니다.
 
-[클라이언트 사이드 연동 가이드](/ko/developer/client-side) 참고
+[위젯 연동 가이드](/ko/widget/) 참고
 
 ## 다음 단계
 
