@@ -16,6 +16,7 @@ function buildPaymentDetailResponse(
     amount: { toString: () => string };
     token_symbol: string;
     token_decimals: number;
+    token_address: string | null;
     tx_hash: string | null;
     payer_address: string | null;
     currency_code: string | null;
@@ -33,6 +34,7 @@ function buildPaymentDetailResponse(
     amount: payment.amount.toString(),
     tokenSymbol: payment.token_symbol,
     tokenDecimals: payment.token_decimals,
+    tokenAddress: payment.token_address ?? undefined,
     txHash: payment.tx_hash ?? undefined,
     payerAddress: payment.payer_address ?? undefined,
     currencyCode: payment.currency_code ?? undefined,
@@ -62,6 +64,7 @@ export async function merchantPaymentRoute(
       },
       amount: { type: 'string', description: 'Wei' },
       tokenSymbol: { type: 'string' },
+      tokenAddress: { type: 'string', description: 'Token contract address (0x...)' },
       tokenDecimals: { type: 'integer' },
       txHash: { type: 'string' },
       payerAddress: { type: 'string' },
@@ -137,9 +140,10 @@ export async function merchantPaymentRoute(
           payment.payment_method_id
         );
 
-        return reply
-          .code(200)
-          .send({ success: true, data: buildPaymentDetailResponse(payment, tokenPermitSupported) });
+        return reply.code(200).send({
+          success: true,
+          data: buildPaymentDetailResponse(payment, tokenPermitSupported),
+        });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to get payment';
         return reply.code(500).send({ code: ErrorCodes.INTERNAL_ERROR, message });
@@ -210,9 +214,10 @@ export async function merchantPaymentRoute(
           payment.payment_method_id
         );
 
-        return reply
-          .code(200)
-          .send({ success: true, data: buildPaymentDetailResponse(payment, tokenPermitSupported) });
+        return reply.code(200).send({
+          success: true,
+          data: buildPaymentDetailResponse(payment, tokenPermitSupported),
+        });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to get payment';
         return reply.code(500).send({ code: ErrorCodes.INTERNAL_ERROR, message });

@@ -22,8 +22,7 @@ This page summarizes the essential points you must understand when integrating S
 - Verification checklist:
   - Confirm that `status` is `PAID` (payment success)
   - Confirm that `amount` matches the expected amount **in your order database** (the widget runs client-side and the amount could be tampered with)
-  - Confirm that `recipientAddress` matches your merchant wallet address (prevents self-payment attacks where an attacker substitutes the recipient)
-  - Confirm that `tokenAddress` matches the expected token
+  - Confirm that `tokenAddress` matches the expected token contract address
   - Confirm that `orderId` matches the expected value
   - Prevent duplicate processing of the same `paymentId`
 
@@ -37,7 +36,6 @@ This page summarizes the essential points you must understand when integrating S
 
 - Confirm receipt of the `payment.paid` webhook, or verify `status === "PAID"` via `GET /merchant/payments/:id`.
 - Match `amount` against the expected amount **in your order database** — since the widget runs client-side, the amount in the payment request could have been tampered with.
-- Confirm `recipientAddress` matches your merchant wallet address — an attacker could substitute the recipient to redirect funds to themselves.
 - Match `orderId` and `tokenAddress` against your order data.
 - Confirm that the payment has not already been processed (prevent duplicate order completion).
 

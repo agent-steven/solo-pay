@@ -1,6 +1,7 @@
 import { Queue, Worker } from 'bullmq';
 import type { Redis } from 'ioredis';
 import type { PrismaClient } from '@solo-pay/database';
+import { keccak256, encodePacked } from 'viem';
 import type { ChainClient } from './blockchain';
 import { getOnChainStatus, OnChainPaymentStatus } from './blockchain';
 import type { WebhookJobData, PaymentWebhookBody } from './types';
@@ -12,6 +13,7 @@ interface MonitorJobData {
   paymentHash: string;
   paymentId: number;
   merchantId: number;
+  merchantIdHash: string;
   networkId: number;
   amount: string;
   tokenSymbol: string;
@@ -37,8 +39,6 @@ export interface MonitorOptions {
   pollingIntervalMs: number;
   /** Blockchain check retry delay in ms (default 1000) */
   blockchainCheckIntervalMs: number;
-  /** Only monitor payments created within this window (default 1800000 = 30min) */
-  timeoutMs: number;
 }
 
 function buildWebhookBody(
@@ -77,7 +77,6 @@ export function startPaymentMonitor(options: MonitorOptions): { stop: () => Prom
     webhookQueue,
     pollingIntervalMs,
     blockchainCheckIntervalMs,
-    timeoutMs,
   } = options;
 
   let running = true;
@@ -192,6 +191,17 @@ export function startPaymentMonitor(options: MonitorOptions): { stop: () => Prom
       return `recipient mismatch: on-chain=${details.recipientAddress}, expected=${data.recipientAddress}`;
     }
 
+    // Merchant ID (bytes32)
+    if (!data.merchantIdHash) {
+      return `merchant validation failed: expected merchant ID hash is missing`;
+    }
+    if (!details.merchantId) {
+      return `merchant validation failed: on-chain merchant ID is missing`;
+    }
+    if (details.merchantId.toLowerCase() !== data.merchantIdHash.toLowerCase()) {
+      return `merchant mismatch: on-chain=${details.merchantId}, expected=${data.merchantIdHash}`;
+    }
+
     // Deadline: event timestamp vs DB expires_at
     if (data.expiresAt) {
       const eventTimestamp = new Date(details.timestamp).getTime();
@@ -226,6 +236,7 @@ export function startPaymentMonitor(options: MonitorOptions): { stop: () => Prom
         status: 'INVALID',
         tx_hash: details.transactionHash,
         ...(details.payerAddress && { payer_address: details.payerAddress }),
+        ...(details.tokenAddress && { token_address: details.tokenAddress }),
       },
     });
 
@@ -285,6 +296,7 @@ export function startPaymentMonitor(options: MonitorOptions): { stop: () => Prom
           tx_hash: details.transactionHash,
           confirmed_at: new Date(),
           ...(details.payerAddress && { payer_address: details.payerAddress }),
+          ...(details.tokenAddress && { token_address: details.tokenAddress }),
         },
       });
 
@@ -304,85 +316,35 @@ export function startPaymentMonitor(options: MonitorOptions): { stop: () => Prom
     }
   }
 
-  // ── Resolve token address from chain + token tables ─────────────────
-  async function resolveTokenAddresses(
-    payments: { network_id: number; token_symbol: string }[]
-  ): Promise<Map<string, string>> {
-    const result = new Map<string, string>();
-    const uniquePairs = [...new Set(payments.map((p) => `${p.network_id}:${p.token_symbol}`))];
-    if (uniquePairs.length === 0) return result;
-
-    const networkIds = [...new Set(payments.map((p) => p.network_id))];
-    const chains = await prisma.chain.findMany({
-      where: { network_id: { in: networkIds } },
-      select: { id: true, network_id: true },
-    });
-    const symbols = [...new Set(payments.map((p) => p.token_symbol))];
-    const chainIds = chains.map((c) => c.id);
-    const tokens = await prisma.token.findMany({
-      where: { chain_id: { in: chainIds }, symbol: { in: symbols } },
-      select: { chain_id: true, symbol: true, address: true },
-    });
-
-    const chainIdToNetwork = new Map(chains.map((c) => [c.id, c.network_id]));
-    for (const token of tokens) {
-      const networkId = chainIdToNetwork.get(token.chain_id);
-      if (networkId !== undefined) {
-        result.set(`${networkId}:${token.symbol}`, token.address);
-      }
-    }
-
-    return result;
-  }
-
-  // ── Resolve merchant recipient addresses ────────────────────────────
-  async function resolveMerchantRecipients(
-    payments: { merchant_id: number }[]
-  ): Promise<Map<number, string>> {
-    const result = new Map<number, string>();
-    const uniqueIds = [...new Set(payments.map((p) => p.merchant_id))];
-    if (uniqueIds.length === 0) return result;
-
-    for (const merchantId of uniqueIds) {
-      const merchant = await prisma.merchant.findUnique({
-        where: { id: merchantId },
-        select: { id: true, recipient_address: true },
-      });
-      if (merchant?.recipient_address) {
-        result.set(merchant.id, merchant.recipient_address);
-      }
-    }
-
-    return result;
-  }
-
   // ── DB poller ────────────────────────────────────────────────────────
   async function pollDb(): Promise<void> {
     if (!running) return;
 
     try {
-      const cutoff = new Date(Date.now() - timeoutMs);
       const payments = await prisma.payment.findMany({
         where: {
           status: {
             in: ['CREATED'],
           },
-          created_at: { gt: cutoff },
         },
         orderBy: { created_at: 'asc' },
         take: 100,
       });
 
-      const tokenAddressMap = await resolveTokenAddresses(payments);
-      const merchantRecipientMap = await resolveMerchantRecipients(payments);
+      // Resolve merchant_key → bytes32 merchantIdHash for on-chain validation
+      const uniqueMerchantIds = [...new Set(payments.map((p) => p.merchant_id))];
+      const merchantKeyMap = new Map<number, string>();
+      if (uniqueMerchantIds.length > 0) {
+        const merchants = await prisma.merchant.findMany({
+          where: { id: { in: uniqueMerchantIds } },
+          select: { id: true, merchant_key: true },
+        });
+        for (const m of merchants) {
+          merchantKeyMap.set(m.id, keccak256(encodePacked(['string'], [m.merchant_key])));
+        }
+      }
 
       for (const payment of payments) {
-        const tokenAddress =
-          tokenAddressMap.get(`${payment.network_id}:${payment.token_symbol}`) ?? '';
-        // Use snapshot from payment record; fall back to merchant table for older payments
-        const recipientAddress =
-          payment.recipient_address ?? merchantRecipientMap.get(payment.merchant_id) ?? '';
-
         // jobId includes status to avoid dedup conflicts across different status monitors
         await monitorQueue.add(
           'check-payment',
@@ -390,11 +352,12 @@ export function startPaymentMonitor(options: MonitorOptions): { stop: () => Prom
             paymentHash: payment.payment_hash,
             paymentId: payment.id,
             merchantId: payment.merchant_id,
+            merchantIdHash: merchantKeyMap.get(payment.merchant_id) ?? '',
             networkId: payment.network_id,
             amount: payment.amount.toString(),
             tokenSymbol: payment.token_symbol,
-            tokenAddress,
-            recipientAddress,
+            tokenAddress: payment.token_address ?? '',
+            recipientAddress: payment.recipient_address ?? '',
             orderId: payment.order_id ?? null,
             webhookUrl: payment.webhook_url ?? null,
             status: payment.status,

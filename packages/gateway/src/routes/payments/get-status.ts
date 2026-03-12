@@ -1,6 +1,5 @@
 import { FastifyInstance } from 'fastify';
 import { Address } from 'viem';
-import { BlockchainService } from '../../services/blockchain.service';
 import { PaymentService } from '../../services/payment.service';
 import { MerchantService } from '../../services/merchant.service';
 import { ChainService } from '../../services/chain.service';
@@ -13,7 +12,6 @@ import { ErrorCodes } from '../../error-codes';
 
 export async function getPaymentStatusRoute(
   app: FastifyInstance,
-  blockchainService: BlockchainService,
   paymentService: PaymentService,
   merchantService: MerchantService,
   chainService: ChainService,
@@ -108,54 +106,20 @@ Stateless: blockchain is the source of truth for status when on-chain state is a
           });
         }
 
-        const chainIdNum = paymentData.network_id;
-
-        if (!blockchainService.isChainSupported(chainIdNum)) {
-          return reply.code(400).send({
-            code: ErrorCodes.UNSUPPORTED_CHAIN,
-            message: 'Unsupported chain',
-          });
-        }
-
-        const paymentStatus = await blockchainService.getPaymentStatus(chainIdNum, id);
-
-        if (!paymentStatus) {
-          return reply.code(404).send({
-            code: ErrorCodes.NOT_FOUND,
-            message: 'Payment not found',
-          });
-        }
-
-        if (paymentStatus.status !== 'pending' && paymentStatus.amount) {
-          const eventAmount = BigInt(paymentStatus.amount);
-          const dbAmount = BigInt(paymentData.amount.toString());
-
-          if (eventAmount !== dbAmount) {
-            return reply.code(400).send({
-              code: ErrorCodes.AMOUNT_MISMATCH,
-              message: `Payment amount mismatch. DB: ${dbAmount.toString()}, on-chain: ${eventAmount.toString()}`,
-              details: {
-                dbAmount: dbAmount.toString(),
-                onChainAmount: eventAmount.toString(),
-                paymentId: id,
-                transactionHash: paymentStatus.transactionHash,
-              },
-            });
-          }
-        }
-
-        // Blockchain is source of truth for response status when on-chain state is available.
-        // DB updates are handled exclusively by the webhook-manager (with full validation).
-        const onChain = paymentStatus.status;
-
-        const onChainToApiStatus: Record<string, string> = {
-          paid: 'PAID',
-          refunded: 'REFUNDED',
+        // DB is source of truth for payment status (webhook-manager syncs on-chain state)
+        const paymentStatus = {
+          paymentId: paymentData.payment_hash,
+          payerAddress: paymentData.payer_address ?? '',
+          amount: Number(paymentData.amount),
+          rawAmount: paymentData.amount.toString(),
+          tokenAddress: paymentData.token_address ?? '',
+          tokenSymbol: paymentData.token_symbol,
+          treasuryAddress: paymentData.recipient_address ?? '',
+          status: paymentData.status,
+          transactionHash: paymentData.tx_hash ?? undefined,
+          createdAt: new Date(paymentData.created_at).toISOString(),
+          updatedAt: new Date(paymentData.updated_at).toISOString(),
         };
-        const finalStatusFromChain =
-          onChain !== 'pending' ? onChainToApiStatus[onChain] : undefined;
-
-        const finalStatus: string = finalStatusFromChain ?? paymentData.status;
 
         const tokenPermitSupported = await paymentService.getTokenPermitSupported(
           paymentData.payment_method_id
@@ -208,7 +172,7 @@ Stateless: blockchain is the source of truth for status when on-chain state is a
             paymentId: paymentData.payment_hash,
             chainId: paymentData.network_id,
             tokenSymbol: paymentData.token_symbol,
-            status: finalStatus,
+            status: paymentData.status,
             tokenPermitSupported,
             ...detailsFields,
           },

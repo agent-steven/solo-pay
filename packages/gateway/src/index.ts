@@ -150,7 +150,6 @@ const registerRoutes = async () => {
       );
       await getPaymentStatusRoute(
         scope,
-        blockchainService,
         paymentService,
         merchantService,
         chainService,

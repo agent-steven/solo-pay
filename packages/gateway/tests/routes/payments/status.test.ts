@@ -2,13 +2,11 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import Fastify, { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import { getPaymentStatusRoute } from '../../../src/routes/payments/get-status';
-import { BlockchainService } from '../../../src/services/blockchain.service';
 import { PaymentService } from '../../../src/services/payment.service';
 import { MerchantService } from '../../../src/services/merchant.service';
 import { ChainService } from '../../../src/services/chain.service';
 import { TokenService } from '../../../src/services/token.service';
 import { PaymentMethodService } from '../../../src/services/payment-method.service';
-import { PaymentStatus } from '../../../src/schemas/payment.schema';
 import { API_V1_BASE_PATH } from '../../../src/constants';
 
 const TEST_PUBLIC_KEY = 'pk_test_demo';
@@ -18,7 +16,6 @@ const publicAuthHeaders = { 'x-public-key': TEST_PUBLIC_KEY, origin: TEST_ORIGIN
 
 describe('GET /payments/:id', () => {
   let app: FastifyInstance;
-  let blockchainService: Partial<BlockchainService>;
   let paymentService: Partial<PaymentService>;
   let merchantService: Partial<MerchantService>;
   let chainService: Partial<ChainService>;
@@ -43,18 +40,11 @@ describe('GET /payments/:id', () => {
     fiat_amount: null,
     token_price: null,
     tx_hash: null,
-  };
-
-  const mockPaymentStatus: PaymentStatus = {
-    paymentId: 'payment-123',
-    payerAddress: '0x' + 'a'.repeat(40),
-    amount: 1000000000000000000, // Must match mockPaymentData.amount for completed status
-    tokenAddress: '0x' + 'a'.repeat(40),
-    tokenSymbol: 'USDC',
-    treasuryAddress: '0x' + 'b'.repeat(40),
-    status: 'pending',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    payer_address: null,
+    recipient_address: '0x' + '1'.repeat(40),
+    token_address: '0x' + '4'.repeat(40),
+    created_at: new Date('2024-01-01'),
+    updated_at: new Date('2024-01-01'),
   };
 
   beforeEach(async () => {
@@ -67,15 +57,6 @@ describe('GET /payments/:id', () => {
       },
     });
     await app.register(cors);
-
-    // Mock BlockchainService
-    blockchainService = {
-      getPaymentStatus: vi.fn().mockResolvedValue(mockPaymentStatus),
-      recordPaymentOnChain: vi.fn(),
-      waitForConfirmation: vi.fn(),
-      estimateGasCost: vi.fn(),
-      isChainSupported: vi.fn().mockReturnValue(true),
-    };
 
     paymentService = {
       findByHash: vi.fn().mockResolvedValue(mockPaymentData),
@@ -127,7 +108,6 @@ describe('GET /payments/:id', () => {
       async (scope) => {
         await getPaymentStatusRoute(
           scope,
-          blockchainService as BlockchainService,
           paymentService as PaymentService,
           merchantService as MerchantService,
           chainService as ChainService,
@@ -222,10 +202,8 @@ describe('GET /payments/:id', () => {
   });
 
   describe('예외 케이스', () => {
-    it('블록체인 서비스 오류 발생 시 500 상태 코드를 반환해야 함', async () => {
-      blockchainService.getPaymentStatus = vi
-        .fn()
-        .mockRejectedValueOnce(new Error('블록체인 연결 오류'));
+    it('DB 서비스 오류 발생 시 500 상태 코드를 반환해야 함', async () => {
+      paymentService.findByHash = vi.fn().mockRejectedValueOnce(new Error('DB 연결 오류'));
 
       const response = await app.inject({
         method: 'GET',
@@ -239,24 +217,15 @@ describe('GET /payments/:id', () => {
     });
 
     it('다양한 결제 상태를 반환할 수 있어야 함', async () => {
-      const statuses: Array<'pending' | 'confirmed' | 'failed' | 'completed'> = [
-        'pending',
-        'confirmed',
-        'failed',
-        'completed',
-      ];
+      const statuses = ['CREATED', 'PAID', 'REFUNDED', 'EXPIRED'];
 
       for (const status of statuses) {
         // Reset mocks for each iteration
         paymentService.findByHash = vi.fn().mockResolvedValueOnce({
           ...mockPaymentData,
-          status: status.toUpperCase(),
-        });
-        paymentService.getTokenPermitSupported = vi.fn().mockResolvedValue(false);
-        blockchainService.getPaymentStatus = vi.fn().mockResolvedValueOnce({
-          ...mockPaymentStatus,
           status,
         });
+        paymentService.getTokenPermitSupported = vi.fn().mockResolvedValue(false);
 
         const response = await app.inject({
           method: 'GET',
@@ -266,8 +235,7 @@ describe('GET /payments/:id', () => {
 
         expect(response.statusCode).toBe(200);
         const body = JSON.parse(response.body);
-        // DB status is returned (uppercase)
-        expect(body.data.status).toBe(status.toUpperCase());
+        expect(body.data.status).toBe(status);
       }
     });
   });

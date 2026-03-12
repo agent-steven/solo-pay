@@ -23,6 +23,8 @@ export interface OnChainPaymentDetails {
   tokenAddress?: string;
   /** Recipient address from PaymentCompleted event */
   recipientAddress?: string;
+  /** Merchant ID (bytes32) from PaymentCompleted event */
+  merchantId?: string;
 }
 
 /** Mirrors the Solidity PaymentStatus enum in PaymentGateway.sol */
@@ -152,6 +154,7 @@ async function queryCompletedEvent(
     fee: (args.fee || BigInt(0)).toString(),
     tokenAddress: args.tokenAddress || '',
     recipientAddress: args.recipientAddress || '',
+    merchantId: args.merchantId || '',
   };
 }
 
