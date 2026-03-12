@@ -115,7 +115,7 @@ function WidgetLayout() {
       </div>
 
       {/* Modal Body with Step Content */}
-      <div className="p-4 sm:p-6 flex-1 flex flex-col justify-center">
+      <div className="p-4 flex-1 flex flex-col justify-center">
         <AnimatePresence mode="wait">
           <motion.div
             key="content"
@@ -164,7 +164,7 @@ const Home: NextPage = () => {
       </Head>
       <main className="flex items-center justify-center min-h-screen bg-black">
         <div
-          className="bg-[var(--color-brand-bg)] border border-zinc-800 w-full max-w-md h-screen sm:h-[600px] sm:max-h-[90dvh] relative flex flex-col tech-cut-modal overflow-hidden"
+          className="bg-[var(--color-brand-bg)] border border-zinc-800 w-full max-w-md h-screen sm:h-[700px] sm:max-h-[90dvh] relative flex flex-col tech-cut-modal overflow-hidden"
           onMouseMove={handleMouseMove}
           onMouseEnter={() => setIsHovering(true)}
           onMouseLeave={() => setIsHovering(false)}
