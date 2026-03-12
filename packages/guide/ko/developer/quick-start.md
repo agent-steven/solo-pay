@@ -44,8 +44,6 @@ curl https://pay-api.staging.sut.com/api/v1/payments/0xabc123... \
 
 `status === 'ESCROWED'` 또는 `status === 'FINALIZED'`이고 `amount`, `tokenAddress`, `orderId`가 일치할 때만 주문을 완료 처리합니다.
 
-> **중요:** Callback URL(`successUrl`/`failUrl`)은 **화면 표시 전용**입니다. Callback에서 DB를 업데이트하지 마세요. 주문 상태 변경과 상품 발송은 반드시 [Webhook](/ko/webhooks/)으로 처리하세요 — 사용자가 브라우저를 닫으면 Callback이 호출되지 않습니다.
-
 에스크로를 사용하는 경우, 결제가 **ESCROWED**가 된 후 백엔드에서 **POST /payments/:id/finalize**를 호출하여 자금을 본인 지갑으로 해제할 수 있습니다. [결제 확정 및 취소](/ko/payments/finalize)를 참조하세요.
 
 ## 결제 상태 흐름

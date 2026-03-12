@@ -53,15 +53,6 @@ https://yourshop.com/payment/fail?paymentId=0xabc123...&reason=expired
 URL parameters can be manipulated by the user. Always **verify payment status via API** as the final check.
 :::
 
-::: danger Callback URLs Are for Display Only
-The callback URL (`successUrl` / `failUrl`) should only be used to **show the payment result on screen**. Do NOT update your database, mark orders as paid, or trigger fulfillment from the callback URL alone.
-
-- **Callback URL** → Display "Payment successful!" or "Payment failed" to the user
-- **Webhook** → Update order status in your database, trigger fulfillment
-
-The callback can fail if the user closes the browser before being redirected. Use [Webhooks](/en/webhooks/) as the single source of truth for payment status changes.
-:::
-
 ## Step 3: Cross-Verify Payment Result (Required)
 
 As soon as the `paymentId` is received from the callback URL, call the status API to verify payment. The `GET /payments/:id` endpoint uses the `x-public-key` header, which can be called from the browser.
