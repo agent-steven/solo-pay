@@ -34,11 +34,14 @@ import { startPaymentMonitor } from '../src/monitor';
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
+const MOCK_MERCHANT_ID_HASH = '0x' + 'f'.repeat(64);
+
 function makeJobData(overrides: Record<string, unknown> = {}) {
   return {
     paymentHash: '0x' + 'a'.repeat(64),
     paymentId: 1,
     merchantId: 1,
+    merchantIdHash: MOCK_MERCHANT_ID_HASH,
     networkId: 80002,
     amount: '1000000',
     tokenSymbol: 'USDC',
@@ -61,6 +64,7 @@ function makePaidDetails(overrides: Partial<OnChainPaymentDetails> = {}): OnChai
     payerAddress: '0x' + 'c'.repeat(40),
     tokenAddress: '0xTokenAddr',
     recipientAddress: '0x' + 'd'.repeat(40),
+    merchantId: MOCK_MERCHANT_ID_HASH,
     fee: '0',
     ...overrides,
   };
@@ -122,7 +126,6 @@ describe('monitor worker', () => {
       webhookQueue: mockWebhookQueue,
       pollingIntervalMs: 600_000, // very long so pollDb doesn't auto-fire
       blockchainCheckIntervalMs: 1000,
-      timeoutMs: 1_800_000,
     });
   });
 
@@ -284,6 +287,38 @@ describe('monitor worker', () => {
       });
 
       await processJob(makeJobData({ tokenAddress: '' }));
+
+      expect(mockPrisma.payment.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'INVALID' }),
+        })
+      );
+    });
+
+    it('should mark as INVALID when merchant ID mismatches', async () => {
+      const details = makePaidDetails({ merchantId: '0x' + '1'.repeat(64) });
+      mockGetOnChainStatus.mockResolvedValue({
+        status: OnChainPaymentStatus.Paid,
+        details,
+      });
+
+      await processJob(makeJobData());
+
+      expect(mockPrisma.payment.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'INVALID' }),
+        })
+      );
+    });
+
+    it('should mark as INVALID when expected merchant ID hash is empty (bypass prevention)', async () => {
+      const details = makePaidDetails();
+      mockGetOnChainStatus.mockResolvedValue({
+        status: OnChainPaymentStatus.Paid,
+        details,
+      });
+
+      await processJob(makeJobData({ merchantIdHash: '' }));
 
       expect(mockPrisma.payment.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({

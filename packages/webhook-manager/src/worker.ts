@@ -70,8 +70,6 @@ async function main(): Promise<void> {
     process.env.BLOCKCHAIN_CHECK_INTERVAL_MS ?? '1000',
     10
   );
-  const timeoutMs = parseInt(process.env.PAYMENT_MONITOR_TIMEOUT_MS ?? '1800000', 10);
-
   const monitor = startPaymentMonitor({
     redis,
     prisma,
@@ -79,14 +77,12 @@ async function main(): Promise<void> {
     webhookQueue,
     pollingIntervalMs,
     blockchainCheckIntervalMs,
-    timeoutMs,
   });
 
   console.log(
-    '[webhook-manager] payment monitor started, dbPoll=%dms chainCheck=%dms timeout=%dms',
+    '[webhook-manager] payment monitor started, dbPoll=%dms chainCheck=%dms',
     pollingIntervalMs,
-    blockchainCheckIntervalMs,
-    timeoutMs
+    blockchainCheckIntervalMs
   );
 
   const shutdown = async (): Promise<void> => {

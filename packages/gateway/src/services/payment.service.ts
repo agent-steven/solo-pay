@@ -17,6 +17,7 @@ export interface CreatePaymentInput {
   webhook_url?: string;
   origin?: string;
   recipient_address?: string;
+  token_address?: string;
   currency_code?: string;
   fiat_amount?: Decimal;
   token_price?: Decimal;
@@ -47,6 +48,7 @@ export class PaymentService {
         webhook_url: input.webhook_url,
         origin: input.origin,
         recipient_address: input.recipient_address,
+        token_address: input.token_address,
         currency_code: input.currency_code,
         fiat_amount: input.fiat_amount,
         token_price: input.token_price,

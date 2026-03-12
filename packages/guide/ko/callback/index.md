@@ -117,8 +117,7 @@ curl https://gateway.dev.solonetwork.io/merchant/payments/0xabc123... \
 
 - [ ] `status === 'PAID'` 확인 (결제 성공)
 - [ ] `amount`가 **자사 주문 DB에 저장된 기대 금액**과 일치 확인 (위젯은 클라이언트에서 실행되므로 금액이 변조될 수 있음)
-- [ ] `recipientAddress`가 가맹점 지갑 주소와 일치 확인 (공격자가 수신자를 바꿔치기하는 자기결제 공격 방지)
-- [ ] `tokenAddress`가 기대한 토큰과 일치 확인
+- [ ] `tokenAddress`가 기대한 토큰 컨트랙트 주소와 일치 확인
 - [ ] `orderId`가 기대한 orderId와 일치 확인
 - [ ] 동일 `paymentId`의 중복 완료 처리 방지
 

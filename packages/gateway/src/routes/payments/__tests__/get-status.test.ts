@@ -10,11 +10,6 @@ const mockPaymentService = {
   getTokenPermitSupported: vi.fn().mockResolvedValue(false),
 };
 
-const mockBlockchainService = {
-  isChainSupported: vi.fn(),
-  getPaymentStatus: vi.fn(),
-};
-
 const mockMerchantService = {
   findByPublicKey: vi.fn(),
   findById: vi.fn(),
@@ -37,6 +32,14 @@ vi.mock('../../../middleware/public-auth.middleware', () => ({
     request.merchant = { id: 1, merchant_key: 'merchant_demo_001' };
   }),
 }));
+
+const baseMockPayment = {
+  payer_address: null,
+  recipient_address: '0x' + '1'.repeat(40),
+  token_address: '0x' + '4'.repeat(40),
+  created_at: new Date('2024-01-01'),
+  updated_at: new Date('2024-01-01'),
+};
 
 describe('GET /payments/:id', () => {
   let app: FastifyInstance;
@@ -68,7 +71,6 @@ describe('GET /payments/:id', () => {
 
     await getPaymentStatusRoute(
       app,
-      mockBlockchainService as never,
       mockPaymentService as never,
       mockMerchantService as never,
       mockChainService as never,
@@ -86,6 +88,7 @@ describe('GET /payments/:id', () => {
     it('should return payment status for valid payment', async () => {
       const paymentHash = '0x' + 'a'.repeat(64);
       const mockPayment = {
+        ...baseMockPayment,
         id: 1,
         payment_hash: paymentHash,
         merchant_id: 1,
@@ -106,11 +109,6 @@ describe('GET /payments/:id', () => {
       };
 
       mockPaymentService.findByHash.mockResolvedValue(mockPayment);
-      mockBlockchainService.isChainSupported.mockReturnValue(true);
-      mockBlockchainService.getPaymentStatus.mockResolvedValue({
-        status: 'pending',
-        transactionHash: null,
-      });
 
       const response = await app.inject({
         method: 'GET',
@@ -135,6 +133,7 @@ describe('GET /payments/:id', () => {
     it('should return tokenPermitSupported in response', async () => {
       const paymentHash = '0x' + 'z'.repeat(64);
       const mockPayment = {
+        ...baseMockPayment,
         id: 10,
         payment_hash: paymentHash,
         merchant_id: 1,
@@ -156,11 +155,6 @@ describe('GET /payments/:id', () => {
 
       mockPaymentService.findByHash.mockResolvedValue(mockPayment);
       mockPaymentService.getTokenPermitSupported.mockResolvedValue(true);
-      mockBlockchainService.isChainSupported.mockReturnValue(true);
-      mockBlockchainService.getPaymentStatus.mockResolvedValue({
-        status: 'pending',
-        transactionHash: null,
-      });
 
       const response = await app.inject({
         method: 'GET',
@@ -174,10 +168,11 @@ describe('GET /payments/:id', () => {
       expect(mockPaymentService.getTokenPermitSupported).toHaveBeenCalledWith(5);
     });
 
-    it('should update status to PAID when on-chain status is paid', async () => {
+    it('should return PAID status from DB', async () => {
       const paymentHash = '0x' + 'b'.repeat(64);
       const txHash = '0x' + 'c'.repeat(64);
       const mockPayment = {
+        ...baseMockPayment,
         id: 2,
         payment_hash: paymentHash,
         merchant_id: 1,
@@ -186,7 +181,7 @@ describe('GET /payments/:id', () => {
         token_symbol: 'USDT',
         token_decimals: 6,
         amount: new Decimal('2000000'),
-        status: 'CREATED',
+        status: 'PAID',
         order_id: null,
         success_url: null,
         fail_url: null,
@@ -194,17 +189,12 @@ describe('GET /payments/:id', () => {
         currency_code: null,
         fiat_amount: null,
         token_price: null,
-        tx_hash: null,
+        tx_hash: txHash,
+        payer_address: '0x' + 'd'.repeat(40),
       };
 
       mockPaymentService.findByHash.mockResolvedValue(mockPayment);
-      mockBlockchainService.isChainSupported.mockReturnValue(true);
-      mockBlockchainService.getPaymentStatus.mockResolvedValue({
-        status: 'paid',
-        transactionHash: txHash,
-        amount: '2000000',
-        payerAddress: '0x' + 'd'.repeat(40),
-      });
+
       const response = await app.inject({
         method: 'GET',
         url: `/payments/${paymentHash}`,
@@ -214,9 +204,7 @@ describe('GET /payments/:id', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.payload);
       expect(body.data.status).toBe('PAID');
-      // DB updates are handled exclusively by the webhook-manager
-      expect(mockPaymentService.updateStatusByHash).not.toHaveBeenCalled();
-      expect(mockPaymentService.updatePayerAddress).not.toHaveBeenCalled();
+      expect(body.data.payerAddress).toBe('0x' + 'd'.repeat(40));
     });
   });
 
@@ -233,88 +221,6 @@ describe('GET /payments/:id', () => {
       expect(response.statusCode).toBe(404);
       const body = JSON.parse(response.payload);
       expect(body.code).toBe('NOT_FOUND');
-    });
-
-    it('should return 400 for unsupported chain', async () => {
-      const mockPayment = {
-        id: 3,
-        payment_hash: '0x' + 'e'.repeat(64),
-        merchant_id: 1,
-        payment_method_id: 1,
-        network_id: 99999,
-        token_symbol: 'USDC',
-        amount: new Decimal('1000000'),
-        status: 'CREATED',
-      };
-
-      mockPaymentService.findByHash.mockResolvedValue(mockPayment);
-      mockBlockchainService.isChainSupported.mockReturnValue(false);
-
-      const response = await app.inject({
-        method: 'GET',
-        url: '/payments/0x' + 'e'.repeat(64),
-        headers: { 'x-public-key': 'pk_test_123' },
-      });
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.payload);
-      expect(body.code).toBe('UNSUPPORTED_CHAIN');
-    });
-
-    it('should return 404 when blockchain payment status not found', async () => {
-      const mockPayment = {
-        id: 4,
-        payment_hash: '0x' + 'g'.repeat(64),
-        merchant_id: 1,
-        payment_method_id: 1,
-        network_id: 31337,
-        token_symbol: 'USDC',
-        amount: new Decimal('1000000'),
-        status: 'CREATED',
-      };
-
-      mockPaymentService.findByHash.mockResolvedValue(mockPayment);
-      mockBlockchainService.isChainSupported.mockReturnValue(true);
-      mockBlockchainService.getPaymentStatus.mockResolvedValue(null);
-
-      const response = await app.inject({
-        method: 'GET',
-        url: '/payments/0x' + 'g'.repeat(64),
-        headers: { 'x-public-key': 'pk_test_123' },
-      });
-
-      expect(response.statusCode).toBe(404);
-    });
-
-    it('should return 400 for amount mismatch', async () => {
-      const mockPayment = {
-        id: 5,
-        payment_hash: '0x' + 'h'.repeat(64),
-        merchant_id: 1,
-        payment_method_id: 1,
-        network_id: 31337,
-        token_symbol: 'USDC',
-        amount: new Decimal('1000000'),
-        status: 'CREATED',
-      };
-
-      mockPaymentService.findByHash.mockResolvedValue(mockPayment);
-      mockBlockchainService.isChainSupported.mockReturnValue(true);
-      mockBlockchainService.getPaymentStatus.mockResolvedValue({
-        status: 'escrowed',
-        amount: '2000000',
-        transactionHash: '0x' + 'i'.repeat(64),
-      });
-
-      const response = await app.inject({
-        method: 'GET',
-        url: '/payments/0x' + 'h'.repeat(64),
-        headers: { 'x-public-key': 'pk_test_123' },
-      });
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.payload);
-      expect(body.code).toBe('AMOUNT_MISMATCH');
     });
 
     it('should return 500 on internal error', async () => {
@@ -335,6 +241,7 @@ describe('GET /payments/:id', () => {
   describe('merchant authorization', () => {
     it('should return 403 when payment belongs to different merchant', async () => {
       const mockPayment = {
+        ...baseMockPayment,
         id: 6,
         payment_hash: '0x' + 'k'.repeat(64),
         merchant_id: 999,
