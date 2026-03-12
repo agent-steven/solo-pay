@@ -1,0 +1,7 @@
+{
+  "PaymentGateway": {
+    "owner": "0xb5d706946A24D5b4bFA7abb042c507EA48C22ac1",
+    "treasury": "0xb5d706946A24D5b4bFA7abb042c507EA48C22ac1",
+    "forwarderAddress": "0xec63c3E7BD0c51AA6DC08f587A2B147a671cf888"
+  }
+}
