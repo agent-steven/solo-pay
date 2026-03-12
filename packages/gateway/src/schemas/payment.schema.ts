@@ -94,11 +94,24 @@ export const GaslessRequestSchema = z.object({
 export type GaslessRequest = z.infer<typeof GaslessRequestSchema>;
 
 /**
- * Creates a refined GaslessRequestSchema that validates the forwardRequest.data
- * amount matches the expected DB amount.
- * This prevents frontend manipulation and gas waste.
+ * Expected values for pay() function parameters, sourced from the DB payment record.
  */
-export function createAmountValidationSchema(expectedAmount: bigint): z.ZodType<GaslessRequest> {
+export interface PayCallExpectedParams {
+  paymentId: string; // bytes32 payment hash
+  tokenAddress: string; // token contract address
+  amount: bigint; // wei amount
+  recipientAddress: string; // merchant recipient address
+  merchantId: string; // bytes32 keccak256(merchantKey)
+}
+
+/**
+ * Creates a refined GaslessRequestSchema that validates ALL pay() function
+ * parameters in forwardRequest.data against DB values.
+ * This prevents frontend manipulation of any contract call parameter.
+ */
+export function createPayCallValidationSchema(
+  expected: PayCallExpectedParams
+): z.ZodType<GaslessRequest> {
   return GaslessRequestSchema.superRefine((data, ctx) => {
     try {
       const decoded = decodeFunctionData({
@@ -116,14 +129,62 @@ export function createAmountValidationSchema(expectedAmount: bigint): z.ZodType<
         return;
       }
 
-      // Extract amount from decoded function arguments (3rd parameter, index 2)
-      const decodedAmount = decoded?.args?.[2] as bigint;
-
-      // Compare amounts - reject if mismatch
-      if (decodedAmount !== expectedAmount) {
+      const args = decoded.args;
+      if (!args || args.length < 5) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `Payment amount mismatch. DB: ${expectedAmount.toString()}, request: ${decodedAmount.toString()}`,
+          message: 'pay() call missing required arguments',
+          path: ['forwardRequest', 'data'],
+        });
+        return;
+      }
+
+      // args[0] = paymentId (bytes32)
+      const decodedPaymentId = args[0] as string;
+      if (decodedPaymentId.toLowerCase() !== expected.paymentId.toLowerCase()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `paymentId mismatch. DB: ${expected.paymentId}, request: ${decodedPaymentId}`,
+          path: ['forwardRequest', 'data'],
+        });
+      }
+
+      // args[1] = tokenAddress (address)
+      const decodedTokenAddress = args[1] as string;
+      if (decodedTokenAddress.toLowerCase() !== expected.tokenAddress.toLowerCase()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `tokenAddress mismatch. DB: ${expected.tokenAddress}, request: ${decodedTokenAddress}`,
+          path: ['forwardRequest', 'data'],
+        });
+      }
+
+      // args[2] = amount (uint256)
+      const decodedAmount = args[2] as bigint;
+      if (decodedAmount !== expected.amount) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `amount mismatch. DB: ${expected.amount.toString()}, request: ${decodedAmount.toString()}`,
+          path: ['forwardRequest', 'data'],
+        });
+      }
+
+      // args[3] = recipientAddress (address)
+      const decodedRecipient = args[3] as string;
+      if (decodedRecipient.toLowerCase() !== expected.recipientAddress.toLowerCase()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `recipientAddress mismatch. DB: ${expected.recipientAddress}, request: ${decodedRecipient}`,
+          path: ['forwardRequest', 'data'],
+        });
+      }
+
+      // args[4] = merchantId (bytes32)
+      const decodedMerchantId = args[4] as string;
+      if (decodedMerchantId.toLowerCase() !== expected.merchantId.toLowerCase()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `merchantId mismatch. DB: ${expected.merchantId}, request: ${decodedMerchantId}`,
           path: ['forwardRequest', 'data'],
         });
       }
