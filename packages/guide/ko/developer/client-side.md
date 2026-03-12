@@ -53,14 +53,6 @@ https://yourshop.com/payment/fail?paymentId=0xabc123...&reason=expired
 URL 파라미터는 사용자가 조작할 수 있습니다. 반드시 **API를 통해 결제 상태를 최종 확인**하세요.
 :::
 
-::: danger Callback URL은 화면 표시 전용입니다
-Callback URL(`successUrl` / `failUrl`)은 **결제 결과를 화면에 보여주는 용도**로만 사용하세요. Callback URL에서 DB 업데이트, 주문 완료 처리, 상품 발송 등을 실행하면 안 됩니다.
-
-- **Callback URL** → "결제 성공!" 또는 "결제 실패" 화면만 표시
-- **Webhook** → DB에 주문 상태 업데이트, 상품 발송 처리
-
-사용자가 리다이렉트 전에 브라우저를 닫으면 Callback이 호출되지 않습니다. 결제 상태 변경의 단일 진실 공급원(Single Source of Truth)으로 [Webhook](/ko/webhooks/)을 사용하세요.
-:::
 
 ## Step 3: 결제 결과 교차 검증 (필수)
 
@@ -83,9 +75,9 @@ const result = await response.json();
 
 ## Webhook 연동 (권장)
 
-Callback URL 방식은 사용자가 브라우저를 닫으면 실패할 수 있습니다. **Webhook과 함께 사용**하면 사용자가 성공 페이지로 돌아오지 않아도 결제 완료를 안정적으로 수신할 수 있습니다.
+Callback URL은 **결제 결과를 사용자에게 보여주는 용도**로만 사용하세요. Callback에서 DB 업데이트나 주문 처리를 하면 안 됩니다 — 사용자가 리다이렉트 전에 브라우저를 닫으면 Callback이 호출되지 않습니다.
 
-- [Webhook 설정 가이드 보기](/ko/webhooks/)
+결제 상태 변경의 단일 진실 공급원(Single Source of Truth)으로 [Webhook](/ko/webhooks/)을 사용하세요. DB 업데이트, 주문 완료, 상품 발송 등 모든 처리는 Webhook 핸들러에서 수행해야 합니다.
 
 ## 다음 단계
 
