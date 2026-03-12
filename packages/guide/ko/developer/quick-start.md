@@ -35,14 +35,16 @@ React 프로젝트라면 [`@solo-pay/widget-react`의 `useWidget` 훅](/ko/widge
 
 ## Step 2: 결제 결과 검증
 
-Callback URL에서 `paymentId`를 받은 즉시 서버에서 최종 상태를 확인합니다.
+Callback 또는 Webhook이 도착하면, `orderId`를 기반으로 서버에서 결제 API를 조회하여 검증합니다.
 
 ```bash
-curl https://pay-api.staging.sut.com/api/v1/payments/0xabc123... \
-  -H "x-public-key: pk_test_xxxxx"
+curl https://pay-api.staging.sut.com/api/v1/payments?orderId=order-001 \
+  -H "x-api-key: sk_test_xxxxx"
 ```
 
-`status === 'ESCROWED'` 또는 `status === 'FINALIZED'`이고 `amount`, `tokenAddress`, `orderId`가 일치할 때만 주문을 완료 처리합니다.
+`status === 'ESCROWED'` 또는 `status === 'FINALIZED'`이고 `amount`, `tokenAddress`가 일치할 때만 주문을 완료 처리합니다. API 응답의 `paymentId`를 주문에 연결하세요.
+
+전체 검증 플로우는 [결제 결과 검증](/ko/webhooks/verify)을 참조하세요.
 
 에스크로를 사용하는 경우, 결제가 **ESCROWED**가 된 후 백엔드에서 **POST /payments/:id/finalize**를 호출하여 자금을 본인 지갑으로 해제할 수 있습니다. [결제 확정 및 취소](/ko/payments/finalize)를 참조하세요.
 

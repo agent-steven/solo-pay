@@ -55,21 +55,31 @@ URL parameters can be manipulated by the user. Always **verify payment status vi
 
 ## Step 3: Cross-Verify Payment Result (Required)
 
-As soon as the `paymentId` is received from the callback URL, call the status API to verify payment. The `GET /payments/:id` endpoint uses the `x-public-key` header, which can be called from the browser.
+When the user is redirected to the callback URL, use the `orderId` to query the payment API from your server and verify the result.
 
 ```typescript
-const response = await fetch(`https://pay-api.staging.sut.com/api/v1/payments/0xabc123...`, {
-  headers: { 'x-public-key': 'pk_test_xxxxx' },
-});
-const result = await response.json();
+// 1. Extract orderId from callback (do NOT trust other URL params)
+const orderId = getOrderIdFromSession(); // use your own session/order context
+
+// 2. Query SoloPay API by orderId from your server
+const response = await fetch(
+  `https://pay-api.staging.sut.com/api/v1/payments?orderId=${orderId}`,
+  { headers: { 'x-api-key': 'sk_test_xxxxx' } }
+);
+const payment = await response.json();
+
+// 3. Verify and link
+if (payment.status === 'ESCROWED' || payment.status === 'FINALIZED') {
+  await updateOrder(orderId, { paymentId: payment.paymentId, status: 'PAID' });
+}
 ```
 
 **Verification Checklist**
 
+- [ ] Query payment API using your `orderId` — do not rely on callback URL values
 - [ ] Confirm `status === 'ESCROWED'` or `status === 'FINALIZED'`
-- [ ] Confirm `amount` matches order amount
-- [ ] Confirm `tokenAddress` matches the expected token
-- [ ] Confirm `orderId` matches the expected orderId
+- [ ] Confirm `amount` and `tokenAddress` match your order record
+- [ ] Link `paymentId` to the order in your DB
 - [ ] Prevent duplicate completion processing for the same `paymentId`
 
 ## Webhook Integration (Recommended)

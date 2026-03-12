@@ -55,21 +55,31 @@ URL 파라미터는 사용자가 조작할 수 있습니다. 반드시 **API를 
 
 ## Step 3: 결제 결과 교차 검증 (필수)
 
-Callback URL에서 `paymentId`를 받은 즉시, 상태 조회 API를 호출하여 결제 상태를 검증합니다. `GET /payments/:id` 엔드포인트는 `x-public-key` 헤더를 사용하며 브라우저에서 직접 호출할 수 있습니다.
+사용자가 Callback URL로 리다이렉트되면, `orderId`를 기반으로 서버에서 결제 API를 조회하여 검증합니다.
 
 ```typescript
-const response = await fetch(`https://pay-api.staging.sut.com/api/v1/payments/0xabc123...`, {
-  headers: { 'x-public-key': 'pk_test_xxxxx' },
-});
-const result = await response.json();
+// 1. orderId는 세션/주문 컨텍스트에서 가져옴 (URL 파라미터를 신뢰하지 말 것)
+const orderId = getOrderIdFromSession();
+
+// 2. 서버에서 orderId로 SoloPay API 조회
+const response = await fetch(
+  `https://pay-api.staging.sut.com/api/v1/payments?orderId=${orderId}`,
+  { headers: { 'x-api-key': 'sk_test_xxxxx' } }
+);
+const payment = await response.json();
+
+// 3. 검증 후 paymentId 연결
+if (payment.status === 'ESCROWED' || payment.status === 'FINALIZED') {
+  await updateOrder(orderId, { paymentId: payment.paymentId, status: 'PAID' });
+}
 ```
 
 **검증 체크리스트**
 
+- [ ] `orderId`로 결제 API 조회 — callback URL 값을 그대로 쓰지 말 것
 - [ ] `status === 'ESCROWED'` 또는 `status === 'FINALIZED'` 확인
-- [ ] `amount`가 주문 금액과 일치 확인
-- [ ] `tokenAddress`가 기대한 토큰과 일치 확인
-- [ ] `orderId`가 기대한 orderId와 일치 확인
+- [ ] `amount`, `tokenAddress`가 주문 정보와 일치 확인
+- [ ] `paymentId`를 주문에 연결
 - [ ] 동일 `paymentId`의 중복 완료 처리 방지
 
 ## Webhook 연동 (권장)

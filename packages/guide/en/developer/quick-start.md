@@ -35,14 +35,16 @@ For React projects, using the [`useWidget` hook from `@solo-pay/widget-react`](/
 
 ## Step 2: Verify Payment Result
 
-As soon as the `paymentId` is received from the callback URL, verify the final status from the server.
+When the callback or webhook arrives, use your `orderId` to query the payment API from your server and verify the result.
 
 ```bash
-curl https://pay-api.staging.sut.com/api/v1/payments/0xabc123... \
-  -H "x-public-key: pk_test_xxxxx"
+curl https://pay-api.staging.sut.com/api/v1/payments?orderId=order-001 \
+  -H "x-api-key: sk_test_xxxxx"
 ```
 
-Only mark the order complete when `status === 'ESCROWED'` or `status === 'FINALIZED'` and `amount`, `tokenAddress`, and `orderId` all match.
+Only mark the order complete when `status === 'ESCROWED'` or `status === 'FINALIZED'` and `amount`, `tokenAddress` all match. Then link the `paymentId` from the API response to your order.
+
+For the full verification flow, see [Payment Result Verification](/en/webhooks/verify).
 
 If you use escrow, after payment is **ESCROWED** your backend can call **POST /payments/:id/finalize** to release funds to your wallet. See [Finalize & Cancel](/en/payments/finalize).
 
