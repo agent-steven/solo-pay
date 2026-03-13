@@ -191,6 +191,58 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
   /** Prevents duplicate switchChainAsync (wallet errors on "request already pending") */
   const switchInProgressRef = useRef(false);
 
+  /**
+   * Pre-add chain via wallet_addEthereumChain, delay for mobile wallet registration, then switch.
+   * Caller must set switchInProgressRef.current = true and setIsSwitchingChain(true) before calling.
+   */
+  const performChainSwitch = useCallback(
+    (targetChainId: number): Promise<void> => {
+      const network = appkitNetworksByChainId[targetChainId];
+      const preAddChain = async (): Promise<void> => {
+        if (!network || !connector) return;
+        try {
+          const provider = (await connector.getProvider()) as {
+            request: (args: { method: string; params: unknown[] }) => Promise<unknown>;
+          };
+          await provider.request({
+            method: 'wallet_addEthereumChain',
+            params: [
+              {
+                chainId: numberToHex(network.id),
+                chainName: network.name,
+                nativeCurrency: network.nativeCurrency,
+                rpcUrls: network.rpcUrls.default.http,
+                blockExplorerUrls: network.blockExplorers
+                  ? [network.blockExplorers.default.url]
+                  : undefined,
+              },
+            ],
+          });
+        } catch {
+          // Chain may already exist or wallet doesn't support addEthereumChain — continue to switch
+        }
+      };
+      const switchAfterAdd = (): Promise<void> =>
+        new Promise((resolve) => setTimeout(resolve, 400)).then(() =>
+          switchChainAsync({ chainId: targetChainId }).then(() => undefined)
+        );
+      return preAddChain()
+        .then(switchAfterAdd)
+        .then(() => {
+          switchInProgressRef.current = false;
+          setIsSwitchingChain(false);
+          setChainSwitchFailed(false);
+        })
+        .catch((err) => {
+          console.warn('Chain switch failed:', err);
+          switchInProgressRef.current = false;
+          setIsSwitchingChain(false);
+          setChainSwitchFailed(true);
+        });
+    },
+    [connector, switchChainAsync]
+  );
+
   // Prevent double API call in React Strict Mode
   const isInitialized = useRef(false);
 
@@ -301,55 +353,7 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
       if (switchInProgressRef.current || isSwitchingChain || chainSwitchFailed) return;
       switchInProgressRef.current = true;
       setIsSwitchingChain(true);
-
-      // Pre-add the chain with our public RPC before switching.
-      // wagmi's injected connector handles 4902 internally but uses
-      // a WalletConnect proxy RPC from the AppKit chain registry.
-      // By adding first, the wallet already has the chain with the correct RPC URL.
-      const preAddChain = async () => {
-        const network = appkitNetworksByChainId[targetChainId];
-        if (!network || !connector) return;
-        try {
-          const provider = (await connector.getProvider()) as {
-            request: (args: { method: string; params: unknown[] }) => Promise<unknown>;
-          };
-          await provider.request({
-            method: 'wallet_addEthereumChain',
-            params: [
-              {
-                chainId: numberToHex(network.id),
-                chainName: network.name,
-                nativeCurrency: network.nativeCurrency,
-                rpcUrls: network.rpcUrls.default.http,
-                blockExplorerUrls: network.blockExplorers
-                  ? [network.blockExplorers.default.url]
-                  : undefined,
-              },
-            ],
-          });
-        } catch {
-          // Chain may already exist or wallet doesn't support addEthereumChain — continue to switch
-        }
-      };
-
-      // Brief delay after add so mobile wallets (e.g. MetaMask) can register the chain before switch
-      const switchAfterAdd = () =>
-        new Promise<void>((resolve) => setTimeout(resolve, 400)).then(() =>
-          switchChainAsync({ chainId: targetChainId })
-        );
-      preAddChain()
-        .then(switchAfterAdd)
-        .then(() => {
-          switchInProgressRef.current = false;
-          setIsSwitchingChain(false);
-          setChainSwitchFailed(false);
-        })
-        .catch((err) => {
-          console.warn('Chain switch failed:', err);
-          switchInProgressRef.current = false;
-          setIsSwitchingChain(false);
-          setChainSwitchFailed(true);
-        });
+      performChainSwitch(targetChainId);
       return;
     }
 
@@ -368,8 +372,7 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
     chain?.id,
     isSwitchingChain,
     chainSwitchFailed,
-    switchChainAsync,
-    connector,
+    performChainSwitch,
     currentStep,
     buttonConnectClicked,
     lockReconnect,
@@ -735,49 +738,7 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
       switchInProgressRef.current = true;
       setIsSwitchingChain(true);
       setChainSwitchFailed(false);
-      const network = appkitNetworksByChainId[merchantChainId];
-      const doPreAdd = async () => {
-        if (!network || !connector) return;
-        try {
-          const provider = (await connector.getProvider()) as {
-            request: (args: { method: string; params: unknown[] }) => Promise<unknown>;
-          };
-          await provider.request({
-            method: 'wallet_addEthereumChain',
-            params: [
-              {
-                chainId: numberToHex(network.id),
-                chainName: network.name,
-                nativeCurrency: network.nativeCurrency,
-                rpcUrls: network.rpcUrls.default.http,
-                blockExplorerUrls: network.blockExplorers
-                  ? [network.blockExplorers.default.url]
-                  : undefined,
-              },
-            ],
-          });
-        } catch {
-          // Chain may already exist or wallet doesn't support addEthereumChain — continue to switch
-        }
-      };
-      const switchAfterAdd = () =>
-        // Brief delay so mobile wallets (e.g. MetaMask) can register the chain after add
-        new Promise<void>((resolve) => setTimeout(resolve, 400)).then(() =>
-          switchChainAsync({ chainId: merchantChainId })
-        );
-      doPreAdd()
-        .then(switchAfterAdd)
-        .then(() => {
-          switchInProgressRef.current = false;
-          setIsSwitchingChain(false);
-          setChainSwitchFailed(false);
-        })
-        .catch((err) => {
-          console.warn('Wallet-only chain switch failed:', err);
-          switchInProgressRef.current = false;
-          setIsSwitchingChain(false);
-          setChainSwitchFailed(true);
-        });
+      performChainSwitch(merchantChainId);
     };
 
     const handleWalletOnlyContinue = () => {
