@@ -107,7 +107,10 @@ const translations = {
 
     // Wallet only
     'walletOnly.connected': 'Wallet connected',
-    'walletOnly.continue': 'Continue',
+    'walletOnly.merchantNetwork': 'Merchant network',
+    'walletOnly.walletNetwork': 'Your network',
+    'walletOnly.switchNetwork': 'Switch to {network}',
+    'walletOnly.switchingNetwork': 'Switching...',
 
     // Token approval
     'approval.title': 'Token Approval',
@@ -252,7 +255,10 @@ const translations = {
     'connect.trustWallet': 'Trust Wallet',
 
     'walletOnly.connected': '지갑 연결됨',
-    'walletOnly.continue': '계속',
+    'walletOnly.merchantNetwork': '가맹점 네트워크',
+    'walletOnly.walletNetwork': '연결된 지갑 네트워크',
+    'walletOnly.switchNetwork': '{network}(으)로 전환',
+    'walletOnly.switchingNetwork': '전환 중...',
 
     'approval.title': '토큰 승인',
     'approval.description': '결제를 위해 토큰 사용 권한을 승인해 주세요',

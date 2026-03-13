@@ -9,8 +9,9 @@ export type PaymentStepType =
 export type WidgetLocale = 'en' | 'ko';
 
 /**
- * URL parameters for widget initialization
- * Matches: /?pk=xxx&orderId=xxx&amount=xxx&tokenAddress=xxx&successUrl=xxx&failUrl=xxx&lang=en|ko
+ * URL parameters for widget initialization.
+ * Required (creation): pk, orderId, amount, tokenAddress, successUrl, failUrl.
+ * Optional: currency, walletOnly, chainId (when walletOnly), lang (en | ko), paymentId (resume).
  */
 export interface WidgetUrlParams {
   /** Public key for merchant authentication (required) */
@@ -33,6 +34,8 @@ export interface WidgetUrlParams {
   currency?: string;
   /** If true, only connect wallet — no gateway API or payment flow */
   walletOnly?: boolean;
+  /** When walletOnly=1, optional chain ID for merchant network (show network + switch). */
+  chainId?: number;
   /** UI language: en (default) or ko. When changed in UI, URL is updated. */
   lang?: WidgetLocale;
   /** Payment ID for resume mode (skips creation and fetches existing payment) */

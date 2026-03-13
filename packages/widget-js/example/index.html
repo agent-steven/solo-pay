@@ -74,7 +74,7 @@
         </div>
         <div class="form-group">
           <label for="widgetUrl">Widget URL</label>
-          <input type="text" id="widgetUrl" value="http://localhost:3000">
+          <input type="text" id="widgetUrl" value="http://localhost:3005">
         </div>
       </div>
       <div class="form-group">
@@ -122,6 +122,27 @@
           <option value="ko">한국어</option>
         </select>
       </div>
+      <div class="form-group">
+        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+          <input type="checkbox" id="walletOnly" value="1">
+          <span>Wallet only (connect + network switch, no payment)</span>
+        </label>
+      </div>
+      <div class="form-group" id="chainIdGroup" style="display: none;">
+        <label for="chainId">Merchant network (Chain ID)</label>
+        <select id="chainId">
+          <option value="">— Select to show switch in widget —</option>
+          <option value="1">Ethereum (1)</option>
+          <option value="11155111">Sepolia (11155111)</option>
+          <option value="137">Polygon (137)</option>
+          <option value="80002">Polygon Amoy (80002)</option>
+          <option value="56">BSC (56)</option>
+          <option value="97">BSC Testnet (97)</option>
+          <option value="42161">Arbitrum (42161)</option>
+          <option value="10">Optimism (10)</option>
+          <option value="8453">Base (8453)</option>
+        </select>
+      </div>
     </div>
     <button class="btn btn-primary" onclick="pay()" style="width: 100%;">Pay</button>
   </div>
@@ -151,10 +172,6 @@
       document.getElementById('logContainer').innerHTML = '<p class="log-entry info">Log cleared</p>';
     }
 
-    function getBaseUrl() {
-      return window.location.origin + window.location.pathname;
-    }
-
     function initSDK() {
       if (soloPay) { soloPay.destroy(); log('SDK destroyed', 'info'); }
       const config = {
@@ -169,6 +186,8 @@
     function pay() {
       if (!soloPay) { log('SDK not initialized!', 'error'); return; }
       const localeVal = document.getElementById('locale').value;
+      const walletOnlyChecked = document.getElementById('walletOnly').checked;
+      const chainIdVal = document.getElementById('chainId').value;
       const req = {
         orderId: document.getElementById('orderId').value || `order-${Date.now()}`,
         amount: document.getElementById('amount').value || '10',
@@ -179,6 +198,10 @@
       if (localeVal === 'en' || localeVal === 'ko') {
         req.locale = localeVal;
       }
+      if (walletOnlyChecked) {
+        req.walletOnly = true;
+        if (chainIdVal) req.chainId = parseInt(chainIdVal, 10);
+      }
       log(`Payment: ${JSON.stringify(req)}`, 'info');
       try {
         soloPay.requestPayment(req, {
@@ -187,7 +210,14 @@
       } catch (e) { log(`Error: ${e.message}`, 'error'); }
     }
 
-    window.addEventListener('DOMContentLoaded', initSDK);
+    window.addEventListener('DOMContentLoaded', function() {
+      initSDK();
+      var walletOnlyEl = document.getElementById('walletOnly');
+      var chainIdGroupEl = document.getElementById('chainIdGroup');
+      walletOnlyEl.addEventListener('change', function() {
+        chainIdGroupEl.style.display = this.checked ? 'flex' : 'none';
+      });
+    });
   </script>
 </body>
 </html>
