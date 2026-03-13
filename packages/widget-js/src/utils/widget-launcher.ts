@@ -49,6 +49,12 @@ export class WidgetLauncher {
     if (request.locale === 'ko' || request.locale === 'en') {
       params.set('lang', request.locale);
     }
+    if (request.walletOnly) {
+      params.set('walletOnly', '1');
+      if (request.chainId != null && Number.isInteger(request.chainId) && request.chainId > 0) {
+        params.set('chainId', String(request.chainId));
+      }
+    }
 
     const url = `${this.widgetUrl}?${params.toString()}`;
     this.log('Built widget URL:', url);

@@ -7,7 +7,7 @@ import type { WidgetUrlParams, UrlParamsValidationResult, WidgetLocale } from '.
  * 1. **Creation mode**: pk + orderId + amount + tokenAddress + successUrl + failUrl (all required)
  * 2. **Resume mode**: pk + paymentId (skips creation, fetches existing payment from server)
  *
- * Optional: currency, walletOnly, lang (en | ko)
+ * Optional: currency, walletOnly, chainId (when walletOnly), lang (en | ko)
  *
  * @example
  * ```tsx
@@ -33,6 +33,11 @@ export function validateWidgetUrlParams(
   const currency = searchParams.get('currency');
   const walletOnlyRaw = searchParams.get('walletOnly');
   const walletOnly = walletOnlyRaw === '1' || walletOnlyRaw === 'true' || walletOnlyRaw === 'yes';
+  const chainIdRaw = searchParams.get('chainId');
+  const chainId =
+    walletOnly && chainIdRaw != null && chainIdRaw !== ''
+      ? parseOptionalChainId(chainIdRaw)
+      : undefined;
   const langRaw = searchParams.get('lang');
   const lang: WidgetLocale = langRaw === 'ko' || langRaw === 'en' ? langRaw : 'en';
 
@@ -60,7 +65,7 @@ export function validateWidgetUrlParams(
         tokenAddress: '',
         successUrl: '',
         failUrl: '',
-        ...(walletOnly ? { walletOnly: true } : {}),
+        ...(walletOnly ? { walletOnly: true, ...(chainId != null ? { chainId } : {}) } : {}),
         lang,
       },
     };
@@ -125,10 +130,19 @@ export function validateWidgetUrlParams(
       successUrl: successUrl!,
       failUrl: failUrl!,
       ...(currency ? { currency } : {}),
-      ...(walletOnly ? { walletOnly: true } : {}),
+      ...(walletOnly ? { walletOnly: true, ...(chainId != null ? { chainId } : {}) } : {}),
       lang,
     },
   };
+}
+
+/**
+ * Parse optional chainId from URL (positive integer). Returns undefined if invalid.
+ */
+function parseOptionalChainId(value: string): number | undefined {
+  const n = parseInt(value, 10);
+  if (!Number.isInteger(n) || n <= 0) return undefined;
+  return n;
 }
 
 /**
