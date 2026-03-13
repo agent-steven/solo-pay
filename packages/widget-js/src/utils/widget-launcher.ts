@@ -49,12 +49,6 @@ export class WidgetLauncher {
     if (request.locale === 'ko' || request.locale === 'en') {
       params.set('lang', request.locale);
     }
-    if (request.walletOnly) {
-      params.set('walletOnly', '1');
-      if (request.chainId != null && Number.isInteger(request.chainId) && request.chainId > 0) {
-        params.set('chainId', String(request.chainId));
-      }
-    }
 
     const url = `${this.widgetUrl}?${params.toString()}`;
     this.log('Built widget URL:', url);
@@ -144,7 +138,7 @@ export class WidgetLauncher {
         return;
       }
 
-      if (data.type !== 'payment_complete' && data.type !== 'wallet_connected') return;
+      if (data.type !== 'payment_complete') return;
 
       handled = true;
       this.log('Widget message:', data.type, data.status ?? '');
@@ -156,15 +150,11 @@ export class WidgetLauncher {
       this.clearPopupCheck();
       this.handleClose();
 
-      // Redirect opener to success/fail URL so merchant page shows result
-      if (data.type === 'payment_complete') {
-        if (data.status === 'success' && typeof data.successUrl === 'string') {
-          window.location.href = data.successUrl;
-        } else if (data.status === 'fail' && typeof data.failUrl === 'string') {
-          window.location.href = data.failUrl;
-        }
-      } else if (data.type === 'wallet_connected' && typeof data.successUrl === 'string') {
+      // Redirect to success or fail URL
+      if (data.status === 'success' && typeof data.successUrl === 'string') {
         window.location.href = data.successUrl;
+      } else if (data.status === 'fail' && typeof data.failUrl === 'string') {
+        window.location.href = data.failUrl;
       }
     };
     window.addEventListener('message', handleMessage);

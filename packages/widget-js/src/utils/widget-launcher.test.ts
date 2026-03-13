@@ -183,17 +183,6 @@ describe('WidgetLauncher', () => {
       expect(new URL(window.location.href).searchParams.get('status')).toBe('closed');
       expect(onClose).toHaveBeenCalledOnce();
     });
-
-    it('should handle wallet_connected message type', () => {
-      launcher.open(makeRequest());
-
-      dispatchWidgetMessage(mockPopup, {
-        type: 'wallet_connected',
-        successUrl: `${SUCCESS_URL}?address=0x123`,
-      });
-
-      expect(window.location.href).toBe(`${SUCCESS_URL}?address=0x123`);
-    });
   });
 
   // -----------------------------------------------------------------------

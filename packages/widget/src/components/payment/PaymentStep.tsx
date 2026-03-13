@@ -252,9 +252,8 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
   const isResumeMode = !!urlParams?.paymentId;
 
   // Create payment on mount (creation mode) or fetch existing payment (resume mode)
-  // Skip when walletOnly — no gateway API
   useEffect(() => {
-    if (!urlParams || urlParams.walletOnly || isInitialized.current) return;
+    if (!urlParams || isInitialized.current) return;
     isInitialized.current = true;
 
     if (isResumeMode) {
@@ -273,7 +272,7 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
       createPayment(urlParams).then((result) => {
         if (result && typeof window !== 'undefined') {
           const url = new URL(window.location.href);
-          // Preserve all existing params (walletOnly, chainId, orderId, etc.) and only add/update these
+          // Preserve existing params and only add/update these
           url.searchParams.set('pk', urlParams.pk);
           url.searchParams.set('paymentId', result.paymentId);
           if (urlParams.lang) url.searchParams.set('lang', urlParams.lang);
@@ -608,13 +607,11 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
     redirectToFail('closed');
   }, [redirectToFail]);
 
-  // Loading state (skip when walletOnly — no API call)
-  if (!urlParams?.walletOnly && isLoading) {
+  if (isLoading) {
     return <LoadingSpinner />;
   }
 
-  // API Error state (skip when walletOnly)
-  if (!urlParams?.walletOnly && apiError) {
+  if (apiError) {
     return (
       <div className="text-center py-8">
         <div className="text-[var(--color-brand-error)] mb-4">
@@ -646,13 +643,12 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
     );
   }
 
-  // No payment details yet (skip when walletOnly — we never fetch payment)
-  if (!urlParams?.walletOnly && !paymentDetails) {
+  if (!paymentDetails) {
     return <LoadingSpinner />;
   }
 
   // Resume mode: handle terminal statuses returned by the server
-  if (isResumeMode && !urlParams?.walletOnly && paymentDetails?.status) {
+  if (isResumeMode && paymentDetails?.status) {
     const successStatuses = ['CONFIRMED', 'PAID'];
     const errorStatuses = ['EXPIRED', 'FAILED'];
 
@@ -702,147 +698,6 @@ export default function PaymentStep({ urlParams }: PaymentStepProps) {
         </div>
       );
     }
-  }
-
-  // Wallet-only mode: show connect, then "Wallet connected" with redirect to successUrl
-  // When chainId is in URL: show merchant network, wallet network, switch (and error + retry if switch fails)
-  if (urlParams?.walletOnly) {
-    if (!isConnected || !address) {
-      return (
-        <div className="w-full">
-          <ConnectWalletButton onConnectorClick={clearWalletChangeIntent} />
-        </div>
-      );
-    }
-    const merchantChainId = urlParams.chainId;
-    const walletChainId = chain?.id;
-    const needsNetworkSwitch =
-      merchantChainId != null && walletChainId != null && walletChainId !== merchantChainId;
-
-    const walletOnlyNetworkBlock =
-      merchantChainId != null ? (
-        <div className="text-left bg-zinc-800/50 rounded-lg p-4 mb-4 space-y-2">
-          <p className="text-sm text-zinc-400">
-            {t('walletOnly.merchantNetwork')}:{' '}
-            <span className="text-white">{getNetworkName(merchantChainId)}</span>
-          </p>
-          <p className="text-sm text-zinc-400">
-            {t('walletOnly.walletNetwork')}:{' '}
-            <span className="text-white">{chain ? getNetworkName(chain.id) : '—'}</span>
-          </p>
-        </div>
-      ) : null;
-
-    const handleWalletOnlySwitch = () => {
-      if (merchantChainId == null || switchInProgressRef.current || isSwitchingChain) return;
-      switchInProgressRef.current = true;
-      setIsSwitchingChain(true);
-      setChainSwitchFailed(false);
-      performChainSwitch(merchantChainId);
-    };
-
-    const handleWalletOnlyContinue = () => {
-      allowUnloadRef.current = true;
-      const successUrl = urlParams.successUrl;
-      try {
-        const url = new URL(successUrl);
-        url.searchParams.set('wallet', address);
-        if (isPopup && window.opener) {
-          window.opener.postMessage(
-            { type: 'wallet_connected', address, successUrl: url.toString() },
-            url.origin
-          );
-          window.close();
-        } else {
-          window.location.href = url.toString();
-        }
-      } catch {
-        if (isPopup && window.opener) {
-          try {
-            window.opener.postMessage(
-              { type: 'wallet_connected', address, successUrl },
-              new URL(successUrl).origin
-            );
-          } catch {
-            // ignore
-          }
-          window.close();
-        } else {
-          window.location.href = successUrl;
-        }
-      }
-    };
-
-    // Wrong network: show merchant network, wallet network, switch, and error + retry if failed
-    if (needsNetworkSwitch) {
-      const targetNetworkName = getNetworkName(merchantChainId);
-      return (
-        <div className="text-center py-6">
-          <p className="font-medium text-white mb-1">{t('walletOnly.connected')}</p>
-          <p className="text-sm text-zinc-400 mb-3">{formatAddress(address)}</p>
-          {walletOnlyNetworkBlock}
-          {chainSwitchFailed && (
-            <div className="text-[var(--color-brand-error)] mb-4 text-sm">
-              <p>{t('error.chainSwitchFailed', { network: targetNetworkName })}</p>
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={handleWalletOnlySwitch}
-            disabled={isSwitchingChain}
-            className="w-full px-4 py-3 bg-white text-black font-bold rounded-none tech-cut-btn hover:brightness-90 active:brightness-75 disabled:opacity-70 disabled:cursor-not-allowed mb-3"
-          >
-            {isSwitchingChain
-              ? t('walletOnly.switchingNetwork')
-              : t('walletOnly.switchNetwork', { network: targetNetworkName })}
-          </button>
-          {chainSwitchFailed && (
-            <button
-              type="button"
-              onClick={() => setChainSwitchFailed(false)}
-              className="w-full px-4 py-3 bg-zinc-600 text-white font-medium rounded-none tech-cut-btn hover:bg-zinc-500 mb-3"
-            >
-              {t('common.tryAgain')}
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={handleDisconnect}
-            className="text-sm text-zinc-500 hover:text-zinc-300"
-          >
-            {t('common.disconnect')}
-          </button>
-        </div>
-      );
-    }
-
-    // Correct network or no chainId: show success and continue
-    return (
-      <div className="text-center py-6">
-        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[var(--color-brand-success)]/10 text-[var(--color-brand-success)] mb-4">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-        <p className="font-medium text-white mb-1">{t('walletOnly.connected')}</p>
-        <p className="text-sm text-zinc-400 mb-3">{formatAddress(address)}</p>
-        {walletOnlyNetworkBlock}
-        <button
-          type="button"
-          onClick={handleWalletOnlyContinue}
-          className="w-full px-4 py-3 bg-[var(--color-brand-success)] text-black font-bold rounded-none tech-cut-btn hover:brightness-110 active:brightness-90"
-        >
-          {t('common.continue')}
-        </button>
-        <button
-          type="button"
-          onClick={handleDisconnect}
-          className="mt-3 text-sm text-zinc-500 hover:text-zinc-300"
-        >
-          {t('common.disconnect')}
-        </button>
-      </div>
-    );
   }
 
   const renderStep = () => {
