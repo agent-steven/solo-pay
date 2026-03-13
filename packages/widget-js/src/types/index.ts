@@ -31,10 +31,6 @@ export interface PaymentRequest {
   currency?: string;
   /** Widget UI language: en (default) or ko. Sets URL param `lang` so widget opens in that language. */
   locale?: WidgetLocale;
-  /** If true, open widget in wallet-only mode (connect + optional network switch; no payment). */
-  walletOnly?: boolean;
-  /** When walletOnly is true, optional chain ID for merchant network (shows network and switch in widget). */
-  chainId?: number;
 }
 
 /** Payment result from callback */

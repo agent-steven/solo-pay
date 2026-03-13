@@ -1,6 +1,6 @@
 {
   "name": "@solo-pay/widget-js",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "type": "module",
   "description": "Lightweight, framework-agnostic payment widget for SoloPay",
   "main": "dist/widget.js",
@@ -27,8 +27,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "pnpm run clean && pnpm run build",
-    "publish:npm": "pnpm publish --access public",
-    "example": "npx serve -p 4002 ."
+    "publish:npm": "pnpm publish --access public"
   },
   "keywords": [
     "payment",
