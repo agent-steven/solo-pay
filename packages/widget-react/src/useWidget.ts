@@ -28,7 +28,7 @@ export interface UseWidgetConfig {
   onError?: (error: WidgetError) => void;
   /** Called when user closes the popup without completing */
   onClose?: () => void;
-  /** Widget base URL (default: https://widget.solo-pay.com) */
+  /** Widget base URL (default: https://widget.solonetwork.io) */
   widgetUrl?: string;
   /** Enable debug logging */
   debug?: boolean;

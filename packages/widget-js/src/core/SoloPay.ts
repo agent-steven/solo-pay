@@ -26,7 +26,7 @@ export class SoloPay {
 
     this.config = {
       publicKey: config.publicKey,
-      widgetUrl: config.widgetUrl ?? 'https://widget.solo-pay.com',
+      widgetUrl: config.widgetUrl ?? 'https://widget.solonetwork.io',
       debug: config.debug ?? false,
     };
 
