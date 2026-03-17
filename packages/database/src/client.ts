@@ -16,12 +16,20 @@ function getDatabaseUrl(): string {
     const database = process.env.MYSQL_DATABASE || 'solopay';
     url = `mysql://${user}:${password}@${host}:${port}/${database}`;
   }
-  return url.replace(/^mysql:\/\//i, 'mariadb://');
+  url = url.replace(/^mysql:\/\//i, 'mariadb://');
+
+  // Default connectionLimit to 2 if not specified in URL
+  const parsed = new URL(url);
+  if (!parsed.searchParams.has('connectionLimit')) {
+    parsed.searchParams.set('connectionLimit', '2');
+  }
+  return parsed.toString();
 }
 
 export function getPrismaClient(): PrismaClient {
   if (!prismaInstance) {
-    const adapter = new PrismaMariaDb(getDatabaseUrl());
+    const connectionLimit = parseInt(process.env.DB_CONNECTION_LIMIT || '2', 10);
+    const adapter = new PrismaMariaDb(getDatabaseUrl(), { connectionLimit });
     prismaInstance = new PrismaClient({ adapter });
   }
   return prismaInstance;
